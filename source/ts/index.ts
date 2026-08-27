@@ -6,6 +6,7 @@ import { registerRuntimeSkill } from './skill.js'
 import type { InvocationLedger } from './invocation-ledger.js'
 
 export * from './laboratory-contract.js'
+export * from './local-memory-store.js'
 
 export const name = 'general-ts-cpp-adapter'
 export const inject = ['tools', 'skills']

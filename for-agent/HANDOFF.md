@@ -4,12 +4,19 @@ Last updated: 2026-08-27
 
 ## Current state
 
+- Stage 2 is complete. `source/ts/local-memory-store.ts` provides the local
+  transactional SQLite and immutable SHA-256 payload foundation with workspace
+  creation/reopen, isolation, quotas, expiry, recovery, corruption detection,
+  safe inspection, and resource reporting.
+- Storage adversarial coverage exercises restart, interrupted promotion and
+  orphan cleanup, corruption, quotas, expiry, malformed identities, and
+  cross-workspace access. All 29 current TypeScript tests pass.
 - Stage 1 is complete. The versioned laboratory contract now defines identities,
   envelopes, trusted authority, capabilities, canonical hashing, exact approval
   binding, operation rules, lifecycle transitions, deterministic errors, and
   mandatory audit outputs, with adversarial executable coverage.
-- Stage 0 consolidation is complete enough to enter Stage 1; no memory service,
-  adapter redesign, validation service, or workshop implementation has begun.
+- Stage 0 consolidation is complete. Adapter redesign, validation service, and
+  workshop implementation have not begun.
 - The repository is on branch `main`; Stage 0 is saved in root commit
   `1e6a216` (`chore(project): consolidate Stage 0 baseline`).
 - The current non-ignored filesystem state of
@@ -286,18 +293,17 @@ approval or evidence.
 
 ## Exact next work
 
-Begin Stage 2 in a new context. Implement the restart-safe local memory
-foundation behind `docs/laboratory-contract.md` and the executable contract:
+Begin Stage 3 in a new context by implementing the three memory workflows on
+the Stage 2 store:
 
-1. Select and record the local SQLite library and migration strategy without
-   coupling the public contract to that implementation.
-2. Implement workspace creation/reopen and strict workspace isolation.
-3. Store authoritative metadata transactionally and immutable payloads by
-   SHA-256 identity using staging plus atomic promotion.
-4. Enforce quotas and expiry, then add startup recovery, corruption detection,
-   safe inspection, and resource reporting.
-5. Add restart, partial-write, corruption, quota, and cross-workspace
-   adversarial tests before proceeding to Stage 3 workflows.
-
-Do not begin Stage 3 memory workflows, adapter integration, validation service,
-or Tool workshop work until the Stage 2 exit gate passes.
+1. Add compute memory create/read/bounded-update/snapshot/release with explicit
+   byte and object quotas and disposable lifecycle behavior.
+2. Add working-memory read/propose/approve/reject/supersede with immutable
+   revision history and exact approval binding.
+3. Add trusted artifact creation and derivation with immutable payloads,
+   schemas, hashes, lineage, and provenance.
+4. Enforce the Stage 1 authority and capability contract at every workflow
+   boundary and emit mandatory audit records for success and rejection.
+5. Add adversarial tests proving compute bounds, approval requirements,
+   artifact immutability, stale/cross-workspace rejection, and authority-class
+   separation before proceeding to Stage 4 adapter integration.

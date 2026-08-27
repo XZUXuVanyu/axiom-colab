@@ -4,6 +4,26 @@ Entries are chronological. Each entry corresponds to one logical Git commit and
 records its exact subject, purpose, material changes, and validation actually
 performed.
 
+## 2026-08-27 — feat(store): add restart-safe local memory foundation
+
+Purpose: complete Stage 2 with a durable storage core without implementing
+Stage 3 semantic memory workflows.
+
+Material changes:
+
+- Selected built-in Node 24 SQLite with numbered transactional migrations and
+  SHA-256-addressed immutable payload files.
+- Added workspace creation/reopen, strict isolation, quotas, expiry, recovery,
+  corruption detection, safe inspection, and resource reporting.
+- Added adversarial restart, interrupted-promotion, corruption, quota, expiry,
+  malformed-identity, and cross-workspace tests and regenerated `dist/`.
+
+Validation actually run:
+
+- `pnpm.cmd test`: passed all 29 TypeScript tests.
+- `pnpm.cmd exec tsc --noEmit`: unavailable because the baseline has no local
+  `tsc` executable; no static type-check pass is claimed.
+
 ## 2026-08-27 — feat(contract): complete laboratory authority contract
 
 Purpose: complete the Stage 1 exit gate and freeze the provider-independent
