@@ -4,6 +4,30 @@ Entries are chronological. Each entry corresponds to one logical Git commit and
 records its exact subject, purpose, material changes, and validation actually
 performed.
 
+## 2026-08-27 — feat(contract): integrate Stage 1 contract foundation
+
+Purpose: save the initial Stage 1 authority-boundary work as an integrated,
+testable checkpoint without claiming that the Stage 1 exit gate is complete.
+
+Material changes:
+
+- Added provider-independent contract identities, operations, trusted context,
+  scoped capability grants, canonical JSON/SHA-256 hashing, deterministic
+  authorization errors, and exact approval binding.
+- Added adversarial tests for hash stability, unauthorized operations, expiry,
+  call replay, cross-workspace access, and stale approval content.
+- Exported the contract module and included all TypeScript contract tests in the
+  default test commands.
+- Removed the stale integration script that referenced a deleted test rather
+  than resurrecting obsolete demo behavior.
+
+Validation performed:
+
+- `pnpm.cmd test` rebuilt `dist/` and passed all 20 TypeScript tests, including
+  the three Stage 1 contract/adversarial tests.
+- `git diff --check` passed; Git emitted only working-tree newline-conversion
+  notices and no whitespace errors.
+
 ## 2026-08-27 — chore(project): consolidate Stage 0 baseline
 
 Purpose: establish Axiom CoLab as a self-contained repository without mutating
@@ -62,4 +86,3 @@ Validation performed:
   workshop, IDE, recovery, and packaging boundaries in `AGENTS.md`.
 - Confirmed Stage 1 remains the exact next work and later implementation stages
   remain gated.
-

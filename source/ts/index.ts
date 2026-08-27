@@ -5,6 +5,8 @@ import { registerDynamicTools } from './dynamic-tool-registry.js'
 import { registerRuntimeSkill } from './skill.js'
 import type { InvocationLedger } from './invocation-ledger.js'
 
+export * from './laboratory-contract.js'
+
 export const name = 'general-ts-cpp-adapter'
 export const inject = ['tools', 'skills']
 const ledgersByContext = new WeakMap<object, InvocationLedger>()

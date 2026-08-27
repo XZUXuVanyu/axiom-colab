@@ -2,6 +2,7 @@ import { fileURLToPath } from 'node:url';
 import { AdapterService, ProcessRunner, ToolObserver } from './adapter-service.js';
 import { registerDynamicTools } from './dynamic-tool-registry.js';
 import { registerRuntimeSkill } from './skill.js';
+export * from './laboratory-contract.js';
 export const name = 'general-ts-cpp-adapter';
 export const inject = [
     'tools',

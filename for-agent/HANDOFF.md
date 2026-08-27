@@ -4,6 +4,10 @@ Last updated: 2026-08-27
 
 ## Current state
 
+- Stage 1 has begun. Commit `83a430f` adds the initial laboratory contract
+  module and adversarial tests for canonical hashing, scoped capability checks,
+  expiry, replay resistance, cross-workspace rejection, and exact approval
+  binding. This is a checkpoint, not the completed Stage 1 contract.
 - Stage 0 consolidation is complete enough to enter Stage 1; no memory service,
   adapter redesign, validation service, or workshop implementation has begun.
 - The repository is on branch `main`; Stage 0 is saved in root commit
@@ -282,7 +286,7 @@ approval or evidence.
 
 ## Exact next work
 
-Begin Stage 1 only:
+Continue Stage 1 only:
 
 1. Define versioned identities and envelopes for workspace, goal, session,
    actor, call, tool, object, capability, proposal, approval, evidence, and
@@ -292,8 +296,9 @@ Begin Stage 1 only:
    protocol errors, permissions, audit outputs, and failure behavior.
 4. Write contract and adversarial tests before selecting or implementing the
    storage layer.
-5. Resolve the stale `test:integration` entry as a small explicit baseline fix,
-   without restoring obsolete demo-specific behavior.
+5. The stale `test:integration` entry has been removed without restoring
+   obsolete demo-specific behavior; keep the contract suite in the default
+   TypeScript test command.
 
 Do not begin Stage 2 storage, memory-client integration, adapter redesign, or
 tool-workshop implementation until the Stage 1 contracts pass their exit gate.
