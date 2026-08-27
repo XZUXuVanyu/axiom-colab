@@ -4,18 +4,21 @@ Last updated: 2026-08-27
 
 ## Current state
 
-- Stage 4 is in progress. `cpp_adapter::MemoryClient` defines the optional typed
-  C++ session boundary over a host-owned `MemoryTransport`, and the adapter now
-  carries a typed trusted invocation envelope beside model-authored arguments.
+- Stage 4 is in progress. The default Bridge now parses the complete trusted
+  grant into `MemoryClient` and forwards operations through a portable,
+  numeric-loopback-only HTTP transport to the authenticated memory service.
+- `MemorySessionProvider` issues a fresh grant from explicit Tool policy and
+  revokes it from `AdapterService`'s `finally` path after success, failure,
+  cancellation, or timeout. Tools without policy remain envelope-free.
 - The Bridge validates Tool/call binding before using a host
   `MemorySessionFactory`. DI propagates per-call lifetime through dependencies,
   constructs only the invoked Tool's scoped graph, injects `MemoryClient`, and
   leaves memory-free Tools on the unchanged singleton path.
 - TypeScript coverage proves host context cannot be replaced by a forged value
-  inside Tool arguments. C++ coverage was added for actual per-call construction
-  and missing-session rejection, but could not be compiled in the managed shell.
-  The persistent authenticated transport is not implemented, so Stage 4 is not
-  complete.
+  inside Tool arguments and cancellation revokes a call-scoped session. The C++
+  DI tests and new transport compile with MSVC 19.51 and pass in a manually
+  initialized Developer Command Prompt. Stage 4 still needs real Bridge HTTP
+  end-to-end coverage before its exit gate is complete.
 - `AuthenticatedMemoryService` now owns issued bearer-token digests, revocation,
   expiry, Tool version/session generation binding, operation and byte quotas,
   and dispatch into the persistent Stage 3 workflows. It repeats authorization
@@ -321,10 +324,9 @@ approval or evidence.
 
 ## Exact next work
 
-Continue Stage 4 by implementing the C++ loopback HTTP `MemoryTransport`, parse
-the complete grant and endpoint into the Bridge session factory, and wire host
-lifecycle/grant issuance into `AdapterService`. Add real Bridge end-to-end tests
-for shared state, revocation/expiry, cross-workspace denial, cancellation, and
-timeout. First compile and run the new C++ per-call DI tests in an environment
-where MSVC is discoverable. Preserve the unchanged memory-free path and do not
-proceed to Stage 5 until the Stage 4 exit gate passes.
+Continue Stage 4 with a test-only memory-dependent C++ Tool/Bridge target and
+real process end-to-end tests for shared state, revocation/expiry,
+cross-workspace denial, cancellation, and timeout through the loopback HTTP
+route. Audit HTTP framing and structured error parsing adversarially. Preserve
+the unchanged memory-free path and do not proceed to Stage 5 until the Stage 4
+exit gate passes.

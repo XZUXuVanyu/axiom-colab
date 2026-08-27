@@ -307,8 +307,10 @@ void test_bridge_constructs_memory_dependency_per_call() {
     CHECK(response.at("result").at("id").as_string() == "object:shared");
 
     BridgeApp without_sessions(registry);
-    const Json denied = call(without_sessions, "call:no-memory", "memory_tool",
-                             Json::object());
+    const Json denied = without_sessions.handle_request(Json::object({
+        {"protocolVersion", "1.0"}, {"id", "call:no-memory"},
+        {"tool", "memory_tool"}, {"arguments", Json::object()},
+    }));
     CHECK(denied.at("error").at("code").as_string()
           == "MEMORY_SESSION_REQUIRED");
 }
@@ -400,7 +402,8 @@ void test_scoped_memory_client() {
     CHECK(transport.capability_id == "capability:one");
     CHECK(transport.operation == MemoryOperation::ComputeRead);
     check_error_code(
-        [&] { client.invoke(MemoryOperation::ComputeRead, Json::object()); },
+        [&] { static_cast<void>(client.invoke(
+            MemoryOperation::ComputeRead, Json::object())); },
         "MEMORY_OPERATION_QUOTA_EXCEEDED");
 }
 

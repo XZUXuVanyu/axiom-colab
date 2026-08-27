@@ -26,7 +26,12 @@ export interface AdapterServiceConfig {
   readonly trustedContextProvider?: (
     toolName: string,
     callId: string,
-  ) => TrustedInvocationEnvelope | undefined
+  ) => TrustedInvocationEnvelope | TrustedInvocationSession | undefined
+}
+
+export interface TrustedInvocationSession {
+  readonly envelope: TrustedInvocationEnvelope
+  readonly revoke: () => void
 }
 
 export class AdapterService {
@@ -85,8 +90,12 @@ export class AdapterService {
     this.ledger.start(callId, toolName)
     this.observer.start(callId, toolName, args)
     let release: (() => void) | undefined
+    let trustedSession: TrustedInvocationSession | undefined
     try {
-      const trustedContext = this.config.trustedContextProvider?.(toolName, callId)
+      const provided = this.config.trustedContextProvider?.(toolName, callId)
+      const trustedContext = provided !== undefined && 'envelope' in provided
+        ? (trustedSession = provided).envelope
+        : provided
       const request = makeToolCallRequest(callId, toolName, args, trustedContext)
       release = await this.gate.acquire(signal)
       const process = await this.runner.run(this.config.bridge.executable, {
@@ -120,6 +129,7 @@ export class AdapterService {
       )
       throw error
     } finally {
+      trustedSession?.revoke()
       release?.()
     }
   }

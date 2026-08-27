@@ -54,9 +54,15 @@ target_include_directories(cpp_adapter_tools PRIVATE
 target_link_libraries(cpp_adapter_tools PRIVATE cpp_adapter_core)
 cpp_adapter_target_defaults(cpp_adapter_tools)
 
-add_library(cpp_adapter_bridge STATIC source/cpp/bridge/bridge.cpp)
+add_library(cpp_adapter_bridge STATIC
+    source/cpp/bridge/bridge.cpp
+    source/cpp/bridge/loopback_memory_transport.cpp
+)
 target_include_directories(cpp_adapter_bridge PUBLIC source/cpp/bridge PRIVATE source/cpp/adapter/include)
 target_link_libraries(cpp_adapter_bridge PUBLIC cpp_adapter_core)
+if(WIN32)
+    target_link_libraries(cpp_adapter_bridge PUBLIC ws2_32)
+endif()
 cpp_adapter_target_defaults(cpp_adapter_bridge)
 
 add_executable(cpp-tool-bridge

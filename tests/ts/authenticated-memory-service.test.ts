@@ -11,6 +11,7 @@ import {
   ContractError,
   LocalMemoryStore,
   MemoryWorkflows,
+  MemorySessionProvider,
   type Operation,
   type ServiceMemoryGrant,
 } from '../../dist/index.js'
@@ -161,6 +162,50 @@ test('loopback HTTP boundary authenticates and preserves structured failures', a
     })
     assert.equal(denied.status, 401)
     assert.equal((await denied.json() as any).error.code, 'MEMORY_AUTHENTICATION_FAILED')
+  } finally {
+    await server.close(); workflows.close(); store.close()
+  }
+})
+
+test('host memory session provider issues a complete call-bound envelope and revokes it', async () => {
+  const { store, workflows, service } = setup()
+  const server = new AuthenticatedMemoryHttpServer(service)
+  const endpoint = await server.listen()
+  try {
+    const provider = new MemorySessionProvider({
+      service, endpoint,
+      scope: {
+        workspaceId: 'workspace:alpha', actorId: 'actor:model',
+        authority: 'model', sessionGeneration: 7,
+      },
+      policyForTool: (toolName) => toolName === 'memory_tool' ? {
+        toolId: 'tool:memory', toolVersion: '1.2.3',
+        operations: ['working.read'], maxOperations: 2,
+        maxRequestBytes: 1024, lifetimeMs: 60_000,
+      } : undefined,
+      now: () => new Date('2026-08-27T00:01:00.000Z'),
+    })
+    assert.equal(provider.create('pure_tool', 'call:pure'), undefined)
+    const session = provider.create('memory_tool', 'call:provider')
+    assert.ok(session)
+    assert.equal(session.envelope.callId, 'call:provider')
+    assert.equal(session.envelope.memoryGrant.endpoint, endpoint.invokeUrl)
+    assert.equal(typeof session.envelope.memoryGrant.bearerToken, 'string')
+    assert.deepEqual(session.envelope.memoryGrant.operations, ['working.read'])
+    session.revoke()
+    session.revoke()
+    const memoryGrant = session.envelope.memoryGrant as any
+    assert.throws(() => service.invoke({
+      capabilityId: memoryGrant.capabilityId,
+      bearerToken: memoryGrant.bearerToken,
+      context: {
+        workspaceId: session.envelope.workspaceId, actorId: session.envelope.actorId,
+        toolId: session.envelope.toolId, callId: session.envelope.callId,
+      },
+      toolVersion: session.envelope.toolVersion,
+      sessionGeneration: session.envelope.sessionGeneration,
+      operation: 'working.read', request: { key: 'plan' },
+    }), code('CAPABILITY_REVOKED'))
   } finally {
     await server.close(); workflows.close(); store.close()
   }

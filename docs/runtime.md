@@ -65,5 +65,19 @@ Bridge repeats the shape and identity checks before asking its configured
 component that declares it is automatically constructed in a child dependency
 scope for that invocation. Calls without such a dependency retain the existing
 worker-singleton path, and a memory-dependent Tool invoked without a host-issued
-session fails with `MEMORY_SESSION_REQUIRED`. The persistent authenticated
-memory transport behind the session factory remains Stage 4 work.
+session fails with `MEMORY_SESSION_REQUIRED`.
+
+`MemorySessionProvider` is the host lifecycle boundary. It maps an explicitly
+configured Tool policy to a fresh call-bound grant, places the complete grant,
+opaque bearer token, and numeric-loopback endpoint in the trusted envelope, and
+revokes the grant when the Adapter call ends. Cleanup runs for success, Tool
+failure, cancellation, and timeout. Tools without a configured policy receive
+no envelope and retain the memory-free path.
+
+The Bridge's default `LoopbackMemorySessionFactory` parses the full envelope and
+grant into the typed client. Its HTTP transport accepts only `127.0.0.1` or
+`::1`, performs no DNS lookup, forwards one bounded JSON operation to the
+authenticated service, and preserves structured service error codes. The
+Bridge process remains the cancellation and timeout boundary: terminating it
+also terminates an in-flight memory request, after which the host revokes the
+grant.

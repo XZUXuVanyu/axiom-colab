@@ -4,6 +4,30 @@ Entries are chronological. Each entry corresponds to one logical Git commit and
 records its exact subject, purpose, material changes, and validation actually
 performed.
 
+## 2026-08-27 — feat(adapter): connect scoped Bridge memory transport
+
+Purpose: continue Stage 4 through the real host-issued grant and C++ loopback
+transport lifecycle while preserving the process-per-call boundary.
+
+Material changes:
+
+- Added a numeric-loopback-only portable C++ HTTP transport and complete trusted
+  grant parser as the default Bridge memory-session factory.
+- Added a host `MemorySessionProvider` that creates grants from explicit Tool
+  policy and made `AdapterService` revoke sessions on every completion path.
+- Added provider/revocation and cancellation cleanup coverage, fixed two latent
+  warnings/errors in the previously uncompiled C++ Stage 4 tests, and updated
+  the runtime/architecture handoff.
+
+Validation actually run:
+
+- `pnpm.cmd test`: passed all 41 TypeScript tests and regenerated `dist/`.
+- A manually initialized Visual Studio 2026 Developer Command Prompt configured
+  a fresh Ninja tree, compiled with warnings as errors, and passed the C++ test.
+- The standard build script was also attempted first and remained blocked by
+  its managed-shell `No CMAKE_CXX_COMPILER could be found` environment issue.
+- `git diff --check`: passed with newline-conversion notices only.
+
 ## 2026-08-27 — feat(adapter): add scoped memory service integration
 
 Purpose: continue Stage 4 with genuine per-call memory DI and a persistent,

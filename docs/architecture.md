@@ -122,6 +122,9 @@ in depth: the persistent memory service remains authoritative and must repeat
 all authorization checks. Model-authored Tool arguments remain a separate JSON
 value and cannot supply or modify the trusted invocation context.
 
-The transport and call-scoped dependency-injection wiring are intentionally the
-next Stage 4 increment. Memory-free Tools continue to use the existing
-process-per-call protocol unchanged.
+The default Bridge now parses the complete host envelope with
+`LoopbackMemorySessionFactory` and uses a numeric-loopback-only HTTP transport
+to reach the persistent authenticated memory service. `MemorySessionProvider`
+owns per-call issuance and revocation in TypeScript; its cleanup follows the
+same `finally` path for success, failure, cancellation, and timeout. Memory-free
+Tools continue to use the existing process-per-call and singleton path.

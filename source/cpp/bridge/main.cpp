@@ -1,4 +1,5 @@
 #include "bridge.hpp"
+#include "loopback_memory_transport.hpp"
 
 #include "cpp_adapter/errors.hpp"
 
@@ -31,7 +32,8 @@ int write_stdout(const cpp_adapter::Json& document) {
 
 int main(int argc, char** argv) {
     try {
-        cpp_adapter::BridgeApp bridge;
+        cpp_adapter::LoopbackMemorySessionFactory memory_sessions;
+        cpp_adapter::BridgeApp bridge(cpp_adapter::default_registry(), &memory_sessions);
         if (argc == 2 && std::string_view(argv[1]) == "--describe-tools") {
             return write_stdout(bridge.describe_tools());
         }

@@ -201,6 +201,41 @@ test('trusted invocation context is supplied by the host beside Tool arguments',
   service.dispose()
 })
 
+test('call-scoped trusted sessions are revoked when a Bridge call is cancelled', async () => {
+  let revocations = 0
+  const service = new AdapterService(
+    new ProcessRunner(),
+    new ToolObserver(new MemoryLogger(), { maxLogChars: 512 }),
+    {
+      bridge: { executable: process.execPath, prefixArgs: [fixture, 'call-hang'] },
+      descriptorLimits: limits,
+      callLimits: {
+        maxStdinBytes: limits.maxStdinBytes,
+        maxStdoutBytes: limits.maxStdoutBytes,
+        maxStderrBytes: limits.maxStderrBytes,
+        killGraceMs: limits.killGraceMs,
+      },
+      trustedContextProvider: (toolName, callId) => ({
+        envelope: {
+          protocolVersion: '1.0', workspaceId: 'workspace:one',
+          actorId: 'actor:model', toolId: 'tool:echo', toolName,
+          toolVersion: '1.0.0', callId, sessionGeneration: 4,
+          memoryGrant: { capabilityId: 'capability:cancelled' },
+        },
+        revoke: () => { revocations += 1 },
+      }),
+    },
+  )
+  await service.initialize()
+  const controller = new AbortController()
+  const invocation = service.invoke('echo_cpp', {}, 'call:cancelled', controller.signal)
+  setTimeout(() => controller.abort(), 50)
+  await assert.rejects(invocation, (error: unknown) =>
+    error instanceof ProcessExecutionError && error.code === 'CANCELLED')
+  assert.equal(revocations, 1)
+  service.dispose()
+})
+
 async function expectProcessCode(
   promise: Promise<unknown>,
   expected: string,

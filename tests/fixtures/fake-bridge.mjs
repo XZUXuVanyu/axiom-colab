@@ -97,7 +97,8 @@ if (mode === 'hang') {
         ...(mode === 'trusted-context' ? { trustedContext: request.trustedContext } : {}),
       },
     }))
-    if (mode === 'delay') setTimeout(respond, 100)
+    if (mode === 'call-hang') setInterval(() => {}, 1000)
+    else if (mode === 'delay') setTimeout(respond, 100)
     else respond()
   })
 }
