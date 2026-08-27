@@ -39,3 +39,27 @@ Validation performed:
 - Read-only post-import Git status confirmed both reference repositories
   retained their original working-tree states.
 
+## 2026-08-27 — docs(agent): restore minimum laboratory roadmap
+
+Purpose: make the route from the consolidated baseline to the first usable IDE
+laboratory durable and practical before Stage 1 begins in a new context.
+
+Material changes:
+
+- Added Stage 0 plus ten ordered implementation stages directly to the current
+  handoff.
+- Defined concrete work, a user-visible practical result, and a testable exit
+  gate for every stage.
+- Tied the roadmap to the minimum launch loop: supervised goal, typed Tool use,
+  structured memory, independent candidate validation, hidden user tests,
+  exact-hash approval, GUI operation, restart recovery, and goal distillation.
+- Corrected the handoff's repository state to reference the saved Stage 0 root
+  commit.
+
+Validation performed:
+
+- Reviewed the roadmap against the authority, memory, adapter, validation,
+  workshop, IDE, recovery, and packaging boundaries in `AGENTS.md`.
+- Confirmed Stage 1 remains the exact next work and later implementation stages
+  remain gated.
+

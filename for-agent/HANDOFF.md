@@ -6,7 +6,8 @@ Last updated: 2026-08-27
 
 - Stage 0 consolidation is complete enough to enter Stage 1; no memory service,
   adapter redesign, validation service, or workshop implementation has begun.
-- The repository is initialized as an unborn Git repository on branch `main`.
+- The repository is on branch `main`; Stage 0 is saved in root commit
+  `1e6a216` (`chore(project): consolidate Stage 0 baseline`).
 - The current non-ignored filesystem state of
   `D:\Dev\tools\general-ts-cpp-adapter` was imported as the executable baseline
   while retaining its root-relative CMake, TypeScript, Qt, test, skill, and
@@ -97,6 +98,188 @@ The adapter and memory service remain complementary. Memory is provider-, UI-,
 and adapter-independent; tools receive only short-lived call-scoped memory
 sessions through typed C++ dependency injection and trusted host context.
 
+## Roadmap to the first usable IDE laboratory
+
+The delivery plan consists of the completed consolidation stage plus ten
+implementation stages. Each stage must leave a testable vertical increment and
+must meet its exit gate before work begins on the next stage. The order exists
+to establish authority and evidence boundaries before storage, integration,
+automation, or UI can accidentally make untrusted state look authoritative.
+
+### Stage 0 - Safely consolidate the project (complete)
+
+Import the current adapter filesystem baseline without altering either
+reference repository. Preserve user-owned uncommitted work, path-sensitive
+behavior, provenance, validation history, and the memory architecture while
+establishing one Axiom CoLab repository and one governing handoff.
+
+Exit gate: both references remain untouched; no authored baseline work is
+silently omitted; imported TypeScript behavior passes; available C++ baseline
+tests pass; exclusions, limitations, and provenance are inspectable.
+
+### Stage 1 - Freeze the common laboratory contract
+
+Define versioned, provider-independent identities and envelopes for workspaces,
+goals, sessions, actors, calls, tools, objects, capabilities, proposals,
+approvals, evidence, and validation records. Specify canonical serialization
+and hashing, trusted-host versus model-controlled fields, permissions,
+operation matrices, lifecycle transitions, error codes, audit events, and
+failure behavior. Add contract and adversarial tests before storage code.
+
+Practical result: every later service and UI view shares one vocabulary, and a
+model-authored value cannot masquerade as host context, validation, or user
+approval.
+
+Exit gate: every planned operation identifies its actor, required capability,
+input contract, legal state transition, authoritative output, audit record, and
+deterministic failures; contract tests cover forgery, replay, stale identities,
+cross-workspace use, and canonical-hash stability.
+
+### Stage 2 - Build the restart-safe local memory foundation
+
+Implement a provider- and UI-independent local memory service using SQLite
+transactions for authoritative metadata and immutable content-addressed files
+for payloads. Add workspace isolation, staging and atomic commit, SHA-256
+identity, quotas, expiry, startup recovery, corruption detection, safe
+inspection, and resource reporting.
+
+Practical result: the IDE can create and reopen isolated workspaces, and a
+crash or partial write cannot promote invalid state.
+
+Exit gate: restart and fault-injection tests prove that partial writes never
+appear valid, corrupted state is reported, quotas are enforced, and one
+workspace cannot inspect or mutate another.
+
+### Stage 3 - Implement the three memory workflows
+
+Implement compute memory create/read/bounded-update/snapshot/release; working
+memory read/propose/approve/reject/supersede with revision history; and trusted
+artifact creation/derivation with immutable payloads, schemas, hashes, lineage,
+and provenance. Keep semantic authority independent of RAM or disk placement.
+
+Practical result: a supervised goal can use disposable scratch state, reviewed
+plans and decisions, and sealed deterministic results without confusing their
+authority levels.
+
+Exit gate: tests prove compute state is bounded and disposable, working changes
+cannot commit without valid approval, artifacts cannot be rewritten by the
+model, and no memory class weakens another class's rules.
+
+### Stage 4 - Integrate scoped memory with the C++ adapter
+
+Add a small typed C++ `MemoryClient` and use the adapter's dependency injection
+to provide a short-lived, call-scoped memory session. Keep trusted invocation
+context separate from model-authored Tool arguments and correlate workspace,
+actor, Tool version, call ID, permissions, quotas, operations, and evidence.
+Retain process-per-call isolation and support Tools that do not use memory.
+
+Practical result: separate Bridge processes can cooperate through one logical
+workspace without receiving paths, credentials, raw pointers, or ambient
+workspace access.
+
+Exit gate: valid calls share scoped state; expired, forged, stale, and
+cross-workspace grants fail; cancellation and timeout remain intact; ordinary
+memory-free Tools still work unchanged.
+
+### Stage 5 - Establish useful built-in Tools and a goal loop
+
+Organize the imported public/example Tools into trusted built-ins or fixtures
+without adding per-Tool TypeScript behavior. Supply at least one pure Tool, one
+compute-memory Tool, and one trusted immutable artifact-derivation Tool. Add a
+minimal goal/session coordinator that records an approved plan, actual calls,
+observations, and resulting artifacts.
+
+Practical result: the backend can execute a small supervised research task from
+goal through inspectable deterministic result using existing capabilities.
+
+Exit gate: ordinary Tool authoring remains C++-first; memory is an optional
+typed dependency; the complete call and artifact trail is inspectable; a Tool
+cannot gain authority merely by requesting a dependency.
+
+### Stage 6 - Implement independent candidate validation
+
+Create a trusted runner that snapshots a candidate and binds its exact hash,
+descriptor, source, toolchain, policy, fixtures, test suites, observed process
+results, diagnostics, and resource use into an immutable validation record.
+Run candidate-authored tests, laboratory standard safety tests, and separately
+stored user challenge tests under filesystem, process, time, memory, dependency,
+and network limits. Keep challenge inputs hidden by default.
+
+Practical result: the laboratory can distinguish a model's claim that code
+works from independently observed evidence about one exact candidate revision.
+
+Exit gate: fabricated result JSON cannot create passing validation; candidate
+changes invalidate promotion eligibility; hidden tests remain undisclosed; all
+failures and resource limits are attributable to the exact run.
+
+### Stage 7 - Build the constrained Tool workshop
+
+Implement the staged workflow from missing capability to structured
+specification, immutable candidate revision, generated C++ source, descriptor
+inspection, isolated build, three test sets, validation record, exact-hash
+installation proposal, explicit user approval, registration, and rediscovery.
+The model may create and revise candidates but cannot approve or install them.
+
+Practical result: during a goal, the model can propose and develop a missing
+Tool while the user retains control over trust, authority, and installation.
+
+Exit gate: stale approvals and approvals for changed candidates fail; rejected
+and failed candidates remain visible; only the exact independently validated
+hash can be proposed for user-approved installation.
+
+### Stage 8 - Deliver the first usable IDE
+
+Extend the imported Qt shell into the minimum daily-use interface. Provide
+workspace and goal creation, plan/progress views, Tool discovery and calls,
+memory and artifact inspection, lineage and provenance, an immutable activity
+timeline, candidate source and build views, actual-versus-claimed validation
+results, hidden challenge-test submission, exact-candidate approve/reject
+controls, resource status, and stop/revoke/resume/recovery controls.
+
+Practical result: a local user can supervise the full laboratory workflow
+without directly editing databases, protocol JSON, or terminal commands.
+
+Exit gate: the user can see what every approval changes, distinguish claims
+from observations and validated evidence, inspect authority and provenance, and
+complete the existing-Tool and new-Tool paths through the GUI.
+
+### Stage 9 - Add continuous checkpointing and goal distillation
+
+Checkpoint goal-relevant state throughout execution rather than relying on a
+graceful quit. On goal closure, generate reviewable proposals for experience,
+evidence-supported knowledge, skill candidates, Tool candidates or references,
+unresolved questions, cleanup, retention, and an immutable session archive.
+Never auto-promote model opinion into trusted knowledge, active skills, or
+installed Tools.
+
+Practical result: interrupted work resumes usefully, and completed work becomes
+inspectable reusable material under explicit retention and approval controls.
+
+Exit gate: crash/restart restores the active goal and evidence links; closure
+produces reviewable distillation proposals; rejected and deferred material is
+retained or removed according to visible policy rather than silently promoted.
+
+### Stage 10 - Prove and package the minimum laboratory
+
+Exercise the complete workflow and package it for one local user and multiple
+isolated workspaces. Test the normal success path and adversarial cases:
+fabricated validation, changed or hidden inputs, stale/replayed approval,
+candidate mutation after approval, self-approval, cross-workspace access,
+partial writes, corruption, quota exhaustion, cancellation, restart, and
+misleading temporary-value manipulation. Document installation, migration,
+backup, recovery, diagnostics, and known platform constraints.
+
+Practical result: Axiom CoLab reaches its first minimum launch: a user can give
+the model a goal, supervise typed Tool use and structured memory, challenge-test
+a generated Tool, approve the exact validated candidate, invoke it, inspect how
+trusted results were produced, close/distill the goal, and recover after
+restart.
+
+Exit gate: the entire goal-to-new-Tool-to-distillation loop succeeds through the
+IDE on a clean local installation; adversarial acceptance tests pass; trusted
+records remain independently inspectable; no step relies on model assertion as
+approval or evidence.
+
 ## Exact next work
 
 Begin Stage 1 only:
@@ -114,4 +297,3 @@ Begin Stage 1 only:
 
 Do not begin Stage 2 storage, memory-client integration, adapter redesign, or
 tool-workshop implementation until the Stage 1 contracts pass their exit gate.
-
