@@ -31,6 +31,7 @@ add_library(cpp_adapter_core STATIC
     source/cpp/adapter/src/errors.cpp
     source/cpp/adapter/src/json.cpp
     source/cpp/adapter/src/json_schema.cpp
+    source/cpp/adapter/src/memory_client.cpp
     source/cpp/adapter/src/tool_descriptor.cpp
 )
 target_include_directories(cpp_adapter_core PUBLIC source/cpp/adapter/include)

@@ -107,3 +107,21 @@ unconstrained schema. `oneOf` remains supported.
 The Skill registry supports runtime `skills.register()`, so `skill/SKILL.md` is
 parsed and registered by the Plugin. It describes workflow only; parameter and
 output schemas remain exclusively in C++ descriptors.
+# Scoped C++ memory boundary
+
+Stage 4 begins with `cpp_adapter::MemoryClient`, an optional typed C++
+dependency. A client is constructed for one Tool call from trusted host context
+and an already issued capability grant. It exposes logical memory operations
+through a host-owned `MemoryTransport`; it never exposes a filesystem path,
+database handle, socket credential, pointer, or ambient workspace service.
+
+The client independently binds workspace, actor, Tool identity and version,
+call ID, session generation, allowed operations, expiry, operation count, and
+request size before forwarding an operation. This local enforcement is defense
+in depth: the persistent memory service remains authoritative and must repeat
+all authorization checks. Model-authored Tool arguments remain a separate JSON
+value and cannot supply or modify the trusted invocation context.
+
+The transport and call-scoped dependency-injection wiring are intentionally the
+next Stage 4 increment. Memory-free Tools continue to use the existing
+process-per-call protocol unchanged.

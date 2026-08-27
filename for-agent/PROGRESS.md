@@ -4,6 +4,31 @@ Entries are chronological. Each entry corresponds to one logical Git commit and
 records its exact subject, purpose, material changes, and validation actually
 performed.
 
+## 2026-08-27 — feat(adapter): start scoped C++ memory client boundary
+
+Purpose: begin Stage 4 with the typed, authority-preserving C++ boundary before
+adding a persistent transport or changing Tool invocation behavior.
+
+Material changes:
+
+- Added an optional `MemoryClient` session abstraction and host-owned
+  `MemoryTransport` interface with no physical paths, credentials, or pointers.
+- Bound grants to workspace, actor, Tool identity/version, call ID, session
+  generation, operation set, lifetime, operation quota, and request-byte quota.
+- Added C++ adversarial coverage for cross-workspace, forged-call, stale, and
+  expired grants while leaving memory-free Tools and requests unchanged.
+- Documented that both transport and per-call dependency injection remain the
+  next Stage 4 increment.
+
+Validation actually run:
+
+- `pnpm.cmd test`: passed all 34 TypeScript tests and regenerated `dist/`.
+- `git diff --check`: passed with newline-conversion notices only.
+- Fresh C++ configuration was attempted through
+  `proj/scripts/build-and-test.ps1 -SkipHarnessInspection` and remained blocked
+  by the managed shell's known `No CMAKE_CXX_COMPILER could be found` issue.
+  No C++ compilation or C++ test pass is claimed for this increment.
+
 ## 2026-08-27 — feat(memory): implement semantic memory workflows
 
 Purpose: complete Stage 3 with authority-separated compute, working, and

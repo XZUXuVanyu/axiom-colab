@@ -2,6 +2,7 @@
 #include "cpp_adapter/component_registry.hpp"
 #include "cpp_adapter/errors.hpp"
 #include "cpp_adapter/json.hpp"
+#include "cpp_adapter/memory_client.hpp"
 
 #include <functional>
 #include <iostream>
@@ -22,6 +23,10 @@ using cpp_adapter::ComponentRegistry;
 using cpp_adapter::DependencyContainer;
 using cpp_adapter::DependencyRef;
 using cpp_adapter::Json;
+using cpp_adapter::MemoryClient;
+using cpp_adapter::MemoryGrant;
+using cpp_adapter::MemoryOperation;
+using cpp_adapter::MemoryTransport;
 using cpp_adapter::RegistryError;
 using cpp_adapter::ToolCallContext;
 using cpp_adapter::ToolDescriptor;
@@ -108,6 +113,30 @@ struct ToolTwo {};
 struct ThrowingTool {};
 struct InvalidOutputTool {};
 struct FailingConstructor {};
+
+struct FakeMemoryTransport final : MemoryTransport {
+    std::string capability_id;
+    MemoryOperation operation = MemoryOperation::ComputeCreate;
+    Json invoke(std::string_view capability, MemoryOperation requested,
+                const Json& request) override {
+        capability_id = capability;
+        operation = requested;
+        return request;
+    }
+};
+
+cpp_adapter::TrustedInvocationContext memory_context() {
+    return {"workspace:one", "actor:model", "tool:memory-test", "1.2.3",
+            "call:one", 7};
+}
+
+MemoryGrant memory_grant(std::chrono::system_clock::time_point now) {
+    return {"capability:one", "workspace:one", "actor:model",
+            "tool:memory-test", "1.2.3", "call:one",
+            {MemoryOperation::ComputeRead}, 7,
+            now - std::chrono::seconds(1), now + std::chrono::minutes(1),
+            1, 128};
+}
 
 struct MatchingDependencyConsumer {
     using Dependencies = cpp_adapter::TypeList<NodeA, NodeB>;
@@ -295,6 +324,44 @@ void test_invalid_output_conversion() {
           == "INVALID_TOOL_OUTPUT");
 }
 
+void test_scoped_memory_client() {
+    const auto now = std::chrono::system_clock::now();
+    FakeMemoryTransport transport;
+    MemoryClient client(memory_context(), memory_grant(now), transport, now);
+    CHECK(client.invoke(MemoryOperation::ComputeRead,
+                        Json::object({{"id", "object:one"}}))
+          == Json::object({{"id", "object:one"}}));
+    CHECK(transport.capability_id == "capability:one");
+    CHECK(transport.operation == MemoryOperation::ComputeRead);
+    check_error_code(
+        [&] { client.invoke(MemoryOperation::ComputeRead, Json::object()); },
+        "MEMORY_OPERATION_QUOTA_EXCEEDED");
+}
+
+void test_memory_client_rejects_forged_and_stale_grants() {
+    const auto now = std::chrono::system_clock::now();
+    FakeMemoryTransport transport;
+    auto check_grant = [&](MemoryGrant grant, const std::string& code) {
+        check_error_code(
+            [&] { MemoryClient client(memory_context(), std::move(grant),
+                                      transport, now); },
+            code);
+    };
+    auto cross_workspace = memory_grant(now);
+    cross_workspace.workspace_id = "workspace:other";
+    check_grant(std::move(cross_workspace), "CROSS_WORKSPACE_ACCESS");
+    auto forged_call = memory_grant(now);
+    forged_call.call_id = "call:other";
+    check_grant(std::move(forged_call), "CALL_IDENTITY_MISMATCH");
+    auto stale = memory_grant(now);
+    stale.session_generation = 6;
+    check_grant(std::move(stale), "STALE_CAPABILITY");
+    auto expired = memory_grant(now);
+    expired.issued_at = now - std::chrono::minutes(2);
+    expired.expires_at = now - std::chrono::minutes(1);
+    check_grant(std::move(expired), "CAPABILITY_EXPIRED");
+}
+
 using Test = std::pair<const char*, std::function<void()>>;
 
 } // namespace
@@ -313,6 +380,8 @@ int main() {
         {"request response and schema", test_request_response_and_schema_validation},
         {"C++ exception conversion", test_cpp_exception_conversion},
         {"invalid output conversion", test_invalid_output_conversion},
+        {"scoped memory client", test_scoped_memory_client},
+        {"memory grant adversarial binding", test_memory_client_rejects_forged_and_stale_grants},
     };
 
     std::size_t failed = 0;

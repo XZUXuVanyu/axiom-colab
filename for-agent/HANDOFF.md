@@ -4,6 +4,13 @@ Last updated: 2026-08-27
 
 ## Current state
 
+- Stage 4 has started. `cpp_adapter::MemoryClient` now defines the optional
+  typed C++ session boundary over a host-owned `MemoryTransport`. Grants bind
+  workspace, actor, Tool identity/version, call ID, session generation,
+  operations, expiry, and quotas without exposing physical memory authority.
+- C++ tests cover valid forwarding plus cross-workspace, forged-call, stale,
+  expired, and operation-quota rejection. The persistent transport and actual
+  per-call DI construction are not implemented yet, so Stage 4 is not complete.
 - Stage 3 is complete. `source/ts/memory-workflows.ts`
   adds capability- and authority-checked compute, working, and artifact
   workflows over the Stage 2 store, with transactional semantic metadata and
@@ -302,9 +309,11 @@ approval or evidence.
 
 ## Exact next work
 
-Begin Stage 4 in a new context by defining the small typed C++ `MemoryClient`
-boundary and call-scoped session injection. Keep trusted invocation context
-separate from model-authored Tool arguments, bind sessions to workspace, actor,
-Tool version, call ID, operations, quotas, and expiry, and preserve unchanged
-behavior for memory-free Tools. Add adversarial coverage for forged, expired,
-stale, and cross-workspace grants before proceeding to Stage 5.
+Begin the remaining Stage 4 work in a new context by defining the host-to-Bridge
+trusted invocation envelope and implementing actual per-call dependency
+construction for Tools that declare `MemoryClient`. Back `MemoryTransport` with
+a persistent, authenticated local memory-service boundary, repeat grant checks
+at that service boundary, and add end-to-end tests for shared state,
+revocation/expiry, cross-workspace denial, cancellation, and timeout. Preserve
+the unchanged legacy path for memory-free Tools and do not proceed to Stage 5
+until the Stage 4 exit gate passes.
