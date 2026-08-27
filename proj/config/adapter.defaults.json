@@ -1,0 +1,10 @@
+{
+  "descriptorTimeoutMs": 10000,
+  "maxStdinBytes": 4194304,
+  "maxStdoutBytes": 8388608,
+  "maxStderrBytes": 1048576,
+  "killGraceMs": 500,
+  "maxLogChars": 2048,
+  "maxConcurrentCalls": 4,
+  "maxQueuedCalls": 32
+}

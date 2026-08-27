@@ -1,0 +1,6 @@
+/build/
+/build-*/
+/node_modules/
+/proj/config/adapter.local.json
+/proj/patches/generated/
+*.log

@@ -1,0 +1,6 @@
+{
+  "harnessRoot": "D:/path/to/deepseek-harness",
+  "bridgePath": "D:/path/to/general-ts-cpp-adapter/build/windows/Release/cpp-tool-bridge.exe",
+  "generator": "Visual Studio 17 2022",
+  "architecture": "x64"
+}

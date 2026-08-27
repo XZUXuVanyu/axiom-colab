@@ -1,0 +1,18 @@
+{
+  "name": "general-ts-cpp-adapter",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "exports": "./dist/index.js",
+  "scripts": {
+    "build": "node proj/scripts/build.mjs",
+    "test:ts": "node proj/scripts/build.mjs && node --test tests/ts/adapter.test.ts tests/ts/authoring-boundary.test.ts tests/ts/deployment.test.ts",
+    "test:integration": "node proj/scripts/build.mjs && node --test tests/integration/bridge.integration.test.ts",
+    "demo": "node proj/scripts/invoke-demo.mjs",
+    "benchmark": "node proj/scripts/benchmark-runtime.mjs",
+    "test": "node proj/scripts/build.mjs && node --test tests/ts/adapter.test.ts tests/ts/authoring-boundary.test.ts tests/ts/deployment.test.ts"
+  }
+}

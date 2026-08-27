@@ -1,0 +1,53 @@
+# Runtime architecture
+
+The default and only Stage 5 transport is one Bridge process per call. It gives
+each invocation independent memory, timeout, cancellation, and forced
+termination boundaries. C++ singleton dependencies therefore live for one
+Bridge process (discovery or one call); Tool objects and call arguments are
+per-call. A resident process was not added because it would require a framed,
+multi-request protocol plus worker health/restart semantics, while the measured
+startup cost is small relative to expected LLM latency and ordinary native Tool
+workloads.
+
+Run `pnpm benchmark -- [bridge] [iterations]` to measure full process discovery
+and invocation latency. The script emits machine-readable JSON with mean,
+median, p95, minimum, and maximum timings. Re-run it on deployment hardware
+before choosing a different transport.
+
+On 2026-08-26, 30 Release Bridge samples on the current Windows development
+machine measured discovery at 20.00 ms mean / 22.19 ms p95 and invocation at
+19.63 ms mean / 21.33 ms p95. These are end-to-end process timings, not just C++
+execution. They support keeping process-per-call as the default for this stage.
+
+The adapter admits four calls and queues 32 by default. `maxConcurrentCalls`
+and `maxQueuedCalls` configure these bounds. Overflow fails with
+`BACKPRESSURE`; queued cancellation fails with `CANCELLED`. Startup discovery
+is the process-per-call health check, while every call retains existing timeout,
+byte limits, stderr diagnostics, call-ID checks, graceful termination, and
+forced termination.
+
+`InvocationLedger` records attempted calls by unique call ID as running,
+succeeded, failed, or rejected. Snapshots are copies. Its generic `verify()`
+policy can constrain permitted Tool names, per-Tool minimum/maximum counts,
+successful completion, and proof that both C++ validations completed. A normal
+success proves both validations because the Bridge validates input before
+execution and output before emitting success.
+Harness-side automation can retrieve the context-owned ledger with
+`getInvocationLedger(ctx)`; disposal removes that association.
+
+Harness rc.5 publishes authoritative `assistant/message` session events, but
+ordinary event-listener failures are contained after publication. Cancellation
+from that observer can prevent later Tool execution, yet cannot reject or erase
+already-persisted prose. No authoritative `toolChoice: required` control is
+exposed through the plugin Tool API. Consequently `verificationMode:
+tool-only` enables call-ledger policy intent but does not claim no-prose
+enforcement. Session export remains the evidence for prose behavior until
+Harness exposes a pre-commit interceptor or request-level required-tool choice.
+
+Adversarial tests cover an empty ledger (the observable equivalent of a
+prose-only or wholly fabricated answer), missing, duplicate, and unexpected
+calls, invalid argument shapes, C++ input/output validation failures, and
+fabricated response call IDs. The adapter cannot distinguish ordinary prose
+from prose that invents a result because prose is outside its observation
+boundary. A required-call policy detects either case only when no matching real
+call occurred; session export is required to reject additional prose.
