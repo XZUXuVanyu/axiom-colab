@@ -59,6 +59,7 @@ export class AuthenticatedMemoryHttpServer {
         }
         await new Promise((resolve, reject)=>{
             this.server.close((error)=>error === undefined ? resolve() : reject(error));
+            this.server.closeAllConnections();
         });
         this.endpointValue = undefined;
     }

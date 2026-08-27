@@ -4,7 +4,7 @@ Last updated: 2026-08-27
 
 ## Current state
 
-- Stage 4 is in progress. The default Bridge now parses the complete trusted
+- Stage 4 is complete. The default Bridge parses the complete trusted
   grant into `MemoryClient` and forwards operations through a portable,
   numeric-loopback-only HTTP transport to the authenticated memory service.
 - `MemorySessionProvider` issues a fresh grant from explicit Tool policy and
@@ -17,8 +17,10 @@ Last updated: 2026-08-27
 - TypeScript coverage proves host context cannot be replaced by a forged value
   inside Tool arguments and cancellation revokes a call-scoped session. The C++
   DI tests and new transport compile with MSVC 19.51 and pass in a manually
-  initialized Developer Command Prompt. Stage 4 still needs real Bridge HTTP
-  end-to-end coverage before its exit gate is complete.
+  initialized Developer Command Prompt. A dedicated test-only C++ Tool and
+  Bridge now prove shared state across worker processes, post-call revocation,
+  expiry and cross-workspace denial, numeric-loopback enforcement,
+  cancellation, and timeout through the real HTTP route.
 - `AuthenticatedMemoryService` now owns issued bearer-token digests, revocation,
   expiry, Tool version/session generation binding, operation and byte quotas,
   and dispatch into the persistent Stage 3 workflows. It repeats authorization
@@ -207,7 +209,7 @@ Exit gate: tests prove compute state is bounded and disposable, working changes
 cannot commit without valid approval, artifacts cannot be rewritten by the
 model, and no memory class weakens another class's rules.
 
-### Stage 4 - Integrate scoped memory with the C++ adapter
+### Stage 4 - Integrate scoped memory with the C++ adapter (complete)
 
 Add a small typed C++ `MemoryClient` and use the adapter's dependency injection
 to provide a short-lived, call-scoped memory session. Keep trusted invocation
@@ -324,9 +326,9 @@ approval or evidence.
 
 ## Exact next work
 
-Continue Stage 4 with a test-only memory-dependent C++ Tool/Bridge target and
-real process end-to-end tests for shared state, revocation/expiry,
-cross-workspace denial, cancellation, and timeout through the loopback HTTP
-route. Audit HTTP framing and structured error parsing adversarially. Preserve
-the unchanged memory-free path and do not proceed to Stage 5 until the Stage 4
-exit gate passes.
+Begin Stage 5 by organizing built-in versus fixture Tools and adding one
+production compute-memory Tool plus one trusted immutable artifact-derivation
+Tool without per-Tool TypeScript behavior. Then add the minimal supervised
+goal/session coordinator and inspectable call/artifact trail. Keep memory
+authority opt-in through explicit host Tool policy; declaring `MemoryClient`
+must never grant authority by itself.

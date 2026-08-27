@@ -81,3 +81,10 @@ authenticated service, and preserves structured service error codes. The
 Bridge process remains the cancellation and timeout boundary: terminating it
 also terminates an in-flight memory request, after which the host revokes the
 grant.
+
+The `cpp-memory-test-bridge` target exists only under `BUILD_TESTING`. Its
+memory-dependent fixture drives the complete process/HTTP path without adding a
+test capability to the production registry. The integration suite verifies
+cross-process state sharing, revocation, expiry, cross-workspace rejection,
+numeric-loopback enforcement, cancellation, and timeout. The standard build
+script runs this suite against both Debug and Release test Bridges.

@@ -74,7 +74,8 @@ try {
         $buildArguments = @('--build', $buildRoot, '--config', $configuration,
             '--parallel')
         if ($SkipGuiBuild) {
-            $buildArguments += @('--target', 'cpp-tool-bridge', 'cpp-adapter-tests')
+            $buildArguments += @('--target', 'cpp-tool-bridge',
+                'cpp-memory-test-bridge', 'cpp-adapter-tests')
         }
         & cmake @buildArguments
         Assert-LastExitCode "C++ $configuration build"
@@ -97,9 +98,14 @@ try {
         if ($description.protocolVersion -ne '1.0' -or $names.Count -lt 1) {
             throw "$configuration registration smoke test returned an unexpected descriptor set"
         }
+        $env:AXIOM_MEMORY_TEST_BRIDGE = Join-Path $buildRoot `
+            "$configuration/cpp-memory-test-bridge.exe"
+        & node --test tests/integration/bridge.integration.test.ts
+        Assert-LastExitCode "$configuration scoped-memory integration tests"
     }
 } finally {
     Remove-Item Env:CPP_BRIDGE_PATH -ErrorAction SilentlyContinue
+    Remove-Item Env:AXIOM_MEMORY_TEST_BRIDGE -ErrorAction SilentlyContinue
     Pop-Location
 }
 

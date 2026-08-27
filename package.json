@@ -10,6 +10,7 @@
   "scripts": {
     "build": "node proj/scripts/build.mjs",
     "test:ts": "node proj/scripts/build.mjs && node --test tests/ts/*.test.ts",
+    "test:integration": "node proj/scripts/build.mjs && node --test tests/integration/bridge.integration.test.ts",
     "demo": "node proj/scripts/invoke-demo.mjs",
     "benchmark": "node proj/scripts/benchmark-runtime.mjs",
     "test": "node proj/scripts/build.mjs && node --test tests/ts/*.test.ts"

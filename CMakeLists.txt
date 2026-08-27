@@ -76,6 +76,25 @@ target_link_libraries(cpp-tool-bridge PRIVATE cpp_adapter_bridge cpp_adapter_cor
 cpp_adapter_target_defaults(cpp-tool-bridge)
 
 if(BUILD_TESTING)
+    add_library(cpp_memory_test_tool OBJECT tests/cpp/memory_bridge_tool.cpp)
+    target_include_directories(cpp_memory_test_tool PRIVATE
+        source/cpp/adapter/include
+    )
+    target_link_libraries(cpp_memory_test_tool PRIVATE cpp_adapter_core)
+    cpp_adapter_target_defaults(cpp_memory_test_tool)
+
+    add_executable(cpp-memory-test-bridge
+        source/cpp/bridge/main.cpp
+        $<TARGET_OBJECTS:cpp_memory_test_tool>
+    )
+    target_include_directories(cpp-memory-test-bridge PRIVATE
+        source/cpp/adapter/include source/cpp/bridge
+    )
+    target_link_libraries(cpp-memory-test-bridge PRIVATE
+        cpp_adapter_bridge cpp_adapter_core
+    )
+    cpp_adapter_target_defaults(cpp-memory-test-bridge)
+
     add_executable(cpp-adapter-tests
         tests/cpp/test_main.cpp
         $<TARGET_OBJECTS:cpp_adapter_tools>

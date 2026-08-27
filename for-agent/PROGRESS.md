@@ -4,6 +4,33 @@ Entries are chronological. Each entry corresponds to one logical Git commit and
 records its exact subject, purpose, material changes, and validation actually
 performed.
 
+## 2026-08-27 — test(adapter): prove scoped memory process integration
+
+Purpose: close the Stage 4 exit gate with real Bridge processes using the
+authenticated loopback service and persistent shared workspace state.
+
+Material changes:
+
+- Added a test-only memory-dependent C++ Tool and Bridge target, leaving the
+  production Tool registry unchanged.
+- Added real process integration coverage for shared compute state across
+  calls, post-call revocation, non-loopback rejection, cross-workspace denial,
+  expiry, cancellation, and timeout.
+- Restored an intentional `test:integration` command and wired Debug/Release
+  integration execution into the standard build script.
+- Made HTTP server shutdown close active connections so killed Bridge requests
+  cannot delay deterministic test and host teardown.
+
+Validation actually run:
+
+- Fresh MSVC 19.51 Ninja build with warnings as errors passed, including the
+  test Bridge target; `ctest` passed.
+- `pnpm.cmd test` passed all 41 TypeScript tests and regenerated `dist/`.
+- `pnpm.cmd run test:integration` passed all 3 real-Bridge tests.
+- The production Bridge still discovered only `add_numbers`, and its real
+  memory-free invocation returned `5` for `2 + 3`.
+- `git diff --check` passed with newline-conversion notices only.
+
 ## 2026-08-27 — feat(adapter): connect scoped Bridge memory transport
 
 Purpose: continue Stage 4 through the real host-issued grant and C++ loopback

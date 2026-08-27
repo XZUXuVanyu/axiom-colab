@@ -75,6 +75,7 @@ export class AuthenticatedMemoryHttpServer {
     if (!this.server.listening) { this.endpointValue = undefined; return }
     await new Promise<void>((resolve, reject) => {
       this.server.close((error) => error === undefined ? resolve() : reject(error))
+      this.server.closeAllConnections()
     })
     this.endpointValue = undefined
   }
