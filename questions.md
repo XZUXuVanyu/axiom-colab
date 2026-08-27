@@ -1,3 +1,5 @@
 # Stage 1 Questions
 
-No user decision is currently blocking the first contract slice. New questions will be recorded here only when implementation evidence exposes a consequential design choice not already settled by the operating contract or archived decisions.
+No user decision blocked Stage 1, and the stage is complete. Stage 2 technology
+choices should be recorded durably when made; no unresolved design question is
+being carried into the new context.

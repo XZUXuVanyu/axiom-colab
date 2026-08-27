@@ -4,6 +4,31 @@ Entries are chronological. Each entry corresponds to one logical Git commit and
 records its exact subject, purpose, material changes, and validation actually
 performed.
 
+## 2026-08-27 — feat(contract): complete laboratory authority contract
+
+Purpose: complete the Stage 1 exit gate and freeze the provider-independent
+authority vocabulary before any storage implementation begins.
+
+Material changes:
+
+- Added generic envelopes for every laboratory identity kind, explicitly
+  binding workspace, revision, lifecycle, creator, authority, and payload.
+- Added the normative operation matrix with actor authority, required target,
+  authoritative output, and mandatory audit behavior for all planned memory,
+  validation, and approval operations.
+- Added lifecycle rules with replay and terminal-state rejection, trusted
+  authority checks, and canonical input-hash audit events.
+- Documented canonical serialization, authority separation, capabilities,
+  exact-hash approval, lifecycle, deterministic failures, audit attribution,
+  and the Stage 2 boundary in `docs/laboratory-contract.md`.
+- Added adversarial tests for forged authority, validation/self-approval,
+  illegal and replayed transitions, identity-kind mismatch, and audit binding.
+
+Validation performed:
+
+- `pnpm.cmd test` rebuilt `dist/` and passed all 24 TypeScript tests.
+- `git diff --check` passed with newline-conversion notices only.
+
 ## 2026-08-27 — feat(contract): integrate Stage 1 contract foundation
 
 Purpose: save the initial Stage 1 authority-boundary work as an integrated,

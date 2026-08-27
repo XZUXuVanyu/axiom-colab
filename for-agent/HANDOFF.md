@@ -4,10 +4,10 @@ Last updated: 2026-08-27
 
 ## Current state
 
-- Stage 1 has begun. Commit `83a430f` adds the initial laboratory contract
-  module and adversarial tests for canonical hashing, scoped capability checks,
-  expiry, replay resistance, cross-workspace rejection, and exact approval
-  binding. This is a checkpoint, not the completed Stage 1 contract.
+- Stage 1 is complete. The versioned laboratory contract now defines identities,
+  envelopes, trusted authority, capabilities, canonical hashing, exact approval
+  binding, operation rules, lifecycle transitions, deterministic errors, and
+  mandatory audit outputs, with adversarial executable coverage.
 - Stage 0 consolidation is complete enough to enter Stage 1; no memory service,
   adapter redesign, validation service, or workshop implementation has begun.
 - The repository is on branch `main`; Stage 0 is saved in root commit
@@ -286,19 +286,18 @@ approval or evidence.
 
 ## Exact next work
 
-Continue Stage 1 only:
+Begin Stage 2 in a new context. Implement the restart-safe local memory
+foundation behind `docs/laboratory-contract.md` and the executable contract:
 
-1. Define versioned identities and envelopes for workspace, goal, session,
-   actor, call, tool, object, capability, proposal, approval, evidence, and
-   validation records.
-2. Separate trusted-host fields from model-controlled fields.
-3. Define operation matrices, lifecycle state machines, canonical hashing,
-   protocol errors, permissions, audit outputs, and failure behavior.
-4. Write contract and adversarial tests before selecting or implementing the
-   storage layer.
-5. The stale `test:integration` entry has been removed without restoring
-   obsolete demo-specific behavior; keep the contract suite in the default
-   TypeScript test command.
+1. Select and record the local SQLite library and migration strategy without
+   coupling the public contract to that implementation.
+2. Implement workspace creation/reopen and strict workspace isolation.
+3. Store authoritative metadata transactionally and immutable payloads by
+   SHA-256 identity using staging plus atomic promotion.
+4. Enforce quotas and expiry, then add startup recovery, corruption detection,
+   safe inspection, and resource reporting.
+5. Add restart, partial-write, corruption, quota, and cross-workspace
+   adversarial tests before proceeding to Stage 3 workflows.
 
-Do not begin Stage 2 storage, memory-client integration, adapter redesign, or
-tool-workshop implementation until the Stage 1 contracts pass their exit gate.
+Do not begin Stage 3 memory workflows, adapter integration, validation service,
+or Tool workshop work until the Stage 2 exit gate passes.
