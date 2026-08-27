@@ -36,7 +36,7 @@ test('operation matrix separates model claims from user and validator authority'
   assertAuthority('validation.run', 'validator')
   assert.throws(() => assertAuthority('proposal.approve', 'model'), hasCode('AUTHORITY_NOT_PERMITTED'))
   assert.throws(() => assertAuthority('validation.run', 'model'), hasCode('AUTHORITY_NOT_PERMITTED'))
-  assert.equal(Object.keys(OPERATION_RULES).length, 14)
+  assert.equal(Object.keys(OPERATION_RULES).length, 17)
   assert.ok(Object.values(OPERATION_RULES).every((rule) => rule.auditRequired))
 })
 

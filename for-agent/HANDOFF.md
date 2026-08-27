@@ -4,6 +4,15 @@ Last updated: 2026-08-27
 
 ## Current state
 
+- Stage 3 is complete. `source/ts/memory-workflows.ts`
+  adds capability- and authority-checked compute, working, and artifact
+  workflows over the Stage 2 store, with transactional semantic metadata and
+  canonical audit events. The generated runtime and 34-test suite are current.
+- Compute memory now has aggregate byte, per-object byte, and object quotas,
+  revisioned updates, immutable snapshots, release, and restart behavior.
+  Working memory has exact-hash user approval, rejection, supersession, stale
+  base protection, and immutable history. Artifacts have trusted creation and
+  derivation, immutable bytes and schemas, lineage, hashes, and provenance.
 - Stage 2 is complete. `source/ts/local-memory-store.ts` provides the local
   transactional SQLite and immutable SHA-256 payload foundation with workspace
   creation/reopen, isolation, quotas, expiry, recovery, corruption detection,
@@ -161,7 +170,7 @@ Exit gate: restart and fault-injection tests prove that partial writes never
 appear valid, corrupted state is reported, quotas are enforced, and one
 workspace cannot inspect or mutate another.
 
-### Stage 3 - Implement the three memory workflows
+### Stage 3 - Implement the three memory workflows (complete)
 
 Implement compute memory create/read/bounded-update/snapshot/release; working
 memory read/propose/approve/reject/supersede with revision history; and trusted
@@ -293,17 +302,9 @@ approval or evidence.
 
 ## Exact next work
 
-Begin Stage 3 in a new context by implementing the three memory workflows on
-the Stage 2 store:
-
-1. Add compute memory create/read/bounded-update/snapshot/release with explicit
-   byte and object quotas and disposable lifecycle behavior.
-2. Add working-memory read/propose/approve/reject/supersede with immutable
-   revision history and exact approval binding.
-3. Add trusted artifact creation and derivation with immutable payloads,
-   schemas, hashes, lineage, and provenance.
-4. Enforce the Stage 1 authority and capability contract at every workflow
-   boundary and emit mandatory audit records for success and rejection.
-5. Add adversarial tests proving compute bounds, approval requirements,
-   artifact immutability, stale/cross-workspace rejection, and authority-class
-   separation before proceeding to Stage 4 adapter integration.
+Begin Stage 4 in a new context by defining the small typed C++ `MemoryClient`
+boundary and call-scoped session injection. Keep trusted invocation context
+separate from model-authored Tool arguments, bind sessions to workspace, actor,
+Tool version, call ID, operations, quotas, and expiry, and preserve unchanged
+behavior for memory-free Tools. Add adversarial coverage for forged, expired,
+stale, and cross-workspace grants before proceeding to Stage 5.

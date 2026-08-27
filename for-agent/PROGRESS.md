@@ -4,6 +4,33 @@ Entries are chronological. Each entry corresponds to one logical Git commit and
 records its exact subject, purpose, material changes, and validation actually
 performed.
 
+## 2026-08-27 — feat(memory): implement semantic memory workflows
+
+Purpose: complete Stage 3 with authority-separated compute, working, and
+artifact workflows over the restart-safe Stage 2 payload store.
+
+Material changes:
+
+- Added bounded compute create/read/update/snapshot/release with aggregate and
+  per-object byte quotas, object quotas, revisions, disposable release, and
+  restart-safe semantic metadata.
+- Added working-memory proposal, exact-hash user approval, rejection,
+  supersession, stale-base protection, latest-state reads, and immutable
+  revision history.
+- Added trusted immutable artifact creation and derivation with payload and
+  schema hashes, parent lineage, provenance, and same-workspace enforcement.
+- Extended the operation contract for compute snapshots, working
+  supersession, and root artifact creation, and emitted canonical audit events
+  for successful and rejected workflow operations.
+- Added adversarial workflow coverage and regenerated `dist/`.
+
+Validation actually run:
+
+- `pnpm.cmd test`: passed all 34 TypeScript tests.
+- `git diff --check`: passed with newline-conversion notices only.
+- `pnpm.cmd exec tsc --noEmit`: unavailable because the baseline has no local
+  `tsc` executable; no static type-check pass is claimed.
+
 ## 2026-08-27 — feat(store): add restart-safe local memory foundation
 
 Purpose: complete Stage 2 with a durable storage core without implementing

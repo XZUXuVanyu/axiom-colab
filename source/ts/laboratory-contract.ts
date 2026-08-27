@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto'
 export const LABORATORY_PROTOCOL_VERSION = '1.0' as const
 export type EntityKind = 'workspace' | 'goal' | 'session' | 'actor' | 'call' | 'tool' | 'object' | 'capability' | 'proposal' | 'approval' | 'evidence' | 'validation'
 export type LaboratoryId<K extends EntityKind = EntityKind> = `${K}:${string}`
-export type Operation = 'workspace.inspect' | 'compute.create' | 'compute.read' | 'compute.update' | 'compute.release' | 'working.read' | 'working.propose' | 'working.approve' | 'working.reject' | 'artifact.read' | 'artifact.derive' | 'validation.run' | 'proposal.approve' | 'proposal.reject'
+export type Operation = 'workspace.inspect' | 'compute.create' | 'compute.read' | 'compute.update' | 'compute.snapshot' | 'compute.release' | 'working.read' | 'working.propose' | 'working.approve' | 'working.reject' | 'working.supersede' | 'artifact.read' | 'artifact.create' | 'artifact.derive' | 'validation.run' | 'proposal.approve' | 'proposal.reject'
 
 export interface TrustedInvocationContext {
   readonly workspaceId: LaboratoryId<'workspace'>
@@ -125,12 +125,15 @@ export const OPERATION_RULES: Readonly<Record<Operation, OperationRule>> = {
   'compute.create': { authorities: ['model', 'trusted-host'], targetKind: null, authoritativeOutput: 'compute object envelope', auditRequired: true },
   'compute.read': { authorities: ['model', 'trusted-host'], targetKind: 'object', authoritativeOutput: 'bounded compute value', auditRequired: true },
   'compute.update': { authorities: ['model', 'trusted-host'], targetKind: 'object', authoritativeOutput: 'new compute revision', auditRequired: true },
+  'compute.snapshot': { authorities: ['model', 'trusted-host'], targetKind: 'object', authoritativeOutput: 'immutable compute snapshot', auditRequired: true },
   'compute.release': { authorities: ['model', 'trusted-host'], targetKind: 'object', authoritativeOutput: 'released object state', auditRequired: true },
   'working.read': { authorities: ['model', 'trusted-host', 'user'], targetKind: 'object', authoritativeOutput: 'committed working revision', auditRequired: true },
   'working.propose': { authorities: ['model', 'trusted-host'], targetKind: 'object', authoritativeOutput: 'proposal envelope', auditRequired: true },
   'working.approve': { authorities: ['user'], targetKind: 'proposal', authoritativeOutput: 'approval plus committed revision', auditRequired: true },
   'working.reject': { authorities: ['user'], targetKind: 'proposal', authoritativeOutput: 'rejection record', auditRequired: true },
+  'working.supersede': { authorities: ['user'], targetKind: 'proposal', authoritativeOutput: 'superseded proposal state', auditRequired: true },
   'artifact.read': { authorities: ['model', 'trusted-host', 'validator', 'user'], targetKind: 'object', authoritativeOutput: 'immutable artifact bytes', auditRequired: true },
+  'artifact.create': { authorities: ['trusted-host'], targetKind: null, authoritativeOutput: 'immutable root artifact', auditRequired: true },
   'artifact.derive': { authorities: ['trusted-host'], targetKind: 'object', authoritativeOutput: 'immutable derived artifact', auditRequired: true },
   'validation.run': { authorities: ['validator'], targetKind: 'tool', authoritativeOutput: 'validation record', auditRequired: true },
   'proposal.approve': { authorities: ['user'], targetKind: 'proposal', authoritativeOutput: 'exact-hash approval record', auditRequired: true },

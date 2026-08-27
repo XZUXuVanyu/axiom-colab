@@ -97,6 +97,15 @@ export const OPERATION_RULES = {
         authoritativeOutput: 'new compute revision',
         auditRequired: true
     },
+    'compute.snapshot': {
+        authorities: [
+            'model',
+            'trusted-host'
+        ],
+        targetKind: 'object',
+        authoritativeOutput: 'immutable compute snapshot',
+        auditRequired: true
+    },
     'compute.release': {
         authorities: [
             'model',
@@ -141,6 +150,14 @@ export const OPERATION_RULES = {
         authoritativeOutput: 'rejection record',
         auditRequired: true
     },
+    'working.supersede': {
+        authorities: [
+            'user'
+        ],
+        targetKind: 'proposal',
+        authoritativeOutput: 'superseded proposal state',
+        auditRequired: true
+    },
     'artifact.read': {
         authorities: [
             'model',
@@ -150,6 +167,14 @@ export const OPERATION_RULES = {
         ],
         targetKind: 'object',
         authoritativeOutput: 'immutable artifact bytes',
+        auditRequired: true
+    },
+    'artifact.create': {
+        authorities: [
+            'trusted-host'
+        ],
+        targetKind: null,
+        authoritativeOutput: 'immutable root artifact',
         auditRequired: true
     },
     'artifact.derive': {
