@@ -234,7 +234,7 @@ export function parseToolCallResponse(text, expectedId) {
     }
     throw new ProtocolError('INVALID_PROTOCOL', '$.ok must be a boolean');
 }
-export function makeToolCallRequest(id, tool, args) {
+export function makeToolCallRequest(id, tool, args, trustedContext) {
     if (id.length === 0 || id.length > 256) {
         throw new ProtocolError('INVALID_REQUEST', 'call id must be 1..256 characters');
     }
@@ -245,11 +245,20 @@ export function makeToolCallRequest(id, tool, args) {
         throw new ProtocolError('INVALID_ARGUMENTS', 'Harness Tool arguments must be an object');
     }
     assertJsonValue(args, '$.arguments');
+    if (trustedContext !== undefined) {
+        assertJsonValue(trustedContext, '$.trustedContext');
+        if (trustedContext.protocolVersion !== PROTOCOL_VERSION || trustedContext.callId !== id || trustedContext.toolName !== tool || trustedContext.toolId.length === 0 || trustedContext.workspaceId.length === 0 || trustedContext.actorId.length === 0 || trustedContext.toolVersion.length === 0 || !Number.isSafeInteger(trustedContext.sessionGeneration) || trustedContext.sessionGeneration < 0) {
+            throw new ProtocolError('INVALID_TRUSTED_CONTEXT', 'trusted invocation context must bind this Tool Call and contain valid host identities');
+        }
+    }
     return {
         protocolVersion: PROTOCOL_VERSION,
         id,
         tool,
-        arguments: args
+        arguments: args,
+        ...trustedContext === undefined ? {} : {
+            trustedContext
+        }
     };
 }
 export function errorCode(error) {

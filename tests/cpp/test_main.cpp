@@ -26,6 +26,7 @@ using cpp_adapter::Json;
 using cpp_adapter::MemoryClient;
 using cpp_adapter::MemoryGrant;
 using cpp_adapter::MemoryOperation;
+using cpp_adapter::MemorySessionFactory;
 using cpp_adapter::MemoryTransport;
 using cpp_adapter::RegistryError;
 using cpp_adapter::ToolCallContext;
@@ -113,6 +114,10 @@ struct ToolTwo {};
 struct ThrowingTool {};
 struct InvalidOutputTool {};
 struct FailingConstructor {};
+struct MemoryDependentTool {
+    explicit MemoryDependentTool(MemoryClient& memory) : memory_(&memory) {}
+    MemoryClient* memory_;
+};
 
 struct FakeMemoryTransport final : MemoryTransport {
     std::string capability_id;
@@ -243,8 +248,69 @@ void test_lifetime_extension_point() {
     ComponentRegistration registration = internal_registration<NodeA>("NodeA");
     registration.lifetime = ComponentLifetime::PerCall;
     registry.add(std::move(registration));
-    check_error_code([&] { static_cast<void>(registry.build()); },
-                     "UNSUPPORTED_LIFETIME");
+    const auto runtime = registry.build();
+    CHECK(!runtime.container().contains(std::type_index(typeid(NodeA))));
+}
+
+struct TestMemorySessionFactory final : MemorySessionFactory {
+    FakeMemoryTransport transport;
+    std::unique_ptr<MemoryClient> create_session(
+        const Json& trusted_context, std::string_view tool_name,
+        std::string_view call_id) override {
+        const auto now = std::chrono::system_clock::now();
+        CHECK(trusted_context.at("workspaceId").as_string() == "workspace:one");
+        CHECK(trusted_context.at("toolName").as_string() == tool_name);
+        auto context = memory_context();
+        context.tool_id = trusted_context.at("toolId").as_string();
+        context.call_id = std::string(call_id);
+        auto grant = memory_grant(now);
+        grant.tool_id = context.tool_id;
+        grant.call_id = context.call_id;
+        return std::make_unique<MemoryClient>(std::move(context),
+                                              std::move(grant), transport, now);
+    }
+};
+
+void test_bridge_constructs_memory_dependency_per_call() {
+    ComponentRegistry registry;
+    registry.add(ComponentRegistration{
+        std::type_index(typeid(MemoryDependentTool)), "MemoryDependentTool",
+        ComponentKind::PublicTool,
+        {{std::type_index(typeid(MemoryClient)), "cpp_adapter::MemoryClient"}},
+        [](DependencyContainer& container) {
+            return std::make_shared<MemoryDependentTool>(
+                container.require<MemoryClient>());
+        },
+        [] { return fake_descriptor("memory_tool"); },
+        [](void* instance, const Json&, ToolCallContext&) {
+            auto* tool = static_cast<MemoryDependentTool*>(instance);
+            return tool->memory_->invoke(
+                MemoryOperation::ComputeRead,
+                Json::object({{"id", "object:shared"}}));
+        },
+    });
+    TestMemorySessionFactory sessions;
+    BridgeApp bridge(registry, &sessions);
+    const Json request = Json::object({
+        {"protocolVersion", "1.0"}, {"id", "call:memory"},
+        {"tool", "memory_tool"}, {"arguments", Json::object()},
+        {"trustedContext", Json::object({
+            {"protocolVersion", "1.0"}, {"workspaceId", "workspace:one"},
+            {"actorId", "actor:model"}, {"toolId", "tool:memory-test"},
+            {"toolName", "memory_tool"}, {"toolVersion", "1.0.0"},
+            {"callId", "call:memory"},
+            {"sessionGeneration", 7}, {"memoryGrant", Json::object()},
+        })},
+    });
+    const Json response = bridge.handle_request(request);
+    CHECK(response.at("ok").as_bool());
+    CHECK(response.at("result").at("id").as_string() == "object:shared");
+
+    BridgeApp without_sessions(registry);
+    const Json denied = call(without_sessions, "call:no-memory", "memory_tool",
+                             Json::object());
+    CHECK(denied.at("error").at("code").as_string()
+          == "MEMORY_SESSION_REQUIRED");
 }
 
 void test_duplicate_type() {
@@ -382,6 +448,7 @@ int main() {
         {"invalid output conversion", test_invalid_output_conversion},
         {"scoped memory client", test_scoped_memory_client},
         {"memory grant adversarial binding", test_memory_client_rejects_forged_and_stale_grants},
+        {"Bridge per-call memory dependency", test_bridge_constructs_memory_dependency_per_call},
     };
 
     std::size_t failed = 0;

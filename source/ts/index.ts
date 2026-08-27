@@ -8,6 +8,8 @@ import type { InvocationLedger } from './invocation-ledger.js'
 export * from './laboratory-contract.js'
 export * from './local-memory-store.js'
 export * from './memory-workflows.js'
+export * from './authenticated-memory-service.js'
+export * from './authenticated-memory-http.js'
 
 export const name = 'general-ts-cpp-adapter'
 export const inject = ['tools', 'skills']

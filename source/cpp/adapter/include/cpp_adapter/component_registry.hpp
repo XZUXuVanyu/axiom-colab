@@ -2,6 +2,7 @@
 
 #include "cpp_adapter/errors.hpp"
 #include "cpp_adapter/json.hpp"
+#include "cpp_adapter/memory_client.hpp"
 #include "cpp_adapter/tool_descriptor.hpp"
 
 #include <chrono>
@@ -37,6 +38,7 @@ enum class ComponentLifetime {
 
 struct ToolCallContext final {
     std::string call_id;
+    MemoryClient* memory_client = nullptr;
     std::chrono::steady_clock::time_point started_at =
         std::chrono::steady_clock::now();
 };
@@ -69,12 +71,16 @@ private:
     friend class ComponentRegistry;
     friend class ToolRuntime;
 
+    explicit DependencyContainer(const DependencyContainer* parent)
+        : parent_(parent) {}
+
     void insert(std::type_index type, std::shared_ptr<void> instance,
                 std::string type_name);
     [[nodiscard]] void* require_raw(std::type_index type) const;
 
     std::unordered_map<std::type_index, std::shared_ptr<void>> instances_;
     std::vector<std::string> construction_order_;
+    const DependencyContainer* parent_ = nullptr;
 };
 
 using ComponentFactory =
@@ -118,13 +124,19 @@ private:
         ToolDescriptor descriptor;
         std::type_index type{typeid(void)};
         ErasedToolExecutor execute;
+        std::size_t registration_index = 0;
     };
 
-    ToolRuntime(DependencyContainer container,
-                std::vector<RuntimeTool> tools);
+    ToolRuntime(DependencyContainer container, std::vector<RuntimeTool> tools,
+                std::vector<ComponentRegistration> registrations,
+                std::vector<std::size_t> construction_order,
+                std::vector<bool> call_scoped);
 
     DependencyContainer container_;
     std::vector<RuntimeTool> tools_;
+    std::vector<ComponentRegistration> registrations_;
+    std::vector<std::size_t> construction_order_;
+    std::vector<bool> call_scoped_;
 };
 
 class ComponentRegistry final {

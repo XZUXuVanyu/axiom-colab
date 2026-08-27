@@ -4,13 +4,25 @@ Last updated: 2026-08-27
 
 ## Current state
 
-- Stage 4 has started. `cpp_adapter::MemoryClient` now defines the optional
-  typed C++ session boundary over a host-owned `MemoryTransport`. Grants bind
-  workspace, actor, Tool identity/version, call ID, session generation,
-  operations, expiry, and quotas without exposing physical memory authority.
-- C++ tests cover valid forwarding plus cross-workspace, forged-call, stale,
-  expired, and operation-quota rejection. The persistent transport and actual
-  per-call DI construction are not implemented yet, so Stage 4 is not complete.
+- Stage 4 is in progress. `cpp_adapter::MemoryClient` defines the optional typed
+  C++ session boundary over a host-owned `MemoryTransport`, and the adapter now
+  carries a typed trusted invocation envelope beside model-authored arguments.
+- The Bridge validates Tool/call binding before using a host
+  `MemorySessionFactory`. DI propagates per-call lifetime through dependencies,
+  constructs only the invoked Tool's scoped graph, injects `MemoryClient`, and
+  leaves memory-free Tools on the unchanged singleton path.
+- TypeScript coverage proves host context cannot be replaced by a forged value
+  inside Tool arguments. C++ coverage was added for actual per-call construction
+  and missing-session rejection, but could not be compiled in the managed shell.
+  The persistent authenticated transport is not implemented, so Stage 4 is not
+  complete.
+- `AuthenticatedMemoryService` now owns issued bearer-token digests, revocation,
+  expiry, Tool version/session generation binding, operation and byte quotas,
+  and dispatch into the persistent Stage 3 workflows. It repeats authorization
+  at the service boundary. `AuthenticatedMemoryHttpServer` exposes this only on
+  loopback through one bounded JSON POST route. Tests prove shared state across
+  calls plus authentication, cross-workspace, stale, changed-version,
+  disallowed-operation, quota, revocation, and expiry failures.
 - Stage 3 is complete. `source/ts/memory-workflows.ts`
   adds capability- and authority-checked compute, working, and artifact
   workflows over the Stage 2 store, with transactional semantic metadata and
@@ -309,11 +321,10 @@ approval or evidence.
 
 ## Exact next work
 
-Begin the remaining Stage 4 work in a new context by defining the host-to-Bridge
-trusted invocation envelope and implementing actual per-call dependency
-construction for Tools that declare `MemoryClient`. Back `MemoryTransport` with
-a persistent, authenticated local memory-service boundary, repeat grant checks
-at that service boundary, and add end-to-end tests for shared state,
-revocation/expiry, cross-workspace denial, cancellation, and timeout. Preserve
-the unchanged legacy path for memory-free Tools and do not proceed to Stage 5
-until the Stage 4 exit gate passes.
+Continue Stage 4 by implementing the C++ loopback HTTP `MemoryTransport`, parse
+the complete grant and endpoint into the Bridge session factory, and wire host
+lifecycle/grant issuance into `AdapterService`. Add real Bridge end-to-end tests
+for shared state, revocation/expiry, cross-workspace denial, cancellation, and
+timeout. First compile and run the new C++ per-call DI tests in an environment
+where MSVC is discoverable. Preserve the unchanged memory-free path and do not
+proceed to Stage 5 until the Stage 4 exit gate passes.

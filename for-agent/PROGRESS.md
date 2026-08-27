@@ -4,6 +4,35 @@ Entries are chronological. Each entry corresponds to one logical Git commit and
 records its exact subject, purpose, material changes, and validation actually
 performed.
 
+## 2026-08-27 — feat(adapter): add scoped memory service integration
+
+Purpose: continue Stage 4 with genuine per-call memory DI and a persistent,
+independently authorized service endpoint for process-per-call Bridge workers.
+
+Material changes:
+
+- Added bearer-token digest authentication, revocation, Tool version/session
+  generation binding, byte/operation quotas, and repeated capability checks.
+- Dispatches the scoped C++ operation set into the persistent Stage 3 workflows.
+- Added a bounded loopback-only HTTP JSON endpoint with structured failures.
+- Added a typed host-to-Bridge envelope that distinguishes public Tool name
+  from logical Tool identity and cannot be replaced through model arguments.
+- Added child DI scopes with transitive per-call lifetime for components that
+  declare `MemoryClient`, deterministic missing-session rejection, and the
+  unchanged singleton path for memory-free Tools.
+
+Validation actually run:
+
+- `pnpm.cmd test`: passed all 39 TypeScript tests and regenerated `dist/`.
+- `git diff --check`: passed with newline-conversion notices only.
+- Service tests cover shared state, forged tokens, cross-workspace access,
+  changed Tool versions, stale generations, disallowed operations, request and
+  operation quotas, revocation, expiry, and the real loopback HTTP route.
+- C++ coverage was added for per-call construction and missing-session
+  rejection. Fresh configuration through
+  `proj/scripts/build-and-test.ps1 -SkipHarnessInspection` remained blocked by
+  `No CMAKE_CXX_COMPILER could be found`; no C++ pass is claimed.
+
 ## 2026-08-27 — feat(adapter): start scoped C++ memory client boundary
 
 Purpose: begin Stage 4 with the typed, authority-preserving C++ boundary before

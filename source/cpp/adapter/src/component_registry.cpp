@@ -70,7 +70,8 @@ std::vector<std::string> construction_path(
 } // namespace
 
 bool DependencyContainer::contains(std::type_index type) const noexcept {
-    return instances_.contains(type);
+    return instances_.contains(type)
+        || (parent_ != nullptr && parent_->contains(type));
 }
 
 void DependencyContainer::insert(std::type_index type,
@@ -89,6 +90,7 @@ void DependencyContainer::insert(std::type_index type,
 void* DependencyContainer::require_raw(std::type_index type) const {
     const auto iterator = instances_.find(type);
     if (iterator == instances_.end()) {
+        if (parent_ != nullptr) return parent_->require_raw(type);
         throw std::logic_error(
             "dependency container requested an instance before construction");
     }
@@ -96,8 +98,14 @@ void* DependencyContainer::require_raw(std::type_index type) const {
 }
 
 ToolRuntime::ToolRuntime(DependencyContainer container,
-                         std::vector<RuntimeTool> tools)
-    : container_(std::move(container)), tools_(std::move(tools)) {
+                         std::vector<RuntimeTool> tools,
+                         std::vector<ComponentRegistration> registrations,
+                         std::vector<std::size_t> construction_order,
+                         std::vector<bool> call_scoped)
+    : container_(std::move(container)), tools_(std::move(tools)),
+      registrations_(std::move(registrations)),
+      construction_order_(std::move(construction_order)),
+      call_scoped_(std::move(call_scoped)) {
     std::sort(tools_.begin(), tools_.end(), [](const RuntimeTool& left,
                                                const RuntimeTool& right) {
         return left.descriptor.name < right.descriptor.name;
@@ -146,7 +154,49 @@ Json ToolRuntime::execute(const std::string& tool_name, const Json& arguments,
             }));
     }
 
-    void* instance = container_.require_raw(iterator->type);
+    DependencyContainer call_container(&container_);
+    if (context.memory_client != nullptr) {
+        call_container.insert(
+            std::type_index(typeid(MemoryClient)),
+            std::shared_ptr<void>(context.memory_client, [](void*) {}),
+            "cpp_adapter::MemoryClient");
+    }
+    std::vector<bool> needed(registrations_.size(), false);
+    bool requires_memory = false;
+    const std::function<void(std::size_t)> mark_needed = [&](std::size_t index) {
+        if (needed[index]) return;
+        needed[index] = true;
+        for (const DependencyRef& dependency : registrations_[index].dependencies) {
+            if (dependency.type == std::type_index(typeid(MemoryClient))) {
+                requires_memory = true;
+                continue;
+            }
+            const auto dependency_registration = std::find_if(
+                registrations_.begin(), registrations_.end(),
+                [&](const ComponentRegistration& candidate) {
+                    return candidate.type == dependency.type;
+                });
+            if (dependency_registration != registrations_.end()) {
+                mark_needed(static_cast<std::size_t>(std::distance(
+                    registrations_.begin(), dependency_registration)));
+            }
+        }
+    };
+    mark_needed(iterator->registration_index);
+    if (requires_memory && context.memory_client == nullptr) {
+        throw ToolError("MEMORY_SESSION_REQUIRED",
+                        "Tool requires a host-issued memory session");
+    }
+    for (const std::size_t index : construction_order_) {
+        if (!call_scoped_[index] || !needed[index]) continue;
+        const ComponentRegistration& registration = registrations_[index];
+        call_container.insert(registration.type,
+                              registration.factory(call_container),
+                              registration.type_name);
+    }
+    void* instance = call_scoped_[iterator->registration_index]
+        ? call_container.require_raw(iterator->type)
+        : container_.require_raw(iterator->type);
     Json result = iterator->execute(instance, arguments, context);
     const auto output_violations = JsonSchemaValidator::validate(
         iterator->descriptor.output, result, "$.result");
@@ -191,13 +241,6 @@ ToolRuntime ComponentRegistry::build() const {
                                 "component has no factory: "
                                     + registration.type_name,
                                 {registration.type_name});
-        }
-        if (registration.lifetime != ComponentLifetime::WorkerSingleton) {
-            throw RegistryError(
-                "UNSUPPORTED_LIFETIME",
-                "component requests a lifetime not implemented by protocol 1.0: "
-                    + registration.type_name,
-                {registration.type_name});
         }
         const auto [iterator, inserted] = by_type.emplace(registration.type, index);
         if (!inserted) {
@@ -264,6 +307,10 @@ ToolRuntime ComponentRegistry::build() const {
         stack.push_back(index);
         for (const DependencyRef& dependency : registrations[index].dependencies) {
             const auto dependency_index = by_type.find(dependency.type);
+            if (dependency_index == by_type.end()
+                && dependency.type == std::type_index(typeid(MemoryClient))) {
+                continue;
+            }
             if (dependency_index == by_type.end()) {
                 std::vector<std::string> path = named_path(stack, registrations);
                 path.push_back(dependency.fallback_type_name);
@@ -282,8 +329,26 @@ ToolRuntime ComponentRegistry::build() const {
         visit(index);
     }
 
+    std::vector<bool> call_scoped(registrations.size(), false);
+    for (const std::size_t index : order) {
+        call_scoped[index] = registrations[index].lifetime
+            == ComponentLifetime::PerCall;
+        for (const DependencyRef& dependency : registrations[index].dependencies) {
+            if (dependency.type == std::type_index(typeid(MemoryClient))) {
+                call_scoped[index] = true;
+                continue;
+            }
+            const auto dependency_index = by_type.find(dependency.type);
+            if (dependency_index != by_type.end()
+                && call_scoped[dependency_index->second]) {
+                call_scoped[index] = true;
+            }
+        }
+    }
+
     DependencyContainer container;
     for (const std::size_t index : order) {
+        if (call_scoped[index]) continue;
         const ComponentRegistration& registration = registrations[index];
         try {
             container.insert(registration.type,
@@ -318,9 +383,12 @@ ToolRuntime ComponentRegistry::build() const {
             std::move(*descriptors[index]),
             registrations[index].type,
             registrations[index].execute,
+            index,
         });
     }
-    return ToolRuntime(std::move(container), std::move(runtime_tools));
+    return ToolRuntime(std::move(container), std::move(runtime_tools),
+                       std::move(registrations), std::move(order),
+                       std::move(call_scoped));
 }
 
 ComponentRegistry& default_registry() {

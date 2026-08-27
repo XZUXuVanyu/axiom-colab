@@ -160,6 +160,47 @@ test('adapter bounds concurrency, rejects overflow, and records every attempt', 
   service.dispose()
 })
 
+test('trusted invocation context is supplied by the host beside Tool arguments', async () => {
+  const service = new AdapterService(
+    new ProcessRunner(),
+    new ToolObserver(new MemoryLogger(), { maxLogChars: 512 }),
+    {
+      bridge: { executable: process.execPath, prefixArgs: [fixture, 'trusted-context'] },
+      descriptorLimits: limits,
+      callLimits: {
+        maxStdinBytes: limits.maxStdinBytes,
+        maxStdoutBytes: limits.maxStdoutBytes,
+        maxStderrBytes: limits.maxStderrBytes,
+        killGraceMs: limits.killGraceMs,
+      },
+      trustedContextProvider: (toolName, callId) => ({
+        protocolVersion: '1.0', workspaceId: 'workspace:one',
+        actorId: 'actor:model', toolId: 'tool:echo', toolName,
+        toolVersion: '1.0.0', callId,
+        sessionGeneration: 4, memoryGrant: { capabilityId: 'capability:one' },
+      }),
+    },
+  )
+  await service.initialize()
+  const result = await service.invoke(
+    'echo_cpp',
+    { trustedContext: { workspaceId: 'workspace:forged' } },
+    'call:trusted',
+    new AbortController().signal,
+  )
+  assert.deepEqual(result, {
+    tool: 'echo_cpp',
+    arguments: { trustedContext: { workspaceId: 'workspace:forged' } },
+    trustedContext: {
+      protocolVersion: '1.0', workspaceId: 'workspace:one',
+      actorId: 'actor:model', toolId: 'tool:echo', toolName: 'echo_cpp', toolVersion: '1.0.0',
+      callId: 'call:trusted', sessionGeneration: 4,
+      memoryGrant: { capabilityId: 'capability:one' },
+    },
+  })
+  service.dispose()
+})
+
 async function expectProcessCode(
   promise: Promise<unknown>,
   expected: string,

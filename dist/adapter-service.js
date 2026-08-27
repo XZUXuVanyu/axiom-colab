@@ -52,7 +52,8 @@ export class AdapterService {
         this.observer.start(callId, toolName, args);
         let release;
         try {
-            const request = makeToolCallRequest(callId, toolName, args);
+            const trustedContext = this.config.trustedContextProvider?.(toolName, callId);
+            const request = makeToolCallRequest(callId, toolName, args, trustedContext);
             release = await this.gate.acquire(signal);
             const process = await this.runner.run(this.config.bridge.executable, {
                 ...this.config.callLimits,

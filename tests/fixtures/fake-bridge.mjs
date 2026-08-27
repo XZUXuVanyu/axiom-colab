@@ -91,7 +91,11 @@ if (mode === 'hang') {
       protocolVersion: '1.0',
       id: request.id,
       ok: true,
-      result: { tool: request.tool, arguments: request.arguments },
+      result: {
+        tool: request.tool,
+        arguments: request.arguments,
+        ...(mode === 'trusted-context' ? { trustedContext: request.trustedContext } : {}),
+      },
     }))
     if (mode === 'delay') setTimeout(respond, 100)
     else respond()

@@ -51,3 +51,19 @@ fabricated response call IDs. The adapter cannot distinguish ordinary prose
 from prose that invents a result because prose is outside its observation
 boundary. A required-call policy detects either case only when no matching real
 call occurred; session export is required to reject additional prose.
+
+## Scoped memory invocation
+
+Stage 4 adds an optional host-created `trustedContext` beside the model-authored
+`arguments`. The envelope binds protocol, workspace, actor, Tool identity and
+version, call ID, session generation, and a memory grant. The TypeScript host
+checks that the Tool and call identities match before spawning the Bridge; the
+Bridge repeats the shape and identity checks before asking its configured
+`MemorySessionFactory` to create a session.
+
+`MemoryClient` is an external per-call dependency. Any Tool or internal
+component that declares it is automatically constructed in a child dependency
+scope for that invocation. Calls without such a dependency retain the existing
+worker-singleton path, and a memory-dependent Tool invoked without a host-issued
+session fails with `MEMORY_SESSION_REQUIRED`. The persistent authenticated
+memory transport behind the session factory remains Stage 4 work.
