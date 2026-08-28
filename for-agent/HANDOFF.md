@@ -4,6 +4,21 @@ Last updated: 2026-08-28
 
 ## Current state
 
+- Stage 6 has started with `source/ts/candidate-validation.ts`. It captures
+  caller-owned bytes and command definitions before execution, produces an
+  exact content-bound candidate snapshot, and runs candidate, standard, and
+  hidden challenge suites through a shell-free executable allowlist.
+- Validation outcomes now derive only from observed process status. Records
+  bind exit/signal/error, elapsed time, output sizes and hashes, exact policy,
+  toolchain, descriptor, sources, fixtures, and suite definitions. Candidate
+  JSON claiming success cannot override a non-zero exit.
+- Challenge command details, stdin, and output remain hidden from public
+  snapshots and records. The in-process runner refuses promotion eligibility
+  for copied or fabricated record-shaped JSON and for a changed candidate
+  snapshot hash.
+- This is an initial Stage 6 slice, not its exit gate. Restart-safe validation
+  storage plus OS-enforced filesystem, descendant-process, network, CPU, and
+  memory confinement remain to be implemented.
 - Stage 5 is complete. Production discovery now exposes the pure
   `add_numbers`, scoped `compute_buffer`, and trusted immutable
   `derive_artifact` C++ built-ins. The memory-only test Tool remains linked
@@ -105,6 +120,9 @@ otherwise modified by the consolidation work.
 
 Passed in `D:\Dev\axiom-colab`:
 
+- Stage 6 initial `pnpm.cmd test`: all 46 TypeScript tests passed, including
+  exact snapshot binding, hidden challenge redaction, fabricated passing JSON,
+  changed-candidate promotion denial, and timeout attribution.
 - Stage 5 `pnpm.cmd test`: all 42 TypeScript tests passed.
 - Stage 5 C++ build in the existing Ninja tree after initializing the Visual
   Studio 2026 Developer Command Prompt; `ctest` passed.
@@ -346,7 +364,9 @@ approval or evidence.
 
 ## Exact next work
 
-Begin Stage 6 by defining the immutable candidate snapshot and validation-run
-contracts, then implement a trusted isolated runner that records observed
-process results rather than accepting candidate-authored result claims. Keep
-candidate, standard safety, and hidden user challenge tests distinct.
+Continue Stage 6 by persisting captured candidate payloads and validator-issued
+records in an authenticated restart-safe immutable repository, then add an
+OS-specific confinement backend that actually enforces filesystem, descendant
+process, network, CPU, and memory limits. Do not infer confinement from declared
+policy. Preserve the current separation and default redaction of candidate,
+standard safety, and hidden user challenge suites.

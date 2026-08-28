@@ -1,0 +1,344 @@
+import { createHash, randomUUID } from 'node:crypto';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { dirname, isAbsolute, relative, resolve, sep } from 'node:path';
+import { LABORATORY_PROTOCOL_VERSION, canonicalJson, contentHash } from './laboratory-contract.js';
+import { ProcessExecutionError, ProcessRunner } from './process-runner.js';
+export class CandidateValidationError extends Error {
+    code;
+    constructor(code, message){
+        super(`[${code}] ${message}`), this.code = code;
+        this.name = 'CandidateValidationError';
+    }
+}
+const suiteOrder = {
+    candidate: 0,
+    standard: 1,
+    challenge: 2
+};
+function fail(code, message) {
+    throw new CandidateValidationError(code, message);
+}
+function byteContent(content) {
+    return typeof content === 'string' ? Buffer.from(content, 'utf8') : content;
+}
+function byteHash(content) {
+    return `sha256:${createHash('sha256').update(content).digest('hex')}`;
+}
+function safeRelativePath(value, field) {
+    if (value.length === 0 || isAbsolute(value) || value.includes('\0')) {
+        fail('INVALID_SNAPSHOT_PATH', `${field} must be a non-empty relative path`);
+    }
+    const normalized = value.replaceAll('\\', '/');
+    if (normalized.split('/').some((part)=>part === '' || part === '.' || part === '..')) {
+        fail('INVALID_SNAPSHOT_PATH', `${field} must use canonical relative path segments`);
+    }
+    const resolved = resolve('snapshot-root', normalized);
+    const rel = relative(resolve('snapshot-root'), resolved);
+    if (rel === '..' || rel.startsWith(`..${sep}`) || isAbsolute(rel)) {
+        fail('SNAPSHOT_PATH_ESCAPE', `${field} escapes the candidate snapshot`);
+    }
+    return normalized;
+}
+function captureFiles(files, field) {
+    const paths = new Set();
+    return files.map((file, index)=>{
+        const path = safeRelativePath(file.path, `${field}[${index}].path`);
+        if (paths.has(path)) fail('DUPLICATE_SNAPSHOT_PATH', `${field} contains duplicate path ${path}`);
+        paths.add(path);
+        const bytes = Buffer.from(byteContent(file.content));
+        return {
+            path,
+            bytes,
+            binding: {
+                path,
+                size: bytes.byteLength,
+                hash: byteHash(bytes)
+            }
+        };
+    }).sort((left, right)=>left.path.localeCompare(right.path));
+}
+function captureSuites(suites) {
+    return suites.map((suite)=>({
+            suiteId: suite.suiteId,
+            kind: suite.kind,
+            commands: suite.commands.map((command)=>({
+                    commandId: command.commandId,
+                    executable: command.executable,
+                    args: [
+                        ...command.args ?? []
+                    ],
+                    ...command.stdin === undefined ? {} : {
+                        stdin: command.stdin
+                    },
+                    ...command.cwd === undefined ? {} : {
+                        cwd: command.cwd
+                    }
+                }))
+        }));
+}
+function publicCommandBinding(command) {
+    return {
+        commandId: command.commandId,
+        executable: command.executable,
+        args: [
+            ...command.args ?? []
+        ],
+        stdinHash: contentHash(command.stdin ?? ''),
+        cwd: command.cwd ?? '.'
+    };
+}
+function commandHash(command) {
+    return contentHash(publicCommandBinding(command));
+}
+function bindSuites(suites) {
+    const seenKinds = new Set();
+    const seenIds = new Set();
+    const seenCommandIds = new Set();
+    const bound = suites.map((suite)=>{
+        if (seenKinds.has(suite.kind)) fail('DUPLICATE_SUITE_KIND', `validation suite kind ${suite.kind} is duplicated`);
+        if (seenIds.has(suite.suiteId)) fail('DUPLICATE_SUITE_ID', `validation suite ${suite.suiteId} is duplicated`);
+        if (suite.commands.length === 0) fail('EMPTY_VALIDATION_SUITE', `validation suite ${suite.suiteId} has no commands`);
+        seenKinds.add(suite.kind);
+        seenIds.add(suite.suiteId);
+        for (const command of suite.commands){
+            if (seenCommandIds.has(command.commandId)) fail('DUPLICATE_COMMAND_ID', `validation command ${command.commandId} is duplicated`);
+            seenCommandIds.add(command.commandId);
+        }
+        return {
+            suiteId: suite.suiteId,
+            kind: suite.kind,
+            definitionHash: contentHash(suite.commands.map(publicCommandBinding)),
+            commandCount: suite.commands.length,
+            hidden: suite.kind === 'challenge'
+        };
+    }).sort((left, right)=>suiteOrder[left.kind] - suiteOrder[right.kind]);
+    for (const kind of Object.keys(suiteOrder)){
+        if (!seenKinds.has(kind)) fail('MISSING_VALIDATION_SUITE', `validation suite kind ${kind} is required`);
+    }
+    return bound;
+}
+function deepFreeze(value) {
+    if (typeof value !== 'object' || value === null || Object.isFrozen(value)) return value;
+    Object.freeze(value);
+    for (const item of Object.values(value))deepFreeze(item);
+    return value;
+}
+function overallOutcome(outcomes) {
+    return outcomes.includes('limited') ? 'limited' : outcomes.includes('failed') ? 'failed' : 'passed';
+}
+function isLimitError(code) {
+    return code === 'TIMEOUT' || code === 'STDIN_LIMIT' || code === 'STDOUT_LIMIT' || code === 'STDERR_LIMIT';
+}
+function validatePolicy(policy) {
+    if (!Number.isSafeInteger(policy.maxCommands) || policy.maxCommands < 3) {
+        fail('INVALID_VALIDATION_POLICY', 'maxCommands must be a safe integer of at least three');
+    }
+    if (policy.allowedExecutables.length === 0) fail('INVALID_VALIDATION_POLICY', 'allowedExecutables cannot be empty');
+    for (const [field, value] of Object.entries(policy.process)){
+        if (!Number.isSafeInteger(value) || value <= 0) fail('INVALID_VALIDATION_POLICY', `process.${field} must be a positive safe integer`);
+    }
+}
+function assertAllowedCommand(command, policy) {
+    if (!policy.allowedExecutables.includes(command.executable)) {
+        fail('EXECUTABLE_NOT_ALLOWED', `command ${command.commandId} uses an executable outside the validation policy`);
+    }
+    if (command.cwd !== undefined) safeRelativePath(command.cwd, `command ${command.commandId} cwd`);
+}
+export class CandidateValidationRunner {
+    runner;
+    temporaryRoot;
+    now;
+    idFactory;
+    issuedRecords = new WeakSet();
+    constructor(options = {}){
+        this.runner = options.runner ?? new ProcessRunner();
+        this.temporaryRoot = options.temporaryRoot ?? tmpdir();
+        this.now = options.now ?? (()=>new Date());
+        this.idFactory = options.idFactory ?? randomUUID;
+    }
+    async validate(request) {
+        validatePolicy(request.policy);
+        const totalCommands = request.suites.reduce((sum, suite)=>sum + suite.commands.length, 0);
+        if (totalCommands > request.policy.maxCommands) fail('COMMAND_LIMIT', `validation requests ${totalCommands} commands but policy allows ${request.policy.maxCommands}`);
+        const prepared = await this.prepare(request);
+        const startedAt = this.now().toISOString();
+        try {
+            const suiteRuns = [];
+            const orderedSuites = [
+                ...prepared.suites
+            ].sort((left, right)=>suiteOrder[left.kind] - suiteOrder[right.kind]);
+            for (const suite of orderedSuites){
+                const binding = prepared.snapshot.suites.find((item)=>item.kind === suite.kind);
+                if (binding === undefined) fail('INVALID_VALIDATION_STATE', `missing snapshot binding for ${suite.kind}`);
+                const processes = [];
+                for (const command of suite.commands){
+                    assertAllowedCommand(command, prepared.policy);
+                    processes.push(await this.execute(command, prepared.root, binding.hidden, prepared.policy.process));
+                }
+                suiteRuns.push({
+                    ...binding,
+                    outcome: overallOutcome(processes.map((process)=>process.outcome)),
+                    processes
+                });
+            }
+            const completedAt = this.now().toISOString();
+            const recordWithoutHash = {
+                protocolVersion: LABORATORY_PROTOCOL_VERSION,
+                validationId: `validation:${this.idFactory()}`,
+                workspaceId: request.workspaceId,
+                candidateId: request.candidateId,
+                validatorActorId: request.validatorActorId,
+                candidateSnapshotHash: prepared.snapshot.snapshotHash,
+                authority: 'validator',
+                startedAt,
+                completedAt,
+                outcome: overallOutcome(suiteRuns.map((suite)=>suite.outcome)),
+                suites: suiteRuns
+            };
+            const record = deepFreeze({
+                ...recordWithoutHash,
+                recordHash: contentHash(recordWithoutHash)
+            });
+            this.issuedRecords.add(record);
+            return deepFreeze({
+                snapshot: prepared.snapshot,
+                record
+            });
+        } finally{
+            await rm(prepared.root, {
+                recursive: true,
+                force: true
+            });
+        }
+    }
+    isPromotionEligible(snapshotHash, record) {
+        if (!this.issuedRecords.has(record)) return false;
+        const { recordHash, ...recordWithoutHash } = record;
+        return record.outcome === 'passed' && record.candidateSnapshotHash === snapshotHash && recordHash === contentHash(recordWithoutHash);
+    }
+    async prepare(request) {
+        const capturedSources = captureFiles(request.sources, 'sources');
+        const capturedFixtures = captureFiles(request.fixtures, 'fixtures');
+        const sources = capturedSources.map((file)=>file.binding);
+        const fixtures = capturedFixtures.map((file)=>file.binding);
+        const capturedSuites = captureSuites(request.suites);
+        const capturedPolicy = {
+            allowedExecutables: [
+                ...request.policy.allowedExecutables
+            ],
+            process: {
+                ...request.policy.process
+            },
+            maxCommands: request.policy.maxCommands
+        };
+        const allPaths = new Set(sources.map((file)=>file.path));
+        for (const fixture of fixtures){
+            if (allPaths.has(fixture.path)) fail('DUPLICATE_SNAPSHOT_PATH', `fixture path ${fixture.path} collides with a source`);
+            allPaths.add(fixture.path);
+        }
+        const suites = bindSuites(capturedSuites);
+        const binding = {
+            workspaceId: request.workspaceId,
+            candidateId: request.candidateId,
+            descriptorHash: contentHash(request.descriptor),
+            sourceHash: contentHash(sources),
+            sources,
+            fixtureHash: contentHash(fixtures),
+            fixtures,
+            toolchain: request.toolchain,
+            toolchainHash: contentHash(request.toolchain),
+            policyHash: contentHash(capturedPolicy),
+            suites
+        };
+        const snapshot = deepFreeze({
+            protocolVersion: LABORATORY_PROTOCOL_VERSION,
+            snapshotId: `evidence:${this.idFactory()}`,
+            ...binding,
+            createdAt: this.now().toISOString(),
+            snapshotHash: contentHash(binding)
+        });
+        await mkdir(this.temporaryRoot, {
+            recursive: true
+        });
+        const root = await mkdtemp(resolve(this.temporaryRoot, 'axiom-validation-'));
+        try {
+            for (const file of [
+                ...capturedSources,
+                ...capturedFixtures
+            ]){
+                const path = resolve(root, file.path);
+                await mkdir(dirname(path), {
+                    recursive: true
+                });
+                await writeFile(path, file.bytes, {
+                    flag: 'wx'
+                });
+            }
+            return {
+                snapshot,
+                root,
+                policy: capturedPolicy,
+                suites: capturedSuites
+            };
+        } catch (error) {
+            await rm(root, {
+                recursive: true,
+                force: true
+            });
+            throw error;
+        }
+    }
+    async execute(command, root, hidden, limits) {
+        const startedAt = performance.now();
+        const bindingHash = commandHash(command);
+        try {
+            const result = await this.runner.run(command.executable, {
+                ...limits,
+                args: command.args,
+                stdin: command.stdin,
+                cwd: resolve(root, command.cwd ?? '.')
+            });
+            return {
+                commandId: command.commandId,
+                commandHash: bindingHash,
+                outcome: 'passed',
+                exitCode: result.exitCode,
+                signalName: null,
+                errorCode: null,
+                durationMs: result.durationMs,
+                stdoutBytes: Buffer.byteLength(result.stdout),
+                stderrBytes: Buffer.byteLength(result.stderr),
+                stdoutHash: contentHash(result.stdout),
+                stderrHash: contentHash(result.stderr),
+                stdout: hidden ? null : result.stdout,
+                stderr: hidden ? null : result.stderr
+            };
+        } catch (error) {
+            if (!(error instanceof ProcessExecutionError)) throw error;
+            const stdout = error.stdout;
+            const stderr = error.stderr;
+            return {
+                commandId: command.commandId,
+                commandHash: bindingHash,
+                outcome: isLimitError(error.code) ? 'limited' : 'failed',
+                exitCode: error.exitCode,
+                signalName: error.signalName,
+                errorCode: error.code,
+                durationMs: error.durationMs ?? performance.now() - startedAt,
+                stdoutBytes: Buffer.byteLength(stdout),
+                stderrBytes: Buffer.byteLength(stderr),
+                stdoutHash: contentHash(stdout),
+                stderrHash: contentHash(stderr),
+                stdout: hidden ? null : stdout,
+                stderr: hidden ? null : stderr
+            };
+        }
+    }
+}
+export function validationRecordJson(record) {
+    return canonicalJson(record);
+}
+
+
+//# sourceURL=file:///D:/Dev/axiom-colab/source/ts/candidate-validation.ts

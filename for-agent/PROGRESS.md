@@ -4,6 +4,31 @@ Entries are chronological. Each entry corresponds to one logical Git commit and
 records its exact subject, purpose, material changes, and validation actually
 performed.
 
+## 2026-08-28 - feat(validation): start independent candidate runner
+
+Purpose: begin Stage 6 with an exact candidate/evidence binding and a trusted
+observed-process verdict path before adding platform sandbox backends.
+
+Material changes:
+
+- Added content-addressed candidate snapshots that capture source and fixture
+  bytes before execution and bind descriptor, toolchain, policy, and the three
+  independent suite definitions.
+- Added a shell-free executable-allowlisted runner with command-count, timeout,
+  stdin, stdout, and stderr limits plus attributed process results.
+- Hid user challenge commands, inputs, and output by default while retaining
+  exact definition and output hashes.
+- Rejected candidate-authored passing JSON, copied validation records, changed
+  candidate hashes, and canonical path escapes as sources of promotion
+  eligibility.
+- Documented that durable validation storage and OS-enforced filesystem,
+  descendant-process, network, CPU, and memory confinement remain pending.
+
+Validation actually run:
+
+- `pnpm.cmd test`: passed all 46 TypeScript tests and regenerated `dist/`.
+- `git diff --check`: passed with newline-conversion notices only.
+
 ## 2026-08-28 — feat(goal): complete built-in Tool and supervised goal loop
 
 Purpose: complete Stage 5 with useful production C++ Tools and an inspectable,

@@ -27,6 +27,8 @@ export class ProcessExecutionError extends Error {
   readonly exitCode: number | null
   readonly signalName: NodeJS.Signals | null
   readonly stderr: string
+  readonly stdout: string
+  readonly durationMs: number | null
 
   constructor(
     code: string,
@@ -35,6 +37,8 @@ export class ProcessExecutionError extends Error {
       exitCode?: number | null
       signalName?: NodeJS.Signals | null
       stderr?: string
+      stdout?: string
+      durationMs?: number | null
     } = {},
   ) {
     super(`[${code}] ${message}`)
@@ -43,6 +47,8 @@ export class ProcessExecutionError extends Error {
     this.exitCode = options.exitCode ?? null
     this.signalName = options.signalName ?? null
     this.stderr = options.stderr ?? ''
+    this.stdout = options.stdout ?? ''
+    this.durationMs = options.durationMs ?? null
   }
 }
 
@@ -127,6 +133,8 @@ export class ProcessRunner {
             exitCode: code,
             signalName,
             stderr,
+            stdout,
+            durationMs: performance.now() - startedAt,
           }))
           return
         }
@@ -135,6 +143,8 @@ export class ProcessRunner {
             exitCode: code,
             signalName,
             stderr,
+            stdout,
+            durationMs: performance.now() - startedAt,
           }))
           return
         }
@@ -142,6 +152,8 @@ export class ProcessRunner {
           reject(new ProcessExecutionError('NON_ZERO_EXIT', `Bridge exited with code ${String(code)}`, {
             exitCode: code,
             stderr,
+            stdout,
+            durationMs: performance.now() - startedAt,
           }))
           return
         }

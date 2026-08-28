@@ -1,0 +1,471 @@
+import { createHash, randomUUID } from 'node:crypto'
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { dirname, isAbsolute, relative, resolve, sep } from 'node:path'
+
+import {
+  LABORATORY_PROTOCOL_VERSION,
+  canonicalJson,
+  contentHash,
+  type LaboratoryId,
+} from './laboratory-contract.js'
+import {
+  ProcessExecutionError,
+  ProcessRunner,
+  type ProcessLimits,
+} from './process-runner.js'
+
+export type ValidationSuiteKind = 'candidate' | 'standard' | 'challenge'
+export type ValidationOutcome = 'passed' | 'failed' | 'limited'
+
+export interface CandidateFile {
+  readonly path: string
+  readonly content: string | Uint8Array
+}
+
+export interface CandidateToolchain {
+  readonly name: string
+  readonly version: string
+  readonly target: string
+}
+
+export interface CandidateValidationPolicy {
+  readonly allowedExecutables: readonly string[]
+  readonly process: ProcessLimits
+  readonly maxCommands: number
+}
+
+export interface ValidationCommand {
+  readonly commandId: string
+  readonly executable: string
+  readonly args?: readonly string[]
+  readonly stdin?: string
+  readonly cwd?: string
+}
+
+export interface ValidationSuite {
+  readonly suiteId: string
+  readonly kind: ValidationSuiteKind
+  readonly commands: readonly ValidationCommand[]
+}
+
+export interface CandidateValidationRequest {
+  readonly workspaceId: LaboratoryId<'workspace'>
+  readonly candidateId: LaboratoryId<'tool'>
+  readonly validatorActorId: LaboratoryId<'actor'>
+  readonly descriptor: unknown
+  readonly sources: readonly CandidateFile[]
+  readonly fixtures: readonly CandidateFile[]
+  readonly toolchain: CandidateToolchain
+  readonly policy: CandidateValidationPolicy
+  readonly suites: readonly ValidationSuite[]
+}
+
+export interface BoundFile {
+  readonly path: string
+  readonly size: number
+  readonly hash: `sha256:${string}`
+}
+
+export interface BoundValidationSuite {
+  readonly suiteId: string
+  readonly kind: ValidationSuiteKind
+  readonly definitionHash: `sha256:${string}`
+  readonly commandCount: number
+  readonly hidden: boolean
+}
+
+export interface CandidateSnapshot {
+  readonly protocolVersion: typeof LABORATORY_PROTOCOL_VERSION
+  readonly snapshotId: LaboratoryId<'evidence'>
+  readonly workspaceId: LaboratoryId<'workspace'>
+  readonly candidateId: LaboratoryId<'tool'>
+  readonly createdAt: string
+  readonly descriptorHash: `sha256:${string}`
+  readonly sourceHash: `sha256:${string}`
+  readonly sources: readonly BoundFile[]
+  readonly fixtureHash: `sha256:${string}`
+  readonly fixtures: readonly BoundFile[]
+  readonly toolchain: CandidateToolchain
+  readonly toolchainHash: `sha256:${string}`
+  readonly policyHash: `sha256:${string}`
+  readonly suites: readonly BoundValidationSuite[]
+  readonly snapshotHash: `sha256:${string}`
+}
+
+export interface ObservedProcessResult {
+  readonly commandId: string
+  readonly commandHash: `sha256:${string}`
+  readonly outcome: ValidationOutcome
+  readonly exitCode: number | null
+  readonly signalName: NodeJS.Signals | null
+  readonly errorCode: string | null
+  readonly durationMs: number
+  readonly stdoutBytes: number
+  readonly stderrBytes: number
+  readonly stdoutHash: `sha256:${string}`
+  readonly stderrHash: `sha256:${string}`
+  readonly stdout: string | null
+  readonly stderr: string | null
+}
+
+export interface ValidationSuiteRun {
+  readonly suiteId: string
+  readonly kind: ValidationSuiteKind
+  readonly definitionHash: `sha256:${string}`
+  readonly hidden: boolean
+  readonly commandCount: number
+  readonly outcome: ValidationOutcome
+  readonly processes: readonly ObservedProcessResult[]
+}
+
+export interface ValidationRecord {
+  readonly protocolVersion: typeof LABORATORY_PROTOCOL_VERSION
+  readonly validationId: LaboratoryId<'validation'>
+  readonly workspaceId: LaboratoryId<'workspace'>
+  readonly candidateId: LaboratoryId<'tool'>
+  readonly validatorActorId: LaboratoryId<'actor'>
+  readonly candidateSnapshotHash: `sha256:${string}`
+  readonly authority: 'validator'
+  readonly startedAt: string
+  readonly completedAt: string
+  readonly outcome: ValidationOutcome
+  readonly suites: readonly ValidationSuiteRun[]
+  readonly recordHash: `sha256:${string}`
+}
+
+export interface CandidateValidationResult {
+  readonly snapshot: CandidateSnapshot
+  readonly record: ValidationRecord
+}
+
+export class CandidateValidationError extends Error {
+  constructor(readonly code: string, message: string) {
+    super(`[${code}] ${message}`)
+    this.name = 'CandidateValidationError'
+  }
+}
+
+export interface CandidateValidationRunnerOptions {
+  readonly runner?: ProcessRunner
+  readonly temporaryRoot?: string
+  readonly now?: () => Date
+  readonly idFactory?: () => string
+}
+
+interface PreparedCandidate {
+  readonly snapshot: CandidateSnapshot
+  readonly root: string
+  readonly policy: CandidateValidationPolicy
+  readonly suites: readonly ValidationSuite[]
+}
+
+interface CapturedFile {
+  readonly path: string
+  readonly bytes: Uint8Array
+  readonly binding: BoundFile
+}
+
+const suiteOrder: Readonly<Record<ValidationSuiteKind, number>> = {
+  candidate: 0,
+  standard: 1,
+  challenge: 2,
+}
+
+function fail(code: string, message: string): never {
+  throw new CandidateValidationError(code, message)
+}
+
+function byteContent(content: string | Uint8Array): Uint8Array {
+  return typeof content === 'string' ? Buffer.from(content, 'utf8') : content
+}
+
+function byteHash(content: Uint8Array): `sha256:${string}` {
+  return `sha256:${createHash('sha256').update(content).digest('hex')}`
+}
+
+function safeRelativePath(value: string, field: string): string {
+  if (value.length === 0 || isAbsolute(value) || value.includes('\0')) {
+    fail('INVALID_SNAPSHOT_PATH', `${field} must be a non-empty relative path`)
+  }
+  const normalized = value.replaceAll('\\', '/')
+  if (normalized.split('/').some((part) => part === '' || part === '.' || part === '..')) {
+    fail('INVALID_SNAPSHOT_PATH', `${field} must use canonical relative path segments`)
+  }
+  const resolved = resolve('snapshot-root', normalized)
+  const rel = relative(resolve('snapshot-root'), resolved)
+  if (rel === '..' || rel.startsWith(`..${sep}`) || isAbsolute(rel)) {
+    fail('SNAPSHOT_PATH_ESCAPE', `${field} escapes the candidate snapshot`)
+  }
+  return normalized
+}
+
+function captureFiles(files: readonly CandidateFile[], field: string): readonly CapturedFile[] {
+  const paths = new Set<string>()
+  return files.map((file, index) => {
+    const path = safeRelativePath(file.path, `${field}[${index}].path`)
+    if (paths.has(path)) fail('DUPLICATE_SNAPSHOT_PATH', `${field} contains duplicate path ${path}`)
+    paths.add(path)
+    const bytes = Buffer.from(byteContent(file.content))
+    return { path, bytes, binding: { path, size: bytes.byteLength, hash: byteHash(bytes) } }
+  }).sort((left, right) => left.path.localeCompare(right.path))
+}
+
+function captureSuites(suites: readonly ValidationSuite[]): readonly ValidationSuite[] {
+  return suites.map((suite) => ({
+    suiteId: suite.suiteId,
+    kind: suite.kind,
+    commands: suite.commands.map((command) => ({
+      commandId: command.commandId,
+      executable: command.executable,
+      args: [...(command.args ?? [])],
+      ...(command.stdin === undefined ? {} : { stdin: command.stdin }),
+      ...(command.cwd === undefined ? {} : { cwd: command.cwd }),
+    })),
+  }))
+}
+
+function publicCommandBinding(command: ValidationCommand): unknown {
+  return {
+    commandId: command.commandId,
+    executable: command.executable,
+    args: [...(command.args ?? [])],
+    stdinHash: contentHash(command.stdin ?? ''),
+    cwd: command.cwd ?? '.',
+  }
+}
+
+function commandHash(command: ValidationCommand): `sha256:${string}` {
+  return contentHash(publicCommandBinding(command))
+}
+
+function bindSuites(suites: readonly ValidationSuite[]): readonly BoundValidationSuite[] {
+  const seenKinds = new Set<ValidationSuiteKind>()
+  const seenIds = new Set<string>()
+  const seenCommandIds = new Set<string>()
+  const bound = suites.map((suite) => {
+    if (seenKinds.has(suite.kind)) fail('DUPLICATE_SUITE_KIND', `validation suite kind ${suite.kind} is duplicated`)
+    if (seenIds.has(suite.suiteId)) fail('DUPLICATE_SUITE_ID', `validation suite ${suite.suiteId} is duplicated`)
+    if (suite.commands.length === 0) fail('EMPTY_VALIDATION_SUITE', `validation suite ${suite.suiteId} has no commands`)
+    seenKinds.add(suite.kind)
+    seenIds.add(suite.suiteId)
+    for (const command of suite.commands) {
+      if (seenCommandIds.has(command.commandId)) fail('DUPLICATE_COMMAND_ID', `validation command ${command.commandId} is duplicated`)
+      seenCommandIds.add(command.commandId)
+    }
+    return {
+      suiteId: suite.suiteId,
+      kind: suite.kind,
+      definitionHash: contentHash(suite.commands.map(publicCommandBinding)),
+      commandCount: suite.commands.length,
+      hidden: suite.kind === 'challenge',
+    }
+  }).sort((left, right) => suiteOrder[left.kind] - suiteOrder[right.kind])
+  for (const kind of Object.keys(suiteOrder) as ValidationSuiteKind[]) {
+    if (!seenKinds.has(kind)) fail('MISSING_VALIDATION_SUITE', `validation suite kind ${kind} is required`)
+  }
+  return bound
+}
+
+function deepFreeze<T>(value: T): T {
+  if (typeof value !== 'object' || value === null || Object.isFrozen(value)) return value
+  Object.freeze(value)
+  for (const item of Object.values(value as Record<string, unknown>)) deepFreeze(item)
+  return value
+}
+
+function overallOutcome(outcomes: readonly ValidationOutcome[]): ValidationOutcome {
+  return outcomes.includes('limited') ? 'limited' : outcomes.includes('failed') ? 'failed' : 'passed'
+}
+
+function isLimitError(code: string): boolean {
+  return code === 'TIMEOUT' || code === 'STDIN_LIMIT' || code === 'STDOUT_LIMIT' || code === 'STDERR_LIMIT'
+}
+
+function validatePolicy(policy: CandidateValidationPolicy): void {
+  if (!Number.isSafeInteger(policy.maxCommands) || policy.maxCommands < 3) {
+    fail('INVALID_VALIDATION_POLICY', 'maxCommands must be a safe integer of at least three')
+  }
+  if (policy.allowedExecutables.length === 0) fail('INVALID_VALIDATION_POLICY', 'allowedExecutables cannot be empty')
+  for (const [field, value] of Object.entries(policy.process)) {
+    if (!Number.isSafeInteger(value) || value <= 0) fail('INVALID_VALIDATION_POLICY', `process.${field} must be a positive safe integer`)
+  }
+}
+
+function assertAllowedCommand(command: ValidationCommand, policy: CandidateValidationPolicy): void {
+  if (!policy.allowedExecutables.includes(command.executable)) {
+    fail('EXECUTABLE_NOT_ALLOWED', `command ${command.commandId} uses an executable outside the validation policy`)
+  }
+  if (command.cwd !== undefined) safeRelativePath(command.cwd, `command ${command.commandId} cwd`)
+}
+
+export class CandidateValidationRunner {
+  private readonly runner: ProcessRunner
+  private readonly temporaryRoot: string
+  private readonly now: () => Date
+  private readonly idFactory: () => string
+  private readonly issuedRecords = new WeakSet<ValidationRecord>()
+
+  constructor(options: CandidateValidationRunnerOptions = {}) {
+    this.runner = options.runner ?? new ProcessRunner()
+    this.temporaryRoot = options.temporaryRoot ?? tmpdir()
+    this.now = options.now ?? (() => new Date())
+    this.idFactory = options.idFactory ?? randomUUID
+  }
+
+  async validate(request: CandidateValidationRequest): Promise<CandidateValidationResult> {
+    validatePolicy(request.policy)
+    const totalCommands = request.suites.reduce((sum, suite) => sum + suite.commands.length, 0)
+    if (totalCommands > request.policy.maxCommands) fail('COMMAND_LIMIT', `validation requests ${totalCommands} commands but policy allows ${request.policy.maxCommands}`)
+    const prepared = await this.prepare(request)
+    const startedAt = this.now().toISOString()
+    try {
+      const suiteRuns: ValidationSuiteRun[] = []
+      const orderedSuites = [...prepared.suites].sort((left, right) => suiteOrder[left.kind] - suiteOrder[right.kind])
+      for (const suite of orderedSuites) {
+        const binding = prepared.snapshot.suites.find((item) => item.kind === suite.kind)
+        if (binding === undefined) fail('INVALID_VALIDATION_STATE', `missing snapshot binding for ${suite.kind}`)
+        const processes: ObservedProcessResult[] = []
+        for (const command of suite.commands) {
+          assertAllowedCommand(command, prepared.policy)
+          processes.push(await this.execute(command, prepared.root, binding.hidden, prepared.policy.process))
+        }
+        suiteRuns.push({
+          ...binding,
+          outcome: overallOutcome(processes.map((process) => process.outcome)),
+          processes,
+        })
+      }
+      const completedAt = this.now().toISOString()
+      const recordWithoutHash = {
+        protocolVersion: LABORATORY_PROTOCOL_VERSION,
+        validationId: `validation:${this.idFactory()}` as LaboratoryId<'validation'>,
+        workspaceId: request.workspaceId,
+        candidateId: request.candidateId,
+        validatorActorId: request.validatorActorId,
+        candidateSnapshotHash: prepared.snapshot.snapshotHash,
+        authority: 'validator' as const,
+        startedAt,
+        completedAt,
+        outcome: overallOutcome(suiteRuns.map((suite) => suite.outcome)),
+        suites: suiteRuns,
+      }
+      const record = deepFreeze({ ...recordWithoutHash, recordHash: contentHash(recordWithoutHash) })
+      this.issuedRecords.add(record)
+      return deepFreeze({ snapshot: prepared.snapshot, record })
+    } finally {
+      await rm(prepared.root, { recursive: true, force: true })
+    }
+  }
+
+  isPromotionEligible(snapshotHash: string, record: ValidationRecord): boolean {
+    if (!this.issuedRecords.has(record)) return false
+    const { recordHash, ...recordWithoutHash } = record
+    return record.outcome === 'passed'
+      && record.candidateSnapshotHash === snapshotHash
+      && recordHash === contentHash(recordWithoutHash)
+  }
+
+  private async prepare(request: CandidateValidationRequest): Promise<PreparedCandidate> {
+    const capturedSources = captureFiles(request.sources, 'sources')
+    const capturedFixtures = captureFiles(request.fixtures, 'fixtures')
+    const sources = capturedSources.map((file) => file.binding)
+    const fixtures = capturedFixtures.map((file) => file.binding)
+    const capturedSuites = captureSuites(request.suites)
+    const capturedPolicy: CandidateValidationPolicy = {
+      allowedExecutables: [...request.policy.allowedExecutables],
+      process: { ...request.policy.process },
+      maxCommands: request.policy.maxCommands,
+    }
+    const allPaths = new Set(sources.map((file) => file.path))
+    for (const fixture of fixtures) {
+      if (allPaths.has(fixture.path)) fail('DUPLICATE_SNAPSHOT_PATH', `fixture path ${fixture.path} collides with a source`)
+      allPaths.add(fixture.path)
+    }
+    const suites = bindSuites(capturedSuites)
+    const binding = {
+      workspaceId: request.workspaceId,
+      candidateId: request.candidateId,
+      descriptorHash: contentHash(request.descriptor),
+      sourceHash: contentHash(sources),
+      sources,
+      fixtureHash: contentHash(fixtures),
+      fixtures,
+      toolchain: request.toolchain,
+      toolchainHash: contentHash(request.toolchain),
+      policyHash: contentHash(capturedPolicy),
+      suites,
+    }
+    const snapshot: CandidateSnapshot = deepFreeze({
+      protocolVersion: LABORATORY_PROTOCOL_VERSION,
+      snapshotId: `evidence:${this.idFactory()}` as LaboratoryId<'evidence'>,
+      ...binding,
+      createdAt: this.now().toISOString(),
+      snapshotHash: contentHash(binding),
+    })
+    await mkdir(this.temporaryRoot, { recursive: true })
+    const root = await mkdtemp(resolve(this.temporaryRoot, 'axiom-validation-'))
+    try {
+      for (const file of [...capturedSources, ...capturedFixtures]) {
+        const path = resolve(root, file.path)
+        await mkdir(dirname(path), { recursive: true })
+        await writeFile(path, file.bytes, { flag: 'wx' })
+      }
+      return { snapshot, root, policy: capturedPolicy, suites: capturedSuites }
+    } catch (error) {
+      await rm(root, { recursive: true, force: true })
+      throw error
+    }
+  }
+
+  private async execute(command: ValidationCommand, root: string, hidden: boolean, limits: ProcessLimits): Promise<ObservedProcessResult> {
+    const startedAt = performance.now()
+    const bindingHash = commandHash(command)
+    try {
+      const result = await this.runner.run(command.executable, {
+        ...limits,
+        args: command.args,
+        stdin: command.stdin,
+        cwd: resolve(root, command.cwd ?? '.'),
+      })
+      return {
+        commandId: command.commandId,
+        commandHash: bindingHash,
+        outcome: 'passed',
+        exitCode: result.exitCode,
+        signalName: null,
+        errorCode: null,
+        durationMs: result.durationMs,
+        stdoutBytes: Buffer.byteLength(result.stdout),
+        stderrBytes: Buffer.byteLength(result.stderr),
+        stdoutHash: contentHash(result.stdout),
+        stderrHash: contentHash(result.stderr),
+        stdout: hidden ? null : result.stdout,
+        stderr: hidden ? null : result.stderr,
+      }
+    } catch (error) {
+      if (!(error instanceof ProcessExecutionError)) throw error
+      const stdout = error.stdout
+      const stderr = error.stderr
+      return {
+        commandId: command.commandId,
+        commandHash: bindingHash,
+        outcome: isLimitError(error.code) ? 'limited' : 'failed',
+        exitCode: error.exitCode,
+        signalName: error.signalName,
+        errorCode: error.code,
+        durationMs: error.durationMs ?? performance.now() - startedAt,
+        stdoutBytes: Buffer.byteLength(stdout),
+        stderrBytes: Buffer.byteLength(stderr),
+        stdoutHash: contentHash(stdout),
+        stderrHash: contentHash(stderr),
+        stdout: hidden ? null : stdout,
+        stderr: hidden ? null : stderr,
+      }
+    }
+  }
+}
+
+export function validationRecordJson(record: ValidationRecord): string {
+  return canonicalJson(record)
+}

@@ -4,6 +4,8 @@ export class ProcessExecutionError extends Error {
     exitCode;
     signalName;
     stderr;
+    stdout;
+    durationMs;
     constructor(code, message, options = {}){
         super(`[${code}] ${message}`);
         this.name = 'ProcessExecutionError';
@@ -11,6 +13,8 @@ export class ProcessExecutionError extends Error {
         this.exitCode = options.exitCode ?? null;
         this.signalName = options.signalName ?? null;
         this.stderr = options.stderr ?? '';
+        this.stdout = options.stdout ?? '';
+        this.durationMs = options.durationMs ?? null;
     }
 }
 function bytes(chunks) {
@@ -84,7 +88,9 @@ export class ProcessRunner {
                     reject(new ProcessExecutionError(pendingError.code, pendingError.message.replace(/^\[[^\]]+\]\s*/, ''), {
                         exitCode: code,
                         signalName,
-                        stderr
+                        stderr,
+                        stdout,
+                        durationMs: performance.now() - startedAt
                     }));
                     return;
                 }
@@ -92,14 +98,18 @@ export class ProcessRunner {
                     reject(new ProcessExecutionError('WORKER_TERMINATED', `Bridge was terminated by ${signalName}`, {
                         exitCode: code,
                         signalName,
-                        stderr
+                        stderr,
+                        stdout,
+                        durationMs: performance.now() - startedAt
                     }));
                     return;
                 }
                 if (code !== 0) {
                     reject(new ProcessExecutionError('NON_ZERO_EXIT', `Bridge exited with code ${String(code)}`, {
                         exitCode: code,
-                        stderr
+                        stderr,
+                        stdout,
+                        durationMs: performance.now() - startedAt
                     }));
                     return;
                 }
