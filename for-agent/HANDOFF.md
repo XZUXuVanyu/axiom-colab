@@ -4,11 +4,14 @@ Last updated: 2026-08-28
 
 ## Current state
 
-- WSL 2 is now installed after the Windows reboot (`2.7.12.0`, kernel
-  `6.18.33.2`, default version 2), but no Linux distribution is registered.
-  The catalog lists `Ubuntu-24.04`; both the catalog-backed install and the
-  direct `--web-download` path failed before registration, so Linux
-  confinement capabilities remain unverified and unavailable.
+- WSL 2 is installed (`2.7.12.0`, kernel `6.18.33.2`, default version 2) with
+  a usable `Ubuntu-24.04` distribution. Its registered base and `ext4.vhdx`
+  were moved through `wsl.exe --manage --move` from the user profile on `C:`
+  to `D:\Software\Wsl`; the old tree contains no VHDX.
+- Ubuntu identifies as 24.04.4 LTS, boots with systemd, exposes cgroup v2 and
+  PID/mount namespaces, automounts `D:` at `/mnt/d`, and provides `unshare`.
+  Bubblewrap is not installed, and actual filesystem, descendant-process,
+  network, CPU, and memory confinement still must be proven independently.
 - Stage 7 has started with `source/ts/tool-workshop.ts`. Model or trusted-host
   authority can define copied, canonical-hash-bound structured Tool
   specifications and create captured candidate revisions whose descriptor,
@@ -152,6 +155,12 @@ otherwise modified by the consolidation work.
 
 Passed in `D:\Dev\axiom-colab`:
 
+- Post-install WSL health and relocation checks passed. `Ubuntu-24.04`
+  launched as Ubuntu 24.04.4 LTS on the WSL2 kernel with systemd, cgroup v2,
+  PID/mount namespaces, `/mnt/d`, and `/usr/bin/unshare`. WSL's supported move
+  operation relocated the registered base to `D:\Software\Wsl`, where
+  `ext4.vhdx` exists and remained bootable; no `.vhdx` remains beneath the old
+  `C:\Users\27846\AppData\Local\wsl` tree. Bubblewrap was not present.
 - Confinement fail-closed `pnpm.cmd test`: all 53 TypeScript tests passed;
   authentic passing records survive restart but remain non-promotable while
   required confinement observations are false.
@@ -473,27 +482,21 @@ installation controls:
 
 ## Exact next work
 
-The Windows reboot completed and WSL 2 is installed, but Ubuntu 24.04 LTS is
-not. Retry the selected distribution installation after the external download
-path is healthy:
-
-```powershell
-wsl.exe --install Ubuntu-24.04 --no-launch
-```
-
-Then confirm registration with `wsl.exe --list --verbose`, initialize the
-distribution without relying on interactive user creation, and verify Linux
-namespaces, cgroups, Bubblewrap availability, network isolation, Windows-drive
-automount, and Windows interoperability. WSL by itself is not evidence of
-confinement.
+Ubuntu 24.04 LTS is installed, launchable, and stored on `D:`. Install or
+otherwise provide Bubblewrap inside the distribution, then verify user, mount,
+PID, and network namespace behavior; cgroup CPU/memory enforcement; Windows
+interoperability; the intended read-only/tool-output filesystem projection;
+network denial; descendant cleanup; and Windows-drive exposure from inside the
+sandbox. WSL by itself is not evidence of confinement.
 
 Continue Stage 7 by adding an OS-specific validation backend that actually
 enforces and records filesystem, descendant-process, network, CPU, and memory
 confinement.
 
-The machine still has no usable external sandbox backend. Do not mark any
-confinement observation true based only on the installed WSL platform or
-declared policy.
+The machine now has a usable WSL2 Linux environment but not yet a proven
+external sandbox backend. Do not mark any confinement observation true based
+only on the installed WSL platform, available namespace primitives, or declared
+policy.
 
 Only after those evidence blockers close, add and adversarially test the exact
 candidate + validation record + requested permissions + installation proposal
