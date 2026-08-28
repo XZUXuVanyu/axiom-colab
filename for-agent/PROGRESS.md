@@ -4,6 +4,26 @@ Entries are chronological. Each entry corresponds to one logical Git commit and
 records its exact subject, purpose, material changes, and validation actually
 performed.
 
+## 2026-08-28 - docs(agent): hand off Stage 7 entry point
+
+Purpose: preserve the user's direction to begin the constrained Tool workshop
+in a new context without concealing the remaining Stage 6 trust work.
+
+Material changes:
+
+- Made the Stage 7 specification-to-immutable-candidate path the exact next
+  entry point.
+- Kept durable validation storage and OS confinement visible as blockers for
+  promotion, installation, and the Stage 7 exit gate.
+- Preserved the existing Stage 6 validator as the only validation authority
+  the workshop may consume.
+
+Validation actually run:
+
+- Confirmed the working tree was clean before this documentation-only handoff.
+- Reviewed the handoff wording against the gated roadmap and current Stage 6
+  limitations.
+
 ## 2026-08-28 - test(project): reverify scoped memory and built-ins
 
 Purpose: confirm the Stage 3 through Stage 5 execution path remains sound

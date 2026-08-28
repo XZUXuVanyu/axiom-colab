@@ -369,9 +369,13 @@ approval or evidence.
 
 ## Exact next work
 
-Continue Stage 6 by persisting captured candidate payloads and validator-issued
-records in an authenticated restart-safe immutable repository, then add an
-OS-specific confinement backend that actually enforces filesystem, descendant
-process, network, CPU, and memory limits. Do not infer confinement from declared
-policy. Preserve the current separation and default redaction of candidate,
-standard safety, and hidden user challenge suites.
+By explicit user direction, begin Stage 7 in the next context with the
+constrained Tool workshop contract and its structured specification -> immutable
+candidate revision path. Reuse the current Stage 6 snapshot and observed-runner
+boundary; do not add an alternate validation authority.
+
+Stage 6 remains incomplete, so Stage 7 may begin but cannot cross its promotion,
+installation, or exit gate yet. Before exact-hash installation can be enabled,
+return to the recorded Stage 6 gaps: authenticated restart-safe candidate and
+validation storage plus OS-enforced filesystem, descendant-process, network,
+CPU, and memory confinement. Do not infer confinement from declared policy.
