@@ -4,6 +4,11 @@ Last updated: 2026-08-28
 
 ## Current state
 
+- WSL 2 is now installed after the Windows reboot (`2.7.12.0`, kernel
+  `6.18.33.2`, default version 2), but no Linux distribution is registered.
+  The catalog lists `Ubuntu-24.04`; both the catalog-backed install and the
+  direct `--web-download` path failed before registration, so Linux
+  confinement capabilities remain unverified and unavailable.
 - Stage 7 has started with `source/ts/tool-workshop.ts`. Model or trusted-host
   authority can define copied, canonical-hash-bound structured Tool
   specifications and create captured candidate revisions whose descriptor,
@@ -203,6 +208,17 @@ Passed against the selected adapter baseline binaries:
 
 Attempted but blocked by the known managed-shell environment:
 
+- Post-reboot `wsl.exe --status` and `wsl.exe --version` confirmed WSL
+  `2.7.12.0`, kernel `6.18.33.2`, and default version 2. Distribution
+  enumeration required execution outside the managed filesystem sandbox and
+  then confirmed that no distributions are installed.
+- `wsl.exe --list --online` succeeded and listed `Ubuntu-24.04`. The first
+  `wsl.exe --install Ubuntu-24.04 --no-launch` attempt failed while downloading
+  with `Wsl/InstallDistro/0x80072f78` (invalid or unrecognized server
+  response). A retry through `--web-download` also exited without registering
+  a distribution. No namespace, cgroup, Bubblewrap, network-isolation,
+  automount, or interoperability claim was inferred from the WSL platform
+  install alone.
 - `powershell.exe -ExecutionPolicy Bypass -File
   .\proj\scripts\build-and-test.ps1 -SkipHarnessInspection`
 - CMake selected Visual Studio 18 2026 but reported an unknown C++ compiler and
@@ -457,26 +473,27 @@ installation controls:
 
 ## Exact next work
 
-The user initiated `wsl --install` and is rebooting Windows. After reboot,
-inspect the actual installed distribution and WSL version before changing code:
+The Windows reboot completed and WSL 2 is installed, but Ubuntu 24.04 LTS is
+not. Retry the selected distribution installation after the external download
+path is healthy:
 
 ```powershell
-wsl.exe --status
-wsl.exe --list --verbose
+wsl.exe --install Ubuntu-24.04 --no-launch
 ```
 
-If no distribution was installed by the generic command, install the selected
-Ubuntu 24.04 LTS distribution explicitly. Then verify Linux namespaces,
-cgroups, Bubblewrap availability, network isolation, Windows-drive automount,
-and Windows interoperability. WSL by itself is not evidence of confinement.
+Then confirm registration with `wsl.exe --list --verbose`, initialize the
+distribution without relying on interactive user creation, and verify Linux
+namespaces, cgroups, Bubblewrap availability, network isolation, Windows-drive
+automount, and Windows interoperability. WSL by itself is not evidence of
+confinement.
 
 Continue Stage 7 by adding an OS-specific validation backend that actually
 enforces and records filesystem, descendant-process, network, CPU, and memory
 confinement.
 
-Before the reboot, the machine had no usable external sandbox backend and the
-WSL stub reported that WSL was not installed. Do not mark any confinement
-observation true based only on installation or declared policy.
+The machine still has no usable external sandbox backend. Do not mark any
+confinement observation true based only on the installed WSL platform or
+declared policy.
 
 Only after those evidence blockers close, add and adversarially test the exact
 candidate + validation record + requested permissions + installation proposal
