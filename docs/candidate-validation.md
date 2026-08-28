@@ -36,15 +36,24 @@ Timeout and stdin/stdout/stderr limits produce a distinct `limited` outcome.
 The overall record fails or is limited if any of the three independent suite
 classes is not observed passing.
 
-Without a durable repository, the runner recognizes promotion eligibility only
-for a deeply frozen record it issued in the current process. When configured
-with `LocalCandidateRepository` and a host-issued validator credential, it
+Without a durable repository, the runner recognizes authenticity only for a
+deeply frozen record it issued in the current process. When configured with
+`LocalCandidateRepository` and a host-issued validator credential, it
 atomically stores the public snapshot/record plus the private captured
 descriptor, source, fixture, policy, toolchain, and complete suite definitions.
 The credential is persisted only as a SHA-256 digest bound to the validator
-actor. After restart, an exact deserialized record is eligible only when the
-repository contains the matching passing snapshot and record with valid
-content bindings. Altered or merely record-shaped JSON remains ineligible.
+actor. After restart, an exact deserialized record is authentic only when the
+repository contains the matching snapshot and record with valid content
+bindings. Altered or merely record-shaped JSON is not authentic.
+
+Authenticity and observed test success are still insufficient for promotion.
+Every record explicitly binds confinement observations. The current direct
+process runner records all five required controls—filesystem, descendant
+processes, network, CPU, and memory—as unenforced, so promotion eligibility
+fails closed even for an authentic passing record. A later backend must provide
+the actual controls and observations; callers cannot promote by changing the
+record-shaped JSON because that invalidates its record hash and repository
+identity.
 
 ## Hidden challenge boundary
 

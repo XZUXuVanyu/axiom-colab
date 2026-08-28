@@ -331,7 +331,7 @@ export class LocalCandidateRepository {
             privatePayloadHash: row.private_payload_hash
         };
     }
-    isPromotionEligible(snapshotHash, record) {
+    isValidationAuthentic(snapshotHash, record) {
         try {
             const stored = this.inspectValidation(record.workspaceId, record.validationId);
             return stored !== null && stored.record.outcome === 'passed' && stored.snapshot.snapshotHash === snapshotHash && canonicalJson(stored.record) === canonicalJson(record);

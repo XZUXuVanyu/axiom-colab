@@ -177,6 +177,14 @@ export class CandidateValidationRunner {
                 startedAt,
                 completedAt,
                 outcome: overallOutcome(suiteRuns.map((suite)=>suite.outcome)),
+                confinement: {
+                    backend: 'none',
+                    filesystem: false,
+                    descendantProcesses: false,
+                    network: false,
+                    cpu: false,
+                    memory: false
+                },
                 suites: suiteRuns
             };
             const record = deepFreeze({
@@ -200,12 +208,15 @@ export class CandidateValidationRunner {
         }
     }
     isPromotionEligible(snapshotHash, record) {
+        return record.outcome === 'passed' && confinementSatisfied(record.confinement) && this.isValidationAuthentic(snapshotHash, record);
+    }
+    isValidationAuthentic(snapshotHash, record) {
         if (this.evidenceRepository !== undefined) {
-            return this.evidenceRepository.isPromotionEligible(snapshotHash, record);
+            return this.evidenceRepository.isValidationAuthentic(snapshotHash, record);
         }
         if (!this.issuedRecords.has(record)) return false;
         const { recordHash, ...recordWithoutHash } = record;
-        return record.outcome === 'passed' && record.candidateSnapshotHash === snapshotHash && recordHash === contentHash(recordWithoutHash);
+        return record.candidateSnapshotHash === snapshotHash && recordHash === contentHash(recordWithoutHash);
     }
     async prepare(request) {
         let capturedSources;
@@ -350,6 +361,9 @@ export class CandidateValidationRunner {
             };
         }
     }
+}
+function confinementSatisfied(confinement) {
+    return confinement.filesystem && confinement.descendantProcesses && confinement.network && confinement.cpu && confinement.memory;
 }
 export function validationRecordJson(record) {
     return canonicalJson(record);

@@ -21,9 +21,9 @@ Last updated: 2026-08-28
 - The repository issues validator bearer credentials, persists only their
   actor-bound digests, and atomically stores public snapshots/records beside
   private captured source, fixture, policy, toolchain, and hidden-suite
-  material. Exact passing records remain promotion-eligible after restart;
-  altered, unauthenticated, mismatched, corrupt, or cross-workspace evidence
-  fails closed. Private challenge material is not returned by inspection.
+  material. Exact records remain authentic after restart; altered,
+  unauthenticated, mismatched, corrupt, or cross-workspace evidence fails
+  closed. Private challenge material is not returned by inspection.
 - Stage 6 has started with `source/ts/candidate-validation.ts`. It captures
   caller-owned bytes and command definitions before execution, produces an
   exact content-bound candidate snapshot, and runs candidate, standard, and
@@ -41,6 +41,10 @@ Last updated: 2026-08-28
 - This is not yet the Stage 6 exit gate. OS-enforced filesystem,
   descendant-process, network, CPU, and memory confinement remain to be
   implemented.
+- Validation records now bind explicit observations for all five confinement
+  classes. The current direct runner records every class as unenforced, and
+  promotion eligibility fails closed even for an authentic passing record.
+  Restart-safe evidence authenticity is deliberately separate from promotion.
 - Stage 5 is complete. Production discovery now exposes the pure
   `add_numbers`, scoped `compute_buffer`, and trusted immutable
   `derive_artifact` C++ built-ins. The memory-only test Tool remains linked
@@ -143,6 +147,14 @@ otherwise modified by the consolidation work.
 
 Passed in `D:\Dev\axiom-colab`:
 
+- Confinement fail-closed `pnpm.cmd test`: all 53 TypeScript tests passed;
+  authentic passing records survive restart but remain non-promotable while
+  required confinement observations are false.
+- Confinement environment re-check found no Docker, Podman, Windows Sandbox,
+  Bubblewrap, or Firejail executable. `wsl.exe` exists but reports WSL is not
+  installed. The managed shell denied a CIM OS query.
+- Confinement fail-closed `git diff --check`: passed with newline-conversion
+  notices only.
 - Salted challenge commitment `pnpm.cmd test`: all 53 TypeScript tests passed,
   including fresh commitment variance, unsalted-guess rejection, stable public
   suite hashes, private salt binding, and salt redaction.
@@ -448,6 +460,11 @@ installation controls:
 Continue Stage 7 by adding an OS-specific validation backend that actually
 enforces and records filesystem, descendant-process, network, CPU, and memory
 confinement.
+
+The current machine has no installed external sandbox backend. Continue with a
+native Windows restricted-token/Job Object backend, or install and explicitly
+select a suitable isolation backend before implementing its adapter. Do not
+mark any confinement observation true based only on declared policy.
 
 Only after those evidence blockers close, add and adversarially test the exact
 candidate + validation record + requested permissions + installation proposal

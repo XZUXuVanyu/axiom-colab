@@ -97,7 +97,7 @@ function validationRequest() {
   }
 }
 
-test('authenticated validator evidence remains promotion-eligible after restart', async () => {
+test('authenticated validator evidence remains authentic but not promotable after restart', async () => {
   const path = databasePath()
   let repository = new LocalCandidateRepository(path)
   const token = repository.issueValidatorCredential('actor:validator')
@@ -107,7 +107,9 @@ test('authenticated validator evidence remains promotion-eligible after restart'
   assert.equal(immediate?.record.outcome, 'passed')
   assert.equal(immediate?.snapshot.snapshotHash, result.snapshot.snapshotHash)
   assert.equal(canonicalJson(immediate?.record), canonicalJson(result.record))
-  assert.equal(runner.isPromotionEligible(result.snapshot.snapshotHash, result.record), true)
+  assert.equal(repository.isValidationAuthentic(result.snapshot.snapshotHash, result.record), true)
+  assert.equal(runner.isValidationAuthentic(result.snapshot.snapshotHash, result.record), true)
+  assert.equal(runner.isPromotionEligible(result.snapshot.snapshotHash, result.record), false)
   assert.throws(
     () => repository.recordValidation('wrong-token', result, {}),
     (error: unknown) => (error as { code?: string }).code === 'VALIDATOR_NOT_AUTHENTICATED',
@@ -126,7 +128,9 @@ test('authenticated validator evidence remains promotion-eligible after restart'
 
   repository = new LocalCandidateRepository(path)
   const restarted = new CandidateValidationRunner({ evidenceRepository: repository, validatorCredential: token })
-  assert.equal(restarted.isPromotionEligible(result.snapshot.snapshotHash, { ...result.record }), true)
+  assert.equal(repository.isValidationAuthentic(result.snapshot.snapshotHash, { ...result.record }), true)
+  assert.equal(restarted.isValidationAuthentic(result.snapshot.snapshotHash, { ...result.record }), true)
+  assert.equal(restarted.isPromotionEligible(result.snapshot.snapshotHash, { ...result.record }), false)
   assert.equal(restarted.isPromotionEligible(result.snapshot.snapshotHash, { ...result.record, outcome: 'failed' }), false)
   const inspection = repository.inspectValidation(result.record.workspaceId, result.record.validationId)
   assert.equal(inspection?.record.outcome, 'passed')
@@ -145,7 +149,7 @@ test('stored validation tampering fails integrity and promotion checks', async (
   database.prepare("UPDATE validations SET record_json='{}' WHERE validation_id=?").run(result.record.validationId)
   database.close()
   repository = new LocalCandidateRepository(path)
-  assert.equal(repository.isPromotionEligible(result.snapshot.snapshotHash, result.record), false)
+  assert.equal(repository.isValidationAuthentic(result.snapshot.snapshotHash, result.record), false)
   assert.throws(
     () => repository.inspectValidation(result.record.workspaceId, result.record.validationId),
     (error: unknown) => (error as { code?: string }).code === 'CORRUPT_VALIDATION_EVIDENCE',

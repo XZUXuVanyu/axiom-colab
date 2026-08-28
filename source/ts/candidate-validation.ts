@@ -131,8 +131,18 @@ export interface ValidationRecord {
   readonly startedAt: string
   readonly completedAt: string
   readonly outcome: ValidationOutcome
+  readonly confinement: ValidationConfinement
   readonly suites: readonly ValidationSuiteRun[]
   readonly recordHash: `sha256:${string}`
+}
+
+export interface ValidationConfinement {
+  readonly backend: string
+  readonly filesystem: boolean
+  readonly descendantProcesses: boolean
+  readonly network: boolean
+  readonly cpu: boolean
+  readonly memory: boolean
 }
 
 export interface CandidateValidationResult {
@@ -159,7 +169,7 @@ export interface CandidateValidationRunnerOptions {
 
 export interface ValidationEvidenceRepository {
   recordValidation(token: string, result: CandidateValidationResult, privatePayload: unknown): void
-  isPromotionEligible(snapshotHash: string, record: ValidationRecord): boolean
+  isValidationAuthentic(snapshotHash: string, record: ValidationRecord): boolean
 }
 
 interface PreparedCandidate {
@@ -337,6 +347,14 @@ export class CandidateValidationRunner {
         startedAt,
         completedAt,
         outcome: overallOutcome(suiteRuns.map((suite) => suite.outcome)),
+        confinement: {
+          backend: 'none' as const,
+          filesystem: false as const,
+          descendantProcesses: false as const,
+          network: false as const,
+          cpu: false as const,
+          memory: false as const,
+        },
         suites: suiteRuns,
       }
       const record = deepFreeze({ ...recordWithoutHash, recordHash: contentHash(recordWithoutHash) })
@@ -352,13 +370,18 @@ export class CandidateValidationRunner {
   }
 
   isPromotionEligible(snapshotHash: string, record: ValidationRecord): boolean {
+    return record.outcome === 'passed'
+      && confinementSatisfied(record.confinement)
+      && this.isValidationAuthentic(snapshotHash, record)
+  }
+
+  isValidationAuthentic(snapshotHash: string, record: ValidationRecord): boolean {
     if (this.evidenceRepository !== undefined) {
-      return this.evidenceRepository.isPromotionEligible(snapshotHash, record)
+      return this.evidenceRepository.isValidationAuthentic(snapshotHash, record)
     }
     if (!this.issuedRecords.has(record)) return false
     const { recordHash, ...recordWithoutHash } = record
-    return record.outcome === 'passed'
-      && record.candidateSnapshotHash === snapshotHash
+    return record.candidateSnapshotHash === snapshotHash
       && recordHash === contentHash(recordWithoutHash)
   }
 
@@ -478,6 +501,14 @@ export class CandidateValidationRunner {
       }
     }
   }
+}
+
+function confinementSatisfied(confinement: ValidationConfinement): boolean {
+  return confinement.filesystem
+    && confinement.descendantProcesses
+    && confinement.network
+    && confinement.cpu
+    && confinement.memory
 }
 
 export function validationRecordJson(record: ValidationRecord): string {

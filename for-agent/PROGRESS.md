@@ -4,6 +4,32 @@ Entries are chronological. Each entry corresponds to one logical Git commit and
 records its exact subject, purpose, material changes, and validation actually
 performed.
 
+## 2026-08-28 - fix(validation): fail promotion closed without confinement
+
+Purpose: prevent authentic passing process results from being mistaken for
+promotion-ready validation when no OS isolation backend actually ran.
+
+Material changes:
+
+- Bound explicit filesystem, descendant-process, network, CPU, and memory
+  confinement observations into every validation record.
+- Recorded the current direct runner backend as enforcing none of those
+  controls and made promotion eligibility require all five.
+- Separated restart-safe evidence authenticity from promotion eligibility, so
+  exact stored records remain inspectable and verifiable but cannot authorize
+  promotion before real confinement exists.
+- Rechecked the local Windows environment: Docker, Podman, Windows Sandbox,
+  Bubblewrap, and Firejail are absent; `wsl.exe` exists but reports that WSL is
+  not installed. A CIM OS query was also denied by the managed environment.
+
+Validation actually run:
+
+- `pnpm.cmd test`: passed all 53 TypeScript tests and regenerated `dist/`.
+- Tests prove authentic records survive restart while promotion fails closed,
+  changed candidate hashes remain ineligible, and confinement absence is
+  explicit in the authoritative record.
+- `git diff --check`: passed with newline-conversion notices only.
+
 ## 2026-08-28 - fix(validation): salt hidden challenge commitments
 
 Purpose: prevent public validation metadata from enabling offline guesses of
