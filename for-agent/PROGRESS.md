@@ -4,6 +4,24 @@ Entries are chronological. Each entry corresponds to one logical Git commit and
 records its exact subject, purpose, material changes, and validation actually
 performed.
 
+## 2026-08-28 - docs(agent): record pending WSL reboot
+
+Purpose: preserve the exact environment transition and post-reboot validation
+entry point before the user restarts Windows.
+
+Material changes:
+
+- Recorded that the user initiated `wsl --install` and is rebooting.
+- Made WSL status, installed-distribution, namespace, cgroup, Bubblewrap,
+  network, Windows-drive, and interoperability checks the next actions.
+- Preserved that installing WSL alone does not satisfy or prove any validation
+  confinement control.
+
+Validation actually run:
+
+- Confirmed the working tree was clean before this documentation-only update.
+- No post-install WSL validation ran because Windows has not yet rebooted.
+
 ## 2026-08-28 - fix(validation): fail promotion closed without confinement
 
 Purpose: prevent authentic passing process results from being mistaken for

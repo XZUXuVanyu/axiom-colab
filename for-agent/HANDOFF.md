@@ -457,14 +457,26 @@ installation controls:
 
 ## Exact next work
 
+The user initiated `wsl --install` and is rebooting Windows. After reboot,
+inspect the actual installed distribution and WSL version before changing code:
+
+```powershell
+wsl.exe --status
+wsl.exe --list --verbose
+```
+
+If no distribution was installed by the generic command, install the selected
+Ubuntu 24.04 LTS distribution explicitly. Then verify Linux namespaces,
+cgroups, Bubblewrap availability, network isolation, Windows-drive automount,
+and Windows interoperability. WSL by itself is not evidence of confinement.
+
 Continue Stage 7 by adding an OS-specific validation backend that actually
 enforces and records filesystem, descendant-process, network, CPU, and memory
 confinement.
 
-The current machine has no installed external sandbox backend. Continue with a
-native Windows restricted-token/Job Object backend, or install and explicitly
-select a suitable isolation backend before implementing its adapter. Do not
-mark any confinement observation true based only on declared policy.
+Before the reboot, the machine had no usable external sandbox backend and the
+WSL stub reported that WSL was not installed. Do not mark any confinement
+observation true based only on installation or declared policy.
 
 Only after those evidence blockers close, add and adversarially test the exact
 candidate + validation record + requested permissions + installation proposal
