@@ -16,6 +16,7 @@ export * from './candidate-validation.js'
 export * from './wsl-validation-backend.js'
 export * from './tool-workshop.js'
 export * from './tool-installation-proposal.js'
+export * from './tool-installation.js'
 export * from './candidate-repository.js'
 
 export const name = 'general-ts-cpp-adapter'

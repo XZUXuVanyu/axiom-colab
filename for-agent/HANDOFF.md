@@ -18,7 +18,22 @@ Last updated: 2026-08-28
   namespaces and a minimal filesystem; systemd and `prlimit` enforce policy-
   bound runtime, memory, CPU, task, process, and descendant limits. The direct
   backend remains available but records every confinement class false.
-- Stage 7 has started with `source/ts/tool-workshop.ts`. Model or trusted-host
+- Stage 7 is complete. `ToolInstallationService` consumes one exact stored user
+  approval only under trusted-host authority, repeats all live candidate,
+  specification, permission, proposal, approval, and promotable-validation
+  checks, and atomically claims the approval before touching installed state.
+- Candidate descriptor and source bytes are verified in an installation-owned
+  staging directory and atomically promoted into workspace-scoped,
+  content-addressed version locations. Append-only success or failure evidence
+  binds the exact candidate and authority transition; replay, cross-workspace
+  access, stale candidates, staging/final path collision, partial work, and
+  registration failure remain non-discoverable.
+- Restart rediscovery reads only successful installation evidence, re-verifies
+  the repository bindings and exact installed bytes, and supplies a host-owned
+  registry with the exact candidate and installation-evidence hashes. Corrupt
+  bytes stop exposure, and batch registration rolls back through registry
+  disposers when available.
+- Stage 7 began with `source/ts/tool-workshop.ts`. Model or trusted-host
   authority can define copied, canonical-hash-bound structured Tool
   specifications and create captured candidate revisions whose descriptor,
   ordered source bytes, specification, stable candidate identity, and prior
@@ -33,10 +48,10 @@ Last updated: 2026-08-28
   permissions, proposal author/identity/time, and canonical proposal hash.
   Only trusted user context can approve or reject; approval rechecks all live
   bindings and atomically persists a separately hashed approval record.
-- Installation proposals and approvals survive repository restart. Model
+- Installation proposals, approvals, claims, and immutable installation
+  evidence survive repository restart. Model
   authority, cross-workspace lookup, replay, superseded candidates, altered
-  validation or permissions, and stale proposal hashes fail closed. No actual
-  installation, registration, or rediscovery method exists yet.
+  validation or permissions, and stale proposal hashes fail closed.
 - `LocalCandidateRepository` now provides transactional, restart-safe storage
   for specifications, exact candidate descriptor/source payloads, revision
   chains, and current/superseded state. Repository-backed workshops reopen,
@@ -172,6 +187,15 @@ otherwise modified by the consolidation work.
 
 Passed in `D:\Dev\axiom-colab`:
 
+- Trusted installation `pnpm.cmd test`: all 61 TypeScript tests passed,
+  including exact approval consumption, restart rediscovery, installed-byte
+  corruption rejection, trusted-host authority, cross-workspace denial,
+  replay denial, registration cleanup, staging/final collision safety, and
+  post-approval candidate invalidation.
+- Trusted installation `git diff --check`: passed with newline-conversion
+  notices only. A separate TypeScript compiler check was unavailable because
+  this repository does not install the `tsc` executable; the project build and
+  runtime test loader completed successfully.
 - Installation proposal `pnpm.cmd test`: all 56 TypeScript tests passed,
   including restart-safe proposal/approval persistence, exact candidate,
   validation and permission binding, trusted-user authority, cross-workspace
@@ -411,7 +435,7 @@ Exit gate: fabricated result JSON cannot create passing validation; candidate
 changes invalidate promotion eligibility; hidden tests remain undisclosed; all
 failures and resource limits are attributable to the exact run.
 
-### Stage 7 - Build the constrained Tool workshop
+### Stage 7 - Build the constrained Tool workshop (complete)
 
 Implement the staged workflow from missing capability to structured
 specification, immutable candidate revision, generated C++ source, descriptor
@@ -479,7 +503,7 @@ IDE on a clean local installation; adversarial acceptance tests pass; trusted
 records remain independently inspectable; no step relies on model assertion as
 approval or evidence.
 
-## Blocking and potential problems to re-check during Stage 7
+## Blocking and potential problems to re-check during Stage 8
 
 Treat this as a mandatory gate before Stage 8 exposes validation, approval, or
 installation controls:
@@ -503,9 +527,14 @@ installation controls:
   candidate, validation record, requested permissions, and installation
   proposal hash. Preserve this recheck when implementing installation;
   model-authored strings or record-shaped JSON cannot approve or install.
-- Installation and rediscovery must remain disabled until the exact Stage 7
-  proposal and trusted-user approval binding is implemented and adversarially
-  tested.
+- The installed-Tool registry is a host-supplied backend boundary. Stage 8 must
+  compose it with the real application lifecycle and show only successful,
+  byte-reverified rediscovery results; the UI must not infer installation from
+  files, candidate claims, proposals, or approval state alone.
+- Installation records exact captured source and descriptor bytes but does not
+  silently edit or rebuild the production C++ Bridge. Any executable loading
+  strategy added for the IDE must preserve the registered candidate and
+  installation-evidence hashes rather than substituting a later build.
 - Ignored C++ build products can be stale. Rebuild the selected Bridge before
   real integration checks; the recent regression run initially found a stale
   `build/windows/Release` binary rather than a source defect.
@@ -518,15 +547,15 @@ installation controls:
 
 ## Exact next work
 
-Implement the trusted installation transition that consumes an exact stored
-approval, rechecks the current candidate, promotable validation, permissions,
-proposal and approval hashes, copies only captured candidate bytes into a
-versioned installed-Tool location, and records immutable installation evidence.
-Changed or replayed approval, stale candidate, path collision, partial write,
-registration failure, and cross-workspace access must fail closed. Registration
-and rediscovery must expose only the exact installed hash.
+Begin Stage 8 by defining one UI-independent supervisory application model for
+workspace/goal selection, the immutable activity timeline, current approved
+plan, discovered built-ins and installed Tools, memory/resource status,
+candidate/validation/approval state, and stop/revoke/recovery actions. Compose
+that model from the existing authoritative services and add projection tests
+that keep model claims, observations, validation evidence, user approval, and
+installed state visibly distinct before wiring Qt controls.
 
-Do not add Stage 8 controls until installation and rediscovery complete this
-authority gate. Keep the WSL integration suite opt-in for portable CI, and run
-it explicitly on the supported Windows/Ubuntu composition before changing its
-confinement claims.
+Keep the WSL integration suite opt-in for portable CI, and run it explicitly on
+the supported Windows/Ubuntu composition before changing its confinement
+claims. The Qt layer must not implement alternate memory, validation, approval,
+installation, or registration authority.

@@ -4,6 +4,7 @@ import { dirname, resolve } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { captureCandidateFiles } from './candidate-content.js';
 import { installationProposalBinding } from './tool-installation-proposal.js';
+import { installationClaimBinding, installationEvidenceBinding } from './tool-installation.js';
 import { canonicalJson, contentHash } from './laboratory-contract.js';
 export class CandidateRepositoryError extends Error {
     code;
@@ -159,7 +160,7 @@ export class LocalCandidateRepository {
     }
     migrate() {
         let version = this.database.prepare('PRAGMA user_version').get().user_version;
-        if (version > 2) fail('UNSUPPORTED_CANDIDATE_STORE_VERSION', `candidate schema version ${version} is newer than supported version 2`);
+        if (version > 3) fail('UNSUPPORTED_CANDIDATE_STORE_VERSION', `candidate schema version ${version} is newer than supported version 3`);
         if (version === 0) this.database.exec(`
       BEGIN IMMEDIATE;
       CREATE TABLE specifications (
@@ -232,6 +233,37 @@ export class LocalCandidateRepository {
         FOREIGN KEY(workspace_id,proposal_id) REFERENCES installation_proposals(workspace_id,proposal_id)
       ) STRICT;
       PRAGMA user_version = 2;
+      COMMIT;
+    `);
+        if (version <= 1) version = 2;
+        if (version === 2) this.database.exec(`
+      BEGIN IMMEDIATE;
+      CREATE TABLE installation_claims (
+        workspace_id TEXT NOT NULL,
+        installation_id TEXT NOT NULL,
+        proposal_id TEXT NOT NULL,
+        approval_id TEXT NOT NULL,
+        candidate_hash TEXT NOT NULL,
+        claim_hash TEXT NOT NULL,
+        public_json TEXT NOT NULL,
+        PRIMARY KEY(workspace_id,installation_id),
+        UNIQUE(workspace_id,proposal_id),
+        UNIQUE(workspace_id,approval_id),
+        UNIQUE(workspace_id,claim_hash),
+        FOREIGN KEY(workspace_id,proposal_id) REFERENCES installation_proposals(workspace_id,proposal_id)
+      ) STRICT;
+      CREATE TABLE installation_evidence (
+        workspace_id TEXT NOT NULL,
+        installation_id TEXT NOT NULL,
+        outcome TEXT NOT NULL CHECK(outcome IN ('installed','failed')),
+        evidence_hash TEXT NOT NULL,
+        public_json TEXT NOT NULL,
+        PRIMARY KEY(workspace_id,installation_id),
+        UNIQUE(workspace_id,evidence_hash),
+        FOREIGN KEY(workspace_id,installation_id) REFERENCES installation_claims(workspace_id,installation_id)
+      ) STRICT;
+      CREATE INDEX installed_tool_discovery ON installation_evidence(workspace_id,outcome,installation_id);
+      PRAGMA user_version = 3;
       COMMIT;
     `);
     }
@@ -422,6 +454,54 @@ export class LocalCandidateRepository {
         this.ensureOpen();
         const changed = this.database.prepare("UPDATE installation_proposals SET state='rejected',decided_at=?,decided_by=? WHERE workspace_id=? AND proposal_id=? AND state='proposed'").run(decidedAt, actorId, proposal.workspaceId, proposal.proposalId);
         if (changed.changes !== 1) fail('PROPOSAL_NOT_PENDING', 'installation proposal is no longer pending');
+    }
+    claimInstallation(claim) {
+        this.ensureOpen();
+        if (claim.claimHash !== contentHash(installationClaimBinding(claim))) fail('INVALID_INSTALLATION_CLAIM', 'installation claim binding is invalid');
+        const proposal = this.inspectInstallationProposal(claim.workspaceId, claim.proposalId);
+        const approval = this.inspectInstallationApproval(claim.workspaceId, claim.proposalId);
+        if (proposal === null || approval === null || proposal.state !== 'approved' || proposal.proposalHash !== claim.proposalHash || approval.approvalId !== claim.approvalId || approval.approvalHash !== claim.approvalHash || proposal.candidateId !== claim.candidateId || proposal.candidateHash !== claim.candidateHash) {
+            fail('INVALID_INSTALLATION_CLAIM', 'installation claim does not consume the exact stored approval');
+        }
+        try {
+            this.database.prepare('INSERT INTO installation_claims VALUES (?,?,?,?,?,?,?)').run(claim.workspaceId, claim.installationId, claim.proposalId, claim.approvalId, claim.candidateHash, claim.claimHash, canonicalJson(claim));
+        } catch (error) {
+            if (String(error).includes('UNIQUE constraint failed')) fail('INSTALLATION_APPROVAL_ALREADY_CONSUMED', 'installation approval or identity has already been consumed');
+            throw error;
+        }
+    }
+    recordInstallationEvidence(evidence) {
+        this.ensureOpen();
+        if (evidence.evidenceHash !== contentHash(installationEvidenceBinding(evidence)) || evidence.outcome === 'installed' === (evidence.failureCode !== null) || evidence.permissionsHash !== contentHash(evidence.requestedPermissions)) {
+            fail('INVALID_INSTALLATION_EVIDENCE', 'installation evidence binding is invalid');
+        }
+        const row = this.database.prepare('SELECT public_json FROM installation_claims WHERE workspace_id=? AND installation_id=?').get(evidence.workspaceId, evidence.installationId);
+        if (row === undefined) fail('INSTALLATION_CLAIM_NOT_FOUND', 'installation claim is not stored in this workspace');
+        const claim = parsed(row.public_json, 'CORRUPT_INSTALLATION_CLAIM');
+        if (claim.claimHash !== contentHash(installationClaimBinding(claim)) || claim.proposalId !== evidence.proposalId || claim.proposalHash !== evidence.proposalHash || claim.approvalId !== evidence.approvalId || claim.approvalHash !== evidence.approvalHash || claim.candidateId !== evidence.candidateId || claim.candidateHash !== evidence.candidateHash || claim.claimedBy !== evidence.completedBy) {
+            fail('INVALID_INSTALLATION_EVIDENCE', 'installation evidence does not bind its exact claim');
+        }
+        try {
+            this.database.prepare('INSERT INTO installation_evidence VALUES (?,?,?,?,?)').run(evidence.workspaceId, evidence.installationId, evidence.outcome, evidence.evidenceHash, canonicalJson(evidence));
+        } catch (error) {
+            if (String(error).includes('UNIQUE constraint failed')) fail('IMMUTABLE_INSTALLATION_EVIDENCE', 'installation evidence is already stored');
+            throw error;
+        }
+    }
+    inspectInstallationEvidence(workspaceId, installationId) {
+        this.ensureOpen();
+        const row = this.database.prepare('SELECT public_json FROM installation_evidence WHERE workspace_id=? AND installation_id=?').get(workspaceId, installationId);
+        if (row === undefined) return null;
+        const evidence = parsed(row.public_json, 'CORRUPT_INSTALLATION_EVIDENCE');
+        if (evidence.workspaceId !== workspaceId || evidence.installationId !== installationId || evidence.evidenceHash !== contentHash(installationEvidenceBinding(evidence)) || evidence.outcome === 'installed' === (evidence.failureCode !== null) || evidence.permissionsHash !== contentHash(evidence.requestedPermissions)) {
+            fail('CORRUPT_INSTALLATION_EVIDENCE', 'stored installation evidence failed its binding');
+        }
+        return evidence;
+    }
+    listInstalledTools(workspaceId) {
+        this.ensureOpen();
+        const rows = this.database.prepare("SELECT installation_id FROM installation_evidence WHERE workspace_id=? AND outcome='installed' ORDER BY installation_id").all(workspaceId);
+        return rows.map((row)=>this.inspectInstallationEvidence(workspaceId, row.installation_id)).filter((value)=>value !== null);
     }
     revisionRow(workspaceId, revisionId) {
         this.ensureOpen();

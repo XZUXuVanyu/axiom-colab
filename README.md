@@ -13,7 +13,8 @@ for structured Tool specifications, immutable candidate revisions, and
 authenticated validator evidence, plus an opt-in WSL2/Bubblewrap backend that
 enforces filesystem, process, network, CPU, and memory isolation. Exact
 candidate/validation/permission installation proposals and trusted-user
-approvals are durable, while actual installation remains disabled. Its root
+approvals now feed a trusted-host installation transition with immutable
+evidence, content-addressed candidate bytes, and restart-safe rediscovery. Its root
 validation entry points are:
 
 ```powershell
@@ -24,9 +25,9 @@ powershell.exe -ExecutionPolicy Bypass `
 ```
 
 The optional Qt frontend is built by the CMake project when Qt 6 Widgets is
-available. The default direct validator remains non-promotable; trusted
-production composition and exact proposal approval/installation remain later
-work.
+available. The default direct validator remains non-promotable; production must
+explicitly compose the enforcing validator, durable repository, installation
+root, and installed-Tool registry before exposing the workflow in the UI.
 
 See `docs/built-in-tools-and-goals.md` for the built-in/fixture boundary and
 minimal goal flow, and `docs/candidate-validation.md` for the current validation

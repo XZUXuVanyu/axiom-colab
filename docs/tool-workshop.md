@@ -1,9 +1,9 @@
 # Constrained Tool workshop
 
-Stage 7 begins with the provider- and UI-independent `ToolWorkshop` contract in
-`source/ts/tool-workshop.ts`. This first slice covers the path from a structured
-missing-capability specification to immutable, content-bound candidate source
-revisions. It does not approve, install, or register a Tool.
+Stage 7 provides provider- and UI-independent workshop, validation proposal,
+approval, installation, and rediscovery contracts. The path begins with a
+structured missing-capability specification and ends with exact-hash registered
+candidate bytes; each authority transition remains independently inspectable.
 
 ## Structured specifications
 
@@ -71,13 +71,36 @@ approval record. Restart, cross-workspace access, replay, model authority, and a
 candidate revision after proposal all fail closed. The service accepts no
 model-authored approval string and exposes no installation method.
 
+## Trusted installation and rediscovery
+
+`ToolInstallationService` accepts only trusted-host context and consumes one
+exact stored user approval. Immediately before installation it rechecks the
+current candidate, captured descriptor and sources, specification, requested
+permissions, proposal and approval hashes, and authentic promotable validation.
+The repository atomically claims the approval so replay and concurrent reuse
+fail closed.
+
+Candidate descriptor and source bytes are first written to an installation-owned
+staging directory, verified against the approved revision, and atomically moved
+to a workspace-scoped content-addressed location. Registration receives the
+candidate hash and immutable installation-evidence hash. An append-only success
+or failure record binds the complete transition. Registration failure, partial
+write, path collision, stale candidate, cross-workspace access, and replay never
+enter installed-Tool discovery.
+
+Restart rediscovery reads only successful installation evidence, re-verifies the
+stored candidate and exact installed bytes, and registers the same candidate and
+evidence hashes. Corrupt or missing bytes stop discovery; registrations already
+performed in the same batch are rolled back when the registry provides a
+disposer.
+
 ## Deliberate limits
 
 The optional WSL2 backend now closes the five-class OS confinement gate when it
 is explicitly composed and its exact policy is bound into the candidate
 snapshot. The default direct runner still fails promotion closed.
 
-The API now exposes proposal approval and rejection, but no installation,
-registration, or rediscovery operation. Installation must consume the exact
-stored approval and recheck every bound hash; the Qt UI must not present an
-installation control before that final authority transition exists.
+The service registers an exact installed candidate through a host-supplied
+registry; it does not silently edit or rebuild the production C++ Bridge. The
+Qt UI remains an authoring shell and must compose these backend authorities
+instead of implementing an alternate approval or installation path.
