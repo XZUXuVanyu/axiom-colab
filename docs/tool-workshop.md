@@ -55,13 +55,29 @@ The same repository accepts validator evidence only with a host-issued bearer
 credential whose digest is bound to the validator actor. Public inspection
 returns redacted snapshots and records, never private challenge definitions.
 
+## Installation proposal and approval
+
+`ToolInstallationProposalService` creates an immutable proposal only for the
+current candidate revision and an authentic, passing, fully confined validation
+whose descriptor and source hashes match that revision. The proposal binds its
+own identity and author, the specification and candidate hashes, exact
+validation/snapshot/record hashes, and the specification's exact requested
+permissions. The complete proposal is content-hashed and stored transactionally.
+
+Only trusted user context can approve or reject. Approval rechecks the current
+candidate, specification, permission, validation, and proposal bindings before
+atomically changing proposal state and storing a separately content-hashed
+approval record. Restart, cross-workspace access, replay, model authority, and a
+candidate revision after proposal all fail closed. The service accepts no
+model-authored approval string and exposes no installation method.
+
 ## Deliberate limits
 
 The optional WSL2 backend now closes the five-class OS confinement gate when it
 is explicitly composed and its exact policy is bound into the candidate
 snapshot. The default direct runner still fails promotion closed.
 
-The API exposes no approval, installation, registration, or rediscovery
-operation yet. Exact candidate, validation record, requested permission, and
-installation-proposal binding remains the next Stage 7 authority boundary, and
-the Qt UI must not present approval or installation controls before it exists.
+The API now exposes proposal approval and rejection, but no installation,
+registration, or rediscovery operation. Installation must consume the exact
+stored approval and recheck every bound hash; the Qt UI must not present an
+installation control before that final authority transition exists.

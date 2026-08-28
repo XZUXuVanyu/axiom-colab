@@ -11,7 +11,9 @@ integration, and the first Stage 6 candidate-validation contract and runner
 slice. Stage 7 now includes a constrained workshop and restart-safe repository
 for structured Tool specifications, immutable candidate revisions, and
 authenticated validator evidence, plus an opt-in WSL2/Bubblewrap backend that
-enforces filesystem, process, network, CPU, and memory isolation. Its root
+enforces filesystem, process, network, CPU, and memory isolation. Exact
+candidate/validation/permission installation proposals and trusted-user
+approvals are durable, while actual installation remains disabled. Its root
 validation entry points are:
 
 ```powershell

@@ -28,6 +28,15 @@ Last updated: 2026-08-28
   lookup fail closed, and materialization returns fresh copies for the existing
   Stage 6 validator to recapture. Workshop code cannot issue validation,
   approval, installation, registration, or rediscovery authority.
+- `ToolInstallationProposalService` now binds the exact current candidate,
+  specification, authentic promotable validation snapshot/record, requested
+  permissions, proposal author/identity/time, and canonical proposal hash.
+  Only trusted user context can approve or reject; approval rechecks all live
+  bindings and atomically persists a separately hashed approval record.
+- Installation proposals and approvals survive repository restart. Model
+  authority, cross-workspace lookup, replay, superseded candidates, altered
+  validation or permissions, and stale proposal hashes fail closed. No actual
+  installation, registration, or rediscovery method exists yet.
 - `LocalCandidateRepository` now provides transactional, restart-safe storage
   for specifications, exact candidate descriptor/source payloads, revision
   chains, and current/superseded state. Repository-backed workshops reopen,
@@ -163,6 +172,10 @@ otherwise modified by the consolidation work.
 
 Passed in `D:\Dev\axiom-colab`:
 
+- Installation proposal `pnpm.cmd test`: all 56 TypeScript tests passed,
+  including restart-safe proposal/approval persistence, exact candidate,
+  validation and permission binding, trusted-user authority, cross-workspace
+  denial, replay denial, and candidate-revision invalidation.
 - WSL confinement `pnpm.cmd test`: all 55 TypeScript tests passed, including
   fail-closed direct execution, required resource policy, local-drive path
   projection, and shell-free WSL argument construction.
@@ -486,9 +499,10 @@ installation controls:
 - The workshop must create immutable candidate revisions and keep failed,
   rejected, and superseded revisions visible. A source change must invalidate
   validation and any installation proposal.
-- Approval must come from trusted user context and bind the exact candidate,
-  validation record, requested permissions, and installation proposal hash.
-  Model-authored strings or record-shaped JSON cannot approve or install.
+- Approval now comes only from trusted user context and binds the exact
+  candidate, validation record, requested permissions, and installation
+  proposal hash. Preserve this recheck when implementing installation;
+  model-authored strings or record-shaped JSON cannot approve or install.
 - Installation and rediscovery must remain disabled until the exact Stage 7
   proposal and trusted-user approval binding is implemented and adversarially
   tested.
@@ -504,15 +518,15 @@ installation controls:
 
 ## Exact next work
 
-Add and adversarially test the exact candidate + authentic passing validation
-record + requested permissions + installation proposal binding. The proposal
-must be immutable and content-hashed; approval must come from trusted user
-context and bind that exact proposal hash. Changed candidates, policies,
-validation records, permissions, stale proposals, replay, model-authored
-approval strings, and records produced by the direct backend must fail closed.
+Implement the trusted installation transition that consumes an exact stored
+approval, rechecks the current candidate, promotable validation, permissions,
+proposal and approval hashes, copies only captured candidate bytes into a
+versioned installed-Tool location, and records immutable installation evidence.
+Changed or replayed approval, stale candidate, path collision, partial write,
+registration failure, and cross-workspace access must fail closed. Registration
+and rediscovery must expose only the exact installed hash.
 
-Do not add actual installation, rediscovery, or Stage 8 controls until this
-authority gate confirms that UI controls can consume authoritative backend
-state safely. Keep the WSL integration suite opt-in for portable CI, and run it
-explicitly on the supported Windows/Ubuntu composition before changing its
+Do not add Stage 8 controls until installation and rediscovery complete this
+authority gate. Keep the WSL integration suite opt-in for portable CI, and run
+it explicitly on the supported Windows/Ubuntu composition before changing its
 confinement claims.

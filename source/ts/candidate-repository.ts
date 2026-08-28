@@ -5,6 +5,11 @@ import { DatabaseSync } from 'node:sqlite'
 
 import { captureCandidateFiles, type CandidateFile } from './candidate-content.js'
 import type { CandidateSnapshot, CandidateValidationResult, ValidationRecord } from './candidate-validation.js'
+import {
+  installationProposalBinding,
+  type ToolInstallationApproval,
+  type ToolInstallationProposal,
+} from './tool-installation-proposal.js'
 import { canonicalJson, contentHash, type LaboratoryId } from './laboratory-contract.js'
 import type {
   CandidateRevision,
@@ -26,6 +31,7 @@ export interface StoredValidationInspection extends CandidateValidationResult {
 type SpecificationRow = { public_json: string }
 type RevisionRow = { public_json: string; state: string; descriptor_json: string; sources_json: string }
 type ValidationRow = { snapshot_json: string; record_json: string; private_payload_json: string; private_payload_hash: string }
+type InstallationProposalRow = { public_json: string; state: string }
 
 function fail(code: string, message: string): never {
   throw new CandidateRepositoryError(code, message)
@@ -76,6 +82,10 @@ function snapshotBinding(snapshot: CandidateSnapshot): unknown {
 function validRecord(record: ValidationRecord): boolean {
   const { recordHash, ...binding } = record
   return recordHash === contentHash(binding)
+}
+
+function approvalBinding(value: ToolInstallationApproval): unknown {
+  return { protocolVersion: value.protocolVersion, approvalId: value.approvalId, workspaceId: value.workspaceId, proposalId: value.proposalId, proposalHash: value.proposalHash, decision: value.decision, approvedAt: value.approvedAt, approvedBy: value.approvedBy }
 }
 
 function parsed<T>(value: string, code: string): T {
@@ -177,8 +187,8 @@ export class LocalCandidateRepository {
   }
 
   private migrate(): void {
-    const version = (this.database.prepare('PRAGMA user_version').get() as { user_version: number }).user_version
-    if (version > 1) fail('UNSUPPORTED_CANDIDATE_STORE_VERSION', `candidate schema version ${version} is newer than supported version 1`)
+    let version = (this.database.prepare('PRAGMA user_version').get() as { user_version: number }).user_version
+    if (version > 2) fail('UNSUPPORTED_CANDIDATE_STORE_VERSION', `candidate schema version ${version} is newer than supported version 2`)
     if (version === 0) this.database.exec(`
       BEGIN IMMEDIATE;
       CREATE TABLE specifications (
@@ -223,6 +233,34 @@ export class LocalCandidateRepository {
         UNIQUE(workspace_id, record_hash)
       ) STRICT;
       PRAGMA user_version = 1;
+      COMMIT;
+    `)
+    if (version === 0) version = 1
+    if (version === 1) this.database.exec(`
+      BEGIN IMMEDIATE;
+      CREATE TABLE installation_proposals (
+        workspace_id TEXT NOT NULL,
+        proposal_id TEXT NOT NULL,
+        proposal_hash TEXT NOT NULL,
+        state TEXT NOT NULL CHECK(state IN ('proposed','approved','rejected')),
+        public_json TEXT NOT NULL,
+        decided_at TEXT,
+        decided_by TEXT,
+        PRIMARY KEY(workspace_id,proposal_id),
+        UNIQUE(workspace_id,proposal_hash)
+      ) STRICT;
+      CREATE TABLE installation_approvals (
+        workspace_id TEXT NOT NULL,
+        approval_id TEXT NOT NULL,
+        proposal_id TEXT NOT NULL,
+        approval_hash TEXT NOT NULL,
+        public_json TEXT NOT NULL,
+        PRIMARY KEY(workspace_id,approval_id),
+        UNIQUE(workspace_id,proposal_id),
+        UNIQUE(workspace_id,approval_hash),
+        FOREIGN KEY(workspace_id,proposal_id) REFERENCES installation_proposals(workspace_id,proposal_id)
+      ) STRICT;
+      PRAGMA user_version = 2;
       COMMIT;
     `)
   }
@@ -386,6 +424,48 @@ export class LocalCandidateRepository {
         && stored.snapshot.snapshotHash === snapshotHash
         && canonicalJson(stored.record) === canonicalJson(record)
     } catch { return false }
+  }
+
+  saveInstallationProposal(proposal: ToolInstallationProposal): void {
+    this.ensureOpen()
+    if (proposal.state !== 'proposed' || proposal.proposalHash !== contentHash(installationProposalBinding(proposal)) || proposal.permissionsHash !== contentHash(proposal.requestedPermissions)) fail('INVALID_INSTALLATION_PROPOSAL', 'installation proposal binding is invalid')
+    this.database.prepare('INSERT INTO installation_proposals(workspace_id,proposal_id,proposal_hash,state,public_json) VALUES (?,?,?,?,?)').run(proposal.workspaceId, proposal.proposalId, proposal.proposalHash, proposal.state, canonicalJson(proposal))
+  }
+
+  inspectInstallationProposal(workspaceId: LaboratoryId<'workspace'>, proposalId: LaboratoryId<'proposal'>): ToolInstallationProposal | null {
+    this.ensureOpen()
+    const row = this.database.prepare('SELECT public_json,state FROM installation_proposals WHERE workspace_id=? AND proposal_id=?').get(workspaceId, proposalId) as InstallationProposalRow | undefined
+    if (row === undefined) return null
+    const proposal = parsed<ToolInstallationProposal>(row.public_json, 'CORRUPT_INSTALLATION_PROPOSAL')
+    if (proposal.workspaceId !== workspaceId || proposal.proposalId !== proposalId || proposal.proposalHash !== contentHash(installationProposalBinding(proposal)) || proposal.permissionsHash !== contentHash(proposal.requestedPermissions)) fail('CORRUPT_INSTALLATION_PROPOSAL', 'stored installation proposal failed its binding')
+    return { ...proposal, state: row.state as ToolInstallationProposal['state'] }
+  }
+
+  approveInstallationProposal(proposal: ToolInstallationProposal, approval: ToolInstallationApproval): void {
+    this.ensureOpen()
+    if (approval.workspaceId !== proposal.workspaceId || approval.proposalId !== proposal.proposalId || approval.proposalHash !== proposal.proposalHash || approval.decision !== 'approved' || approval.approvalHash !== contentHash(approvalBinding(approval))) fail('INVALID_INSTALLATION_APPROVAL', 'approval does not bind the exact installation proposal')
+    this.database.exec('BEGIN IMMEDIATE')
+    try {
+      const changed = this.database.prepare("UPDATE installation_proposals SET state='approved',decided_at=?,decided_by=? WHERE workspace_id=? AND proposal_id=? AND state='proposed'").run(approval.approvedAt, approval.approvedBy, proposal.workspaceId, proposal.proposalId)
+      if (changed.changes !== 1) fail('PROPOSAL_NOT_PENDING', 'installation proposal is no longer pending')
+      this.database.prepare('INSERT INTO installation_approvals VALUES (?,?,?,?,?)').run(approval.workspaceId, approval.approvalId, approval.proposalId, approval.approvalHash, canonicalJson(approval))
+      this.database.exec('COMMIT')
+    } catch (error) { this.database.exec('ROLLBACK'); throw error }
+  }
+
+  inspectInstallationApproval(workspaceId: LaboratoryId<'workspace'>, proposalId: LaboratoryId<'proposal'>): ToolInstallationApproval | null {
+    this.ensureOpen()
+    const row = this.database.prepare('SELECT public_json FROM installation_approvals WHERE workspace_id=? AND proposal_id=?').get(workspaceId, proposalId) as { public_json: string } | undefined
+    if (row === undefined) return null
+    const approval = parsed<ToolInstallationApproval>(row.public_json, 'CORRUPT_INSTALLATION_APPROVAL')
+    if (approval.workspaceId !== workspaceId || approval.proposalId !== proposalId || approval.decision !== 'approved' || approval.approvalHash !== contentHash(approvalBinding(approval))) fail('CORRUPT_INSTALLATION_APPROVAL', 'stored installation approval failed its binding')
+    return approval
+  }
+
+  rejectInstallationProposal(proposal: ToolInstallationProposal, actorId: LaboratoryId<'actor'>, decidedAt: string): void {
+    this.ensureOpen()
+    const changed = this.database.prepare("UPDATE installation_proposals SET state='rejected',decided_at=?,decided_by=? WHERE workspace_id=? AND proposal_id=? AND state='proposed'").run(decidedAt, actorId, proposal.workspaceId, proposal.proposalId)
+    if (changed.changes !== 1) fail('PROPOSAL_NOT_PENDING', 'installation proposal is no longer pending')
   }
 
   private revisionRow(workspaceId: LaboratoryId<'workspace'>, revisionId: LaboratoryId<'evidence'>): RevisionRow | null {

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { mkdirSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { join, resolve } from 'node:path'
 import { DatabaseSync } from 'node:sqlite'
 import { fileURLToPath } from 'node:url'
 import test from 'node:test'
@@ -9,6 +9,8 @@ import test from 'node:test'
 import { LocalCandidateRepository } from '../../dist/candidate-repository.js'
 import { CandidateValidationRunner } from '../../dist/candidate-validation.js'
 import { ToolWorkshop } from '../../dist/tool-workshop.js'
+import { ToolInstallationProposalService } from '../../dist/tool-installation-proposal.js'
+import { ProcessRunner } from '../../dist/process-runner.js'
 import { canonicalJson } from '../../dist/laboratory-contract.js'
 
 const roots: string[] = []
@@ -154,5 +156,59 @@ test('stored validation tampering fails integrity and promotion checks', async (
     () => repository.inspectValidation(result.record.workspaceId, result.record.validationId),
     (error: unknown) => (error as { code?: string }).code === 'CORRUPT_VALIDATION_EVIDENCE',
   )
+  repository.close()
+})
+
+test('installation approval binds the current candidate, authentic validation, permissions, and exact proposal', async () => {
+  const path = databasePath()
+  let repository = new LocalCandidateRepository(path)
+  const service = workshop(repository)
+  const defined = service.defineSpecification(model, { ...specification, requestedPermissions: ['memory.compute.read'] })
+  const revision = service.createCandidateRevision(model, {
+    specificationId: defined.specificationId,
+    descriptor,
+    sources: [{ path: 'src/tool.cpp', content: 'source' }],
+  })
+  const token = repository.issueValidatorCredential('actor:validator')
+  const processRunner = new ProcessRunner()
+  const executionBackend = {
+    confinement: { backend: 'test-confined', filesystem: true, descendantProcesses: true, network: true, cpu: true, memory: true },
+    validatePolicy() {},
+    async run(command: { executable: string; args?: readonly string[]; stdin?: string; cwd?: string }, root: string, limits: { timeoutMs: number; maxStdinBytes: number; maxStdoutBytes: number; maxStderrBytes: number; killGraceMs: number }) {
+      return await processRunner.run(command.executable, { ...limits, args: command.args, stdin: command.stdin, cwd: resolve(root, command.cwd ?? '.') })
+    },
+  }
+  const request = validationRequest()
+  const validator = new CandidateValidationRunner({ evidenceRepository: repository, validatorCredential: token, executionBackend })
+  const validation = await validator.validate({ ...request, candidateId: revision.candidateId, descriptor, sources: [{ path: 'src/tool.cpp', content: 'source' }] })
+  assert.equal(validator.isPromotionEligible(validation.snapshot.snapshotHash, validation.record), true)
+
+  let proposals = new ToolInstallationProposalService(repository, validator, { now: () => new Date('2026-08-28T04:00:00.000Z'), idFactory: () => `install-${++nextId}` })
+  const proposal = proposals.propose(model, revision.revisionId, validation.record.validationId)
+  assert.deepEqual(proposal.requestedPermissions, ['memory.compute.read'])
+  assert.equal(Object.isFrozen(proposal), true)
+  assert.throws(() => proposals.approve(model, proposal.proposalId), (error: unknown) => (error as { code?: string }).code === 'AUTHORITY_NOT_PERMITTED')
+  repository.close()
+
+  repository = new LocalCandidateRepository(path)
+  const restartedValidator = new CandidateValidationRunner({ evidenceRepository: repository, validatorCredential: token, executionBackend })
+  proposals = new ToolInstallationProposalService(repository, restartedValidator, { now: () => new Date('2026-08-28T04:01:00.000Z'), idFactory: () => `install-${++nextId}` })
+  const approval = proposals.approve({ ...model, actorId: 'actor:user', authority: 'user' }, proposal.proposalId)
+  assert.equal(approval.proposalHash, proposal.proposalHash)
+  assert.equal(approval.approvedBy, 'actor:user')
+  assert.equal(repository.inspectInstallationProposal(model.workspaceId, proposal.proposalId)?.state, 'approved')
+  assert.deepEqual(repository.inspectInstallationApproval(model.workspaceId, proposal.proposalId), approval)
+  assert.throws(() => proposals.approve({ ...model, actorId: 'actor:user', authority: 'user' }, proposal.proposalId), (error: unknown) => (error as { code?: string }).code === 'PROPOSAL_NOT_PENDING')
+  assert.throws(() => proposals.approve({ ...model, workspaceId: 'workspace:other', actorId: 'actor:user', authority: 'user' }, proposal.proposalId), (error: unknown) => (error as { code?: string }).code === 'INSTALLATION_PROPOSAL_NOT_FOUND')
+
+  const staleWorkshop = workshop(repository)
+  const staleSpecification = staleWorkshop.defineSpecification(model, { ...specification, publicName: 'calculate_stale' })
+  const staleDescriptor = { ...descriptor, name: 'calculate_stale' }
+  const staleRevision = staleWorkshop.createCandidateRevision(model, { specificationId: staleSpecification.specificationId, descriptor: staleDescriptor, sources: [{ path: 'src/tool.cpp', content: 'stale one' }] })
+  const staleValidation = await restartedValidator.validate({ ...request, candidateId: staleRevision.candidateId, descriptor: staleDescriptor, sources: [{ path: 'src/tool.cpp', content: 'stale one' }] })
+  const staleProposal = proposals.propose(model, staleRevision.revisionId, staleValidation.record.validationId)
+  staleWorkshop.createCandidateRevision(model, { specificationId: staleSpecification.specificationId, parentRevisionId: staleRevision.revisionId, descriptor: staleDescriptor, sources: [{ path: 'src/tool.cpp', content: 'stale two' }] })
+  assert.throws(() => proposals.approve({ ...model, actorId: 'actor:user', authority: 'user' }, staleProposal.proposalId), (error: unknown) => (error as { code?: string }).code === 'STALE_CANDIDATE_REVISION')
+  assert.equal('install' in proposals, false)
   repository.close()
 })
