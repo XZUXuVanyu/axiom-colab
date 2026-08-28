@@ -1,0 +1,86 @@
+import type { JsonValue } from './harness-types.js'
+import type { LaboratoryId } from './laboratory-contract.js'
+import type { SupervisoryWorkspaceSnapshot } from './supervisory-application.js'
+
+export const SUPERVISORY_TRANSPORT_VERSION = '1.0' as const
+
+export interface SupervisoryTransportHost {
+  workspaces(): readonly LaboratoryId<'workspace'>[]
+  inspect(workspaceId: LaboratoryId<'workspace'>, goalId: LaboratoryId<'goal'> | null): Promise<SupervisoryWorkspaceSnapshot>
+}
+
+type Request =
+  | { readonly protocolVersion: typeof SUPERVISORY_TRANSPORT_VERSION; readonly id: string; readonly operation: 'list-workspaces' }
+  | { readonly protocolVersion: typeof SUPERVISORY_TRANSPORT_VERSION; readonly id: string; readonly operation: 'inspect'; readonly workspaceId: LaboratoryId<'workspace'>; readonly goalId: LaboratoryId<'goal'> | null }
+
+interface ErrorPayload { readonly code: string; readonly message: string }
+type Response =
+  | { readonly protocolVersion: typeof SUPERVISORY_TRANSPORT_VERSION; readonly id: string; readonly ok: true; readonly result: JsonValue }
+  | { readonly protocolVersion: typeof SUPERVISORY_TRANSPORT_VERSION; readonly id: string | null; readonly ok: false; readonly error: ErrorPayload }
+
+export class SupervisoryTransportError extends Error {
+  constructor(readonly code: string, message: string) {
+    super(`[${code}] ${message}`)
+    this.name = 'SupervisoryTransportError'
+  }
+}
+
+function fail(code: string, message: string): never { throw new SupervisoryTransportError(code, message) }
+function record(value: unknown): value is Record<string, unknown> { return typeof value === 'object' && value !== null && !Array.isArray(value) }
+
+function exact(value: Record<string, unknown>, fields: readonly string[]): void {
+  const allowed = new Set(fields)
+  for (const key of Object.keys(value)) if (!allowed.has(key)) fail('INVALID_REQUEST', `request contains unknown field ${key}`)
+  for (const key of fields) if (!(key in value)) fail('INVALID_REQUEST', `request is missing field ${key}`)
+}
+
+function parseRequest(text: string, maxBytes: number): Request {
+  if (Buffer.byteLength(text, 'utf8') > maxBytes) fail('REQUEST_TOO_LARGE', `request exceeds ${maxBytes} bytes`)
+  let value: unknown
+  try { value = JSON.parse(text) } catch { fail('MALFORMED_REQUEST', 'request is not valid JSON') }
+  if (!record(value)) fail('INVALID_REQUEST', 'request must be an object')
+  if (value.protocolVersion !== SUPERVISORY_TRANSPORT_VERSION) fail('UNSUPPORTED_PROTOCOL_VERSION', 'supervisory protocol version is unsupported')
+  if (typeof value.id !== 'string' || value.id.length === 0 || value.id.length > 128) fail('INVALID_REQUEST_ID', 'request id must contain 1..128 characters')
+  if (value.operation === 'list-workspaces') {
+    exact(value, ['protocolVersion', 'id', 'operation'])
+    return value as unknown as Request
+  }
+  if (value.operation === 'inspect') {
+    exact(value, ['protocolVersion', 'id', 'operation', 'workspaceId', 'goalId'])
+    if (typeof value.workspaceId !== 'string' || !/^workspace:[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(value.workspaceId)) fail('INVALID_WORKSPACE_ID', 'workspace identity is malformed')
+    if (value.goalId !== null && (typeof value.goalId !== 'string' || !/^goal:[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(value.goalId))) fail('INVALID_GOAL_ID', 'goal identity is malformed')
+    return value as unknown as Request
+  }
+  fail('UNKNOWN_OPERATION', 'supervisory operation is unknown')
+}
+
+function code(error: unknown): string {
+  return typeof error === 'object' && error !== null && typeof (error as { code?: unknown }).code === 'string'
+    ? (error as { code: string }).code : 'INTERNAL_ERROR'
+}
+
+export class SupervisoryTransport {
+  constructor(private readonly host: SupervisoryTransportHost, private readonly maxRequestBytes = 64 * 1024) {
+    if (!Number.isSafeInteger(maxRequestBytes) || maxRequestBytes < 256) fail('INVALID_TRANSPORT_LIMIT', 'maxRequestBytes must be a safe integer of at least 256')
+  }
+
+  async handle(text: string): Promise<string> {
+    let request: Request
+    try { request = parseRequest(text, this.maxRequestBytes) } catch (error) {
+      return JSON.stringify(this.failure(null, code(error), error instanceof Error ? error.message : String(error)))
+    }
+    try {
+      const result = request.operation === 'list-workspaces'
+        ? { workspaces: [...this.host.workspaces()] }
+        : await this.host.inspect(request.workspaceId, request.goalId)
+      const response: Response = { protocolVersion: SUPERVISORY_TRANSPORT_VERSION, id: request.id, ok: true, result: result as JsonValue }
+      return JSON.stringify(response)
+    } catch (error) {
+      return JSON.stringify(this.failure(request.id, code(error), error instanceof Error ? error.message : String(error)))
+    }
+  }
+
+  private failure(id: string | null, errorCode: string, message: string): Response {
+    return { protocolVersion: SUPERVISORY_TRANSPORT_VERSION, id, ok: false, error: { code: errorCode, message } }
+  }
+}

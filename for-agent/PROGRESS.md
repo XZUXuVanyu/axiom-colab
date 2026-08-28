@@ -4,6 +4,28 @@ Entries are chronological. Each entry corresponds to one logical Git commit and
 records its exact subject, purpose, material changes, and validation actually
 performed.
 
+## 2026-08-28 - feat(gui): define read-only supervisory transport
+
+Purpose: give Qt a narrow, versioned host-facing read protocol without exposing
+databases, paths, or authority-changing operations.
+
+Material changes:
+
+- Added strict JSON requests for workspace listing and exact workspace/goal
+  inspection, with request-ID correlation and bounded input size.
+- Added structured deterministic error responses for malformed versions,
+  identities, fields, operations, backend failures, and oversized input.
+- Added concurrency-safe direct host inspection independent of the application
+  model's mutable UI selection.
+- Explicitly excluded approval, installation, lifecycle, and memory mutations
+  from transport version 1.0.
+
+Validation actually run:
+
+- `pnpm.cmd test`: all 73 TypeScript tests passed, including valid listing and
+  inspection, malformed/oversized input, unknown mutation requests, extra-field
+  rejection, request correlation, and backend error preservation.
+
 ## 2026-08-28 - feat(gui): compose local application host
 
 Purpose: establish one tested owner for Stage 8 service startup, verified

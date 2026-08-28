@@ -198,5 +198,7 @@ export { LocalApplicationHost, LocalApplicationHostError } from './local-applica
 export type {
   InstalledToolRediscovery, LocalApplicationHostOptions,
 } from './local-application-host.js'
+export { SUPERVISORY_TRANSPORT_VERSION, SupervisoryTransport, SupervisoryTransportError } from './supervisory-transport.js'
+export type { SupervisoryTransportHost } from './supervisory-transport.js'
 export { InvocationLedger } from './invocation-ledger.js'
 export type { ExpectedCallPolicy, InvocationRecord, VerificationResult } from './invocation-ledger.js'

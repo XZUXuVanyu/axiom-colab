@@ -7,6 +7,7 @@ import type { LocalMemoryStore } from './local-memory-store.js'
 import type { MemoryWorkflows } from './memory-workflows.js'
 import type { ToolDescriptor } from './protocol.js'
 import { SupervisoryApplicationModel } from './supervisory-application.js'
+import type { SupervisoryWorkspaceSnapshot } from './supervisory-application.js'
 import type {
   InstalledToolRegistration, InstalledToolRegistry, ToolInstallationEvidence,
 } from './tool-installation.js'
@@ -60,6 +61,7 @@ class VerifiedInstalledRegistry implements InstalledToolRegistry {
 
 export class LocalApplicationHost {
   readonly model: SupervisoryApplicationModel
+  private readonly backend: LocalSupervisoryBackend
   private readonly registry = new VerifiedInstalledRegistry()
   private readonly installation: InstalledToolRediscovery
   private descriptors: readonly ToolDescriptor[] = []
@@ -68,7 +70,7 @@ export class LocalApplicationHost {
 
   constructor(private readonly options: LocalApplicationHostOptions) {
     this.installation = options.createInstallation(this.registry)
-    const backend = new LocalSupervisoryBackend(
+    this.backend = new LocalSupervisoryBackend(
       options.store, options.workflows, options.candidates, options.validator,
       {
         builtInTools: () => this.descriptors,
@@ -76,7 +78,7 @@ export class LocalApplicationHost {
         lifecycle: options.lifecycle,
       },
     )
-    this.model = new SupervisoryApplicationModel(backend)
+    this.model = new SupervisoryApplicationModel(this.backend)
   }
 
   workspaces(): readonly LaboratoryId<'workspace'>[] {
@@ -87,6 +89,11 @@ export class LocalApplicationHost {
   installedRegistrations(workspaceId: LaboratoryId<'workspace'>): readonly InstalledToolRegistration[] {
     this.ensureReady()
     return this.registry.list(workspaceId)
+  }
+
+  inspect(workspaceId: LaboratoryId<'workspace'>, goalId: LaboratoryId<'goal'> | null): Promise<SupervisoryWorkspaceSnapshot> {
+    this.ensureReady()
+    return this.backend.inspect(workspaceId, goalId)
   }
 
   async initialize(signal?: AbortSignal): Promise<void> {

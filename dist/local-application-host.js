@@ -33,6 +33,7 @@ class VerifiedInstalledRegistry {
 export class LocalApplicationHost {
     options;
     model;
+    backend;
     registry = new VerifiedInstalledRegistry();
     installation;
     descriptors = [];
@@ -41,12 +42,12 @@ export class LocalApplicationHost {
     constructor(options){
         this.options = options;
         this.installation = options.createInstallation(this.registry);
-        const backend = new LocalSupervisoryBackend(options.store, options.workflows, options.candidates, options.validator, {
+        this.backend = new LocalSupervisoryBackend(options.store, options.workflows, options.candidates, options.validator, {
             builtInTools: ()=>this.descriptors,
             rediscoveredTools: (workspaceId)=>this.registry.list(workspaceId),
             lifecycle: options.lifecycle
         });
-        this.model = new SupervisoryApplicationModel(backend);
+        this.model = new SupervisoryApplicationModel(this.backend);
     }
     workspaces() {
         this.ensureReady();
@@ -55,6 +56,10 @@ export class LocalApplicationHost {
     installedRegistrations(workspaceId) {
         this.ensureReady();
         return this.registry.list(workspaceId);
+    }
+    inspect(workspaceId, goalId) {
+        this.ensureReady();
+        return this.backend.inspect(workspaceId, goalId);
     }
     async initialize(signal) {
         if (this.closed) fail('HOST_CLOSED', 'application host is closed');

@@ -61,3 +61,11 @@ and memory store in ownership order.
 The Qt layer still needs a narrow transport to this host. It must consume
 serialized supervisory projections and must not open the SQLite databases or
 installed-Tool directories itself.
+
+`SupervisoryTransport` defines the initial versioned JSON read boundary. It
+accepts only `list-workspaces` and `inspect`, uses strict exact-field parsing,
+validates workspace and goal identities, bounds request bytes, correlates every
+valid request ID, and returns structured deterministic failures. There are no
+approval, installation, mutation, or lifecycle commands in this transport
+version. Host inspection bypasses mutable UI selection, so concurrent clients
+cannot redirect one another's workspace or goal request.

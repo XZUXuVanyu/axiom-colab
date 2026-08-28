@@ -4,6 +4,12 @@ Last updated: 2026-08-28
 
 ## Current state
 
+- `SupervisoryTransport` now defines version `1.0` read-only JSON operations
+  for `list-workspaces` and `inspect`. Requests use strict fields, validated
+  identities, a 64 KiB default limit, request-ID correlation, and structured
+  errors; mutation and authority-changing operations are absent.
+- Host inspection now has a selection-independent path, preventing concurrent
+  transport requests from redirecting shared UI workspace/goal selection.
 - `LocalApplicationHost` now owns Adapter descriptor discovery, deterministic
   memory-workspace enumeration, trusted per-workspace installed-Tool
   rediscovery, supervisory backend/model construction, partial-startup
@@ -225,6 +231,10 @@ otherwise modified by the consolidation work.
 
 Passed in `D:\Dev\axiom-colab`:
 
+- Stage 8 supervisory transport `pnpm.cmd test`: all 73 TypeScript tests passed,
+  including strict read operations, malformed and oversized input, rejection
+  of mutation-shaped requests, request correlation, and deterministic backend
+  failures.
 - Stage 8 application host `pnpm.cmd test`: all 70 TypeScript tests passed,
   including deterministic workspace discovery, model projection, owned
   shutdown, and rollback after partial multi-workspace rediscovery failure.
@@ -598,13 +608,13 @@ installation controls:
 
 ## Exact next work
 
-Continue Stage 8 by defining a narrow versioned JSON transport for read-only
-host discovery and supervisory snapshots, then wire the first Qt workspace,
-goal, approved-plan, timeline, Tool, resource, and candidate views to that
-transport. The Qt process must not open memory/candidate/lifecycle SQLite files
-or infer installed state from directories. Keep approval and other authority-
-changing Qt controls deferred until the read path and startup/recovery
-composition are tested through the real transport.
+Continue Stage 8 by adding the shell-free local transport process entry point
+and wiring the first Qt workspace, goal, approved-plan, timeline, Tool,
+resource, and candidate views to `SupervisoryTransport` responses. The Qt
+process must not open memory/candidate/lifecycle SQLite files or infer installed
+state from directories. Keep approval and other authority-changing controls
+deferred until the real process read path and startup/recovery composition are
+tested.
 
 Keep the WSL integration suite opt-in for portable CI, and run it explicitly on
 the supported Windows/Ubuntu composition before changing its confinement
