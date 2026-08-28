@@ -11,6 +11,7 @@ export * from './memory-workflows.js'
 export * from './authenticated-memory-service.js'
 export * from './authenticated-memory-http.js'
 export * from './memory-session-provider.js'
+export * from './goal-coordinator.js'
 
 export const name = 'general-ts-cpp-adapter'
 export const inject = ['tools', 'skills']

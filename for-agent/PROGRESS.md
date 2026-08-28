@@ -4,6 +4,34 @@ Entries are chronological. Each entry corresponds to one logical Git commit and
 records its exact subject, purpose, material changes, and validation actually
 performed.
 
+## 2026-08-28 — feat(goal): complete built-in Tool and supervised goal loop
+
+Purpose: complete Stage 5 with useful production C++ Tools and an inspectable,
+authority-preserving backend path from an approved plan to deterministic calls
+and immutable results.
+
+Material changes:
+
+- Classified production built-ins versus the test-only fixture Bridge and added
+  a compute-memory Tool plus an immutable artifact-copy derivation Tool without
+  per-Tool TypeScript behavior.
+- Added a provider-independent goal coordinator that rechecks committed plan
+  identity/hash, records real ledger calls and observations, and seals a report
+  artifact.
+- Added unit and real production-Bridge integration coverage for forged plans,
+  explicit Tool policy, shared compute state, artifact lineage, and missing
+  memory authority.
+
+Validation actually run:
+
+- `pnpm.cmd test`: passed all 42 TypeScript tests and regenerated `dist/`.
+- A Visual Studio 2026 Developer Command Prompt built the existing Ninja C++
+  tree with warnings as errors; `ctest` passed.
+- Production Bridge discovery returned all three built-ins; a policy-free
+  `compute_buffer` call returned `MEMORY_SESSION_REQUIRED`.
+- `pnpm.cmd run test:integration` passed all 4 real-Bridge tests using the
+  freshly built production and fixture Bridges.
+
 ## 2026-08-27 — test(adapter): prove scoped memory process integration
 
 Purpose: close the Stage 4 exit gate with real Bridge processes using the

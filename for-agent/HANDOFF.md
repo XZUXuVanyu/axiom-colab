@@ -1,9 +1,21 @@
 # Axiom CoLab Current Handoff
 
-Last updated: 2026-08-27
+Last updated: 2026-08-28
 
 ## Current state
 
+- Stage 5 is complete. Production discovery now exposes the pure
+  `add_numbers`, scoped `compute_buffer`, and trusted immutable
+  `derive_artifact` C++ built-ins. The memory-only test Tool remains linked
+  exclusively into its fixture Bridge.
+- `GoalCoordinator` verifies that its plan is a current committed
+  working-memory revision, executes actual Adapter calls, and seals an
+  immutable session report binding the plan revision/hash, ledger records,
+  observations, and resulting artifact identities.
+- Real production-Bridge integration proves compute sharing and artifact
+  derivation through explicit host Tool policies. Invoking a memory-dependent
+  built-in without policy fails with `MEMORY_SESSION_REQUIRED`; declaring
+  `MemoryClient` never grants authority.
 - Stage 4 is complete. The default Bridge parses the complete trusted
   grant into `MemoryClient` and forwards operations through a portable,
   numeric-loopback-only HTTP transport to the authenticated memory service.
@@ -31,7 +43,7 @@ Last updated: 2026-08-27
 - Stage 3 is complete. `source/ts/memory-workflows.ts`
   adds capability- and authority-checked compute, working, and artifact
   workflows over the Stage 2 store, with transactional semantic metadata and
-  canonical audit events. The generated runtime and 34-test suite are current.
+  canonical audit events. The generated runtime and 42-test suite are current.
 - Compute memory now has aggregate byte, per-object byte, and object quotas,
   revisioned updates, immutable snapshots, release, and restart behavior.
   Working memory has exact-hash user approval, rejection, supersession, stale
@@ -93,6 +105,14 @@ otherwise modified by the consolidation work.
 
 Passed in `D:\Dev\axiom-colab`:
 
+- Stage 5 `pnpm.cmd test`: all 42 TypeScript tests passed.
+- Stage 5 C++ build in the existing Ninja tree after initializing the Visual
+  Studio 2026 Developer Command Prompt; `ctest` passed.
+- Production Bridge discovery returned `add_numbers`, `compute_buffer`, and
+  `derive_artifact`; a memory-dependent call without host policy failed with
+  `MEMORY_SESSION_REQUIRED`.
+- Stage 5 `pnpm.cmd run test:integration`: all 4 process integration tests
+  passed against the freshly built production and fixture Bridges.
 - `pnpm.cmd test`
 - TypeScript build regenerated `dist/`.
 - All 17 TypeScript tests passed.
@@ -225,7 +245,7 @@ Exit gate: valid calls share scoped state; expired, forged, stale, and
 cross-workspace grants fail; cancellation and timeout remain intact; ordinary
 memory-free Tools still work unchanged.
 
-### Stage 5 - Establish useful built-in Tools and a goal loop
+### Stage 5 - Establish useful built-in Tools and a goal loop (complete)
 
 Organize the imported public/example Tools into trusted built-ins or fixtures
 without adding per-Tool TypeScript behavior. Supply at least one pure Tool, one
@@ -326,9 +346,7 @@ approval or evidence.
 
 ## Exact next work
 
-Begin Stage 5 by organizing built-in versus fixture Tools and adding one
-production compute-memory Tool plus one trusted immutable artifact-derivation
-Tool without per-Tool TypeScript behavior. Then add the minimal supervised
-goal/session coordinator and inspectable call/artifact trail. Keep memory
-authority opt-in through explicit host Tool policy; declaring `MemoryClient`
-must never grant authority by itself.
+Begin Stage 6 by defining the immutable candidate snapshot and validation-run
+contracts, then implement a trusted isolated runner that records observed
+process results rather than accepting candidate-authored result claims. Keep
+candidate, standard safety, and hidden user challenge tests distinct.

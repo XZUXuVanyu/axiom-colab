@@ -5,8 +5,9 @@ deterministic C++ tools, share structured memory with those tools, inspect
 evidence, and propose new tools while trust and approval transitions remain
 visible and user-controlled.
 
-Stage 0 preserves the imported adapter as the first executable baseline. Its
-existing root entry points remain valid:
+The backend now includes the Stage 5 supervised goal loop, three C++-first
+built-ins, restart-safe structured memory, and scoped process-per-call memory
+integration. Its root validation entry points are:
 
 ```powershell
 pnpm.cmd test
@@ -19,5 +20,6 @@ The optional Qt frontend is built by the CMake project when Qt 6 Widgets is
 available. Memory, validation, and workshop services are intentionally not
 implemented during Stage 0.
 
-Read `AGENTS.md` and `for-agent/HANDOFF.md` before changing the project.
-
+See `docs/built-in-tools-and-goals.md` for the built-in/fixture boundary and
+minimal goal flow. Read `AGENTS.md` and `for-agent/HANDOFF.md` before changing
+the project.

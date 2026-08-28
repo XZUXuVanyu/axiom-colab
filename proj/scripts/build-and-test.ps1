@@ -100,7 +100,7 @@ try {
         }
         $env:AXIOM_MEMORY_TEST_BRIDGE = Join-Path $buildRoot `
             "$configuration/cpp-memory-test-bridge.exe"
-        & node --test tests/integration/bridge.integration.test.ts
+        & node --test tests/integration/*.test.ts
         Assert-LastExitCode "$configuration scoped-memory integration tests"
     }
 } finally {
