@@ -367,6 +367,41 @@ IDE on a clean local installation; adversarial acceptance tests pass; trusted
 records remain independently inspectable; no step relies on model assertion as
 approval or evidence.
 
+## Blocking and potential problems to re-check during Stage 7
+
+Treat this as a mandatory gate before Stage 8 exposes validation, approval, or
+installation controls:
+
+- Validator issuance is currently recognized by an in-process `WeakSet`.
+  Restart loses that authority, and deserialized records are intentionally not
+  promotion-eligible. Add authenticated restart-safe immutable storage for the
+  captured candidate payload and validator-issued record.
+- The runner stages canonical files, allowlists the top-level executable, and
+  limits commands, wall time, and streams, but it does not prevent ambient
+  filesystem access, descendant processes, networking, or excessive CPU and
+  memory. Declared policy and toolchain hashes do not prove those controls ran.
+- Hidden challenge definitions and output are redacted, but their public hashes
+  may permit guessing when secret material has low entropy. Review keyed or
+  salted commitments and access-controlled challenge storage before UI
+  disclosure boundaries are frozen.
+- The workshop must create immutable candidate revisions and keep failed,
+  rejected, and superseded revisions visible. A source change must invalidate
+  validation and any installation proposal.
+- Approval must come from trusted user context and bind the exact candidate,
+  validation record, requested permissions, and installation proposal hash.
+  Model-authored strings or record-shaped JSON cannot approve or install.
+- Installation and rediscovery must remain disabled until the Stage 6 storage
+  and confinement gaps above are closed and adversarially re-tested.
+- Ignored C++ build products can be stale. Rebuild the selected Bridge before
+  real integration checks; the recent regression run initially found a stale
+  `build/windows/Release` binary rather than a source defect.
+- Managed-shell MSBuild may require approved execution outside the filesystem
+  sandbox or a properly initialized Developer Command Prompt. Record the exact
+  build actually used and never infer a compiler pass from existing binaries.
+- The existing Qt application is an authoring/import shell, not yet the
+  supervisory IDE. Stage 8 must project backend authority and evidence; it must
+  not implement an alternate approval, validation, or memory authority in UI.
+
 ## Exact next work
 
 By explicit user direction, begin Stage 7 in the next context with the
@@ -374,8 +409,7 @@ constrained Tool workshop contract and its structured specification -> immutable
 candidate revision path. Reuse the current Stage 6 snapshot and observed-runner
 boundary; do not add an alternate validation authority.
 
-Stage 6 remains incomplete, so Stage 7 may begin but cannot cross its promotion,
-installation, or exit gate yet. Before exact-hash installation can be enabled,
-return to the recorded Stage 6 gaps: authenticated restart-safe candidate and
-validation storage plus OS-enforced filesystem, descendant-process, network,
-CPU, and memory confinement. Do not infer confinement from declared policy.
+During Stage 7, run the blocking/potential-problem re-check above and close any
+issue required for trusted promotion or installation. Then continue into the
+Stage 8 IDE implementation in the new context only after the re-check confirms
+that UI controls can consume authoritative backend state safely.

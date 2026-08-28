@@ -4,6 +4,27 @@ Entries are chronological. Each entry corresponds to one logical Git commit and
 records its exact subject, purpose, material changes, and validation actually
 performed.
 
+## 2026-08-28 - docs(agent): preserve Stage 7 re-check gate
+
+Purpose: make the next-context transition from the Tool workshop to IDE
+implementation conditional on an explicit trust and environment re-check.
+
+Material changes:
+
+- Recorded durable candidate/validation storage and OS confinement as blocking
+  Stage 6 gaps rather than implicit future work.
+- Preserved potential hidden-test hash disclosure, stale ignored binaries,
+  managed-shell compiler access, exact approval binding, immutable revision,
+  and UI authority-duplication risks.
+- Directed the next context to implement/continue Stage 7, re-check and close
+  trust blockers, and only then proceed into Stage 8 IDE implementation.
+
+Validation actually run:
+
+- Confirmed the working tree was clean before this documentation-only update.
+- Reviewed the gate against the Stage 6 limitations, Stage 7 exit conditions,
+  Stage 8 thin-UI boundary, and the most recent real-Bridge regression result.
+
 ## 2026-08-28 - docs(agent): hand off Stage 7 entry point
 
 Purpose: preserve the user's direction to begin the constrained Tool workshop
