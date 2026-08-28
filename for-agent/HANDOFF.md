@@ -120,6 +120,11 @@ otherwise modified by the consolidation work.
 
 Passed in `D:\Dev\axiom-colab`:
 
+- Post-Stage 6 regression check rebuilt the previously stale ignored
+  `build/windows/Release` Bridge, passed Release `ctest`, and passed all 4 real
+  process integration tests covering scoped sharing, revocation,
+  cross-workspace denial, expiry, cancellation, timeout, compute memory, and
+  artifact derivation.
 - Stage 6 initial `pnpm.cmd test`: all 46 TypeScript tests passed, including
   exact snapshot binding, hidden challenge redaction, fabricated passing JSON,
   changed-candidate promotion denial, and timeout attribution.

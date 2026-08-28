@@ -4,6 +4,23 @@ Entries are chronological. Each entry corresponds to one logical Git commit and
 records its exact subject, purpose, material changes, and validation actually
 performed.
 
+## 2026-08-28 - test(project): reverify scoped memory and built-ins
+
+Purpose: confirm the Stage 3 through Stage 5 execution path remains sound
+before Stage 6 begins depending on its storage and authority boundaries.
+
+Material changes:
+
+- Rebuilt the ignored Release Bridge after detecting that its prior binary
+  predated the Stage 5 built-ins.
+- Reverified the C++ suite and real process-per-call memory/built-in integration
+  path without changing production source.
+
+Validation actually run:
+
+- Release `ctest`: passed 1/1 C++ test executable.
+- `pnpm.cmd run test:integration`: passed all 4 real-Bridge tests.
+
 ## 2026-08-28 - feat(validation): start independent candidate runner
 
 Purpose: begin Stage 6 with an exact candidate/evidence binding and a trusted
