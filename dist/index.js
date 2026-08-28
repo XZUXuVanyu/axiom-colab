@@ -137,6 +137,7 @@ export async function apply(ctx, rawConfig = {}) {
         throw error;
     }
 }
+export { SupervisoryApplicationError, SupervisoryApplicationModel } from './supervisory-application.js';
 export { InvocationLedger } from './invocation-ledger.js';
 
 

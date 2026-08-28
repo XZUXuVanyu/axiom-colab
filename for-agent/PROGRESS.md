@@ -4,6 +4,27 @@ Entries are chronological. Each entry corresponds to one logical Git commit and
 records its exact subject, purpose, material changes, and validation actually
 performed.
 
+## 2026-08-28 - feat(gui): begin supervisory application model
+
+Purpose: begin Stage 8 with a UI-independent projection that cannot blur or
+replace backend authority.
+
+Material changes:
+
+- Added immutable workspace/goal, plan, Tool, resource, candidate, timeline,
+  and recovery-control projections.
+- Kept model claims, observations, validation evidence, user decisions, and
+  verified installation state explicitly distinct.
+- Delegated stop, capability revocation, resume, and recovery to a trusted
+  backend and refresh state after each completed command.
+- Added fail-closed projection checks against authority laundering and tests
+  for immutable snapshots and unavailable actions.
+- Documented the boundary and concrete local-backend continuation point.
+
+Validation actually run:
+
+- `pnpm.cmd test`: all 64 TypeScript tests passed.
+
 ## 2026-08-28 - docs(agent): record pending WSL reboot
 
 Purpose: preserve the exact environment transition and post-reboot validation

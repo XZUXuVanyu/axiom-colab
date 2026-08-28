@@ -182,5 +182,11 @@ export async function apply(ctx: HarnessContext, rawConfig: Config = {}): Promis
 
 export type { HarnessContext, HarnessToolDefinition } from './harness-types.js'
 export type { ToolDescriptor } from './protocol.js'
+export { SupervisoryApplicationError, SupervisoryApplicationModel } from './supervisory-application.js'
+export type {
+  SupervisoryBackend, SupervisoryCandidateProjection, SupervisoryControls,
+  SupervisoryFactKind, SupervisoryPlanProjection, SupervisoryTimelineEntry,
+  SupervisoryToolProjection, SupervisoryWorkspaceSnapshot,
+} from './supervisory-application.js'
 export { InvocationLedger } from './invocation-ledger.js'
 export type { ExpectedCallPolicy, InvocationRecord, VerificationResult } from './invocation-ledger.js'

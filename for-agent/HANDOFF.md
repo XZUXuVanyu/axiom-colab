@@ -4,6 +4,19 @@ Last updated: 2026-08-28
 
 ## Current state
 
+- Stage 8 has started with `source/ts/supervisory-application.ts`. The
+  UI-independent model owns workspace/goal selection and immutable projections
+  for approved plan, discovered Tools, resources, candidates, timeline, and
+  stop/revoke/resume/recovery availability.
+- Projection facts explicitly distinguish model claims, Tool observations,
+  validator evidence, user decisions, verified installed state, and system
+  events. Installed Tools require installation-evidence hashes; approval must
+  retain validation state; installation must retain approval; model claims
+  cannot carry authoritative hashes.
+- Authority-changing actions are checked against projected availability,
+  delegated through `SupervisoryBackend`, and followed by fresh inspection.
+  The application model cannot author memory, validation, approval,
+  installation, or recovery state.
 - WSL 2 is installed (`2.7.12.0`, kernel `6.18.33.2`, default version 2) with
   a usable `Ubuntu-24.04` distribution. Its registered base and `ext4.vhdx`
   were moved through `wsl.exe --manage --move` from the user profile on `C:`
@@ -187,6 +200,9 @@ otherwise modified by the consolidation work.
 
 Passed in `D:\Dev\axiom-colab`:
 
+- Stage 8 initial `pnpm.cmd test`: all 64 TypeScript tests passed, including
+  immutable supervisory snapshots, claim/evidence distinction, delegated
+  lifecycle actions, and rejection of misleading installed-state projections.
 - Trusted installation `pnpm.cmd test`: all 61 TypeScript tests passed,
   including exact approval consumption, restart rediscovery, installed-byte
   corruption rejection, trusted-host authority, cross-workspace denial,
@@ -547,13 +563,14 @@ installation controls:
 
 ## Exact next work
 
-Begin Stage 8 by defining one UI-independent supervisory application model for
-workspace/goal selection, the immutable activity timeline, current approved
-plan, discovered built-ins and installed Tools, memory/resource status,
-candidate/validation/approval state, and stop/revoke/recovery actions. Compose
-that model from the existing authoritative services and add projection tests
-that keep model claims, observations, validation evidence, user approval, and
-installed state visibly distinct before wiring Qt controls.
+Continue Stage 8 by implementing a concrete local `SupervisoryBackend`
+composition. Obtain memory/resource and audit projections from
+`LocalMemoryStore` and `MemoryWorkflows`; candidate, validation, approval, and
+installation projections from `LocalCandidateRepository`; built-in descriptors
+from Adapter discovery; and installed Tools only from successful byte-verified
+`ToolInstallationService.rediscover` results. Add integration-style projection
+tests for restart, cross-workspace isolation, corrupt installed bytes, failed
+validation, rejection, and stale candidates before wiring Qt controls.
 
 Keep the WSL integration suite opt-in for portable CI, and run it explicitly on
 the supported Windows/Ubuntu composition before changing its confinement
