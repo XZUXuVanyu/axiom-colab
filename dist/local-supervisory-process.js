@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { isAbsolute, join, resolve } from 'node:path';
 import { AdapterService } from './adapter-service.js';
@@ -17,6 +18,46 @@ function record(value) {
 function absolute(value, field) {
     if (typeof value !== 'string' || !isAbsolute(value)) throw new TypeError(`${field} must be an absolute path`);
     return resolve(value);
+}
+function approvedPlanValue(value, goalId) {
+    return record(value) && value.goalId === goalId && typeof value.objective === 'string' && value.objective.length > 0;
+}
+export function createLocalApprovedPlanReader(workflows, hostActorId, now = ()=>new Date()) {
+    return (workspaceId, goalId)=>{
+        const issued = now();
+        const callId = `call:${randomUUID()}`;
+        const toolId = 'tool:supervisory-host';
+        const revision = workflows.readWorking({
+            authority: 'trusted-host',
+            context: {
+                workspaceId,
+                actorId: hostActorId,
+                callId,
+                toolId
+            },
+            capability: {
+                protocolVersion: '1.0',
+                capabilityId: 'capability:supervisory-plan-read',
+                workspaceId,
+                actorId: hostActorId,
+                toolId,
+                callId,
+                operations: [
+                    'working.read'
+                ],
+                issuedAt: issued.toISOString(),
+                expiresAt: new Date(issued.getTime() + 60_000).toISOString(),
+                nonce: randomUUID()
+            }
+        }, `${goalId}:plan`);
+        if (revision === null) return null;
+        if (revision.key !== `${goalId}:plan` || !approvedPlanValue(revision.value, goalId)) {
+            throw Object.assign(new Error('approved goal plan is malformed or bound to another goal'), {
+                code: 'INVALID_APPROVED_PLAN'
+            });
+        }
+        return revision;
+    };
 }
 export function parseLocalSupervisoryProcessConfig(value) {
     if (!record(value)) throw new TypeError('supervisory process config must be an object');
@@ -64,7 +105,7 @@ export async function runLocalSupervisoryProcess(configValue) {
         });
     };
     const lifecycle = new LocalGoalLifecycle(join(config.stateRoot, 'lifecycle.sqlite3'), {
-        approvedPlan: ()=>null,
+        approvedPlan: createLocalApprovedPlanReader(workflows, config.hostActorId),
         revokeCapability: unavailable,
         stopGoal: unavailable,
         resumeGoal: unavailable,

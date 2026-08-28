@@ -20,6 +20,7 @@ export interface LocalGoalProjection {
 }
 
 export interface LocalSupervisoryLifecycle {
+  listGoals(workspaceId: LaboratoryId<'workspace'>): readonly LaboratoryId<'goal'>[]
   inspectGoal(workspaceId: LaboratoryId<'workspace'>, goalId: LaboratoryId<'goal'>): LocalGoalProjection | null
   revocableCapabilities(workspaceId: LaboratoryId<'workspace'>, goalId: LaboratoryId<'goal'> | null): readonly LaboratoryId<'capability'>[]
   recoveryRequired(workspaceId: LaboratoryId<'workspace'>): boolean

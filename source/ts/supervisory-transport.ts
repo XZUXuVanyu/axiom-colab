@@ -6,11 +6,13 @@ export const SUPERVISORY_TRANSPORT_VERSION = '1.0' as const
 
 export interface SupervisoryTransportHost {
   workspaces(): readonly LaboratoryId<'workspace'>[]
+  goals(workspaceId: LaboratoryId<'workspace'>): readonly LaboratoryId<'goal'>[]
   inspect(workspaceId: LaboratoryId<'workspace'>, goalId: LaboratoryId<'goal'> | null): Promise<SupervisoryWorkspaceSnapshot>
 }
 
 type Request =
   | { readonly protocolVersion: typeof SUPERVISORY_TRANSPORT_VERSION; readonly id: string; readonly operation: 'list-workspaces' }
+  | { readonly protocolVersion: typeof SUPERVISORY_TRANSPORT_VERSION; readonly id: string; readonly operation: 'list-goals'; readonly workspaceId: LaboratoryId<'workspace'> }
   | { readonly protocolVersion: typeof SUPERVISORY_TRANSPORT_VERSION; readonly id: string; readonly operation: 'inspect'; readonly workspaceId: LaboratoryId<'workspace'>; readonly goalId: LaboratoryId<'goal'> | null }
 
 interface ErrorPayload { readonly code: string; readonly message: string }
@@ -43,6 +45,11 @@ function parseRequest(text: string, maxBytes: number): Request {
   if (typeof value.id !== 'string' || value.id.length === 0 || value.id.length > 128) fail('INVALID_REQUEST_ID', 'request id must contain 1..128 characters')
   if (value.operation === 'list-workspaces') {
     exact(value, ['protocolVersion', 'id', 'operation'])
+    return value as unknown as Request
+  }
+  if (value.operation === 'list-goals') {
+    exact(value, ['protocolVersion', 'id', 'operation', 'workspaceId'])
+    if (typeof value.workspaceId !== 'string' || !/^workspace:[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(value.workspaceId)) fail('INVALID_WORKSPACE_ID', 'workspace identity is malformed')
     return value as unknown as Request
   }
   if (value.operation === 'inspect') {
@@ -79,7 +86,9 @@ export class SupervisoryTransport {
     try {
       const result = request.operation === 'list-workspaces'
         ? { workspaces: [...this.host.workspaces()] }
-        : await this.host.inspect(request.workspaceId, request.goalId)
+        : request.operation === 'list-goals'
+          ? { workspaceId: request.workspaceId, goals: [...this.host.goals(request.workspaceId)] }
+          : await this.host.inspect(request.workspaceId, request.goalId)
       const response: Response = { protocolVersion: SUPERVISORY_TRANSPORT_VERSION, id: request.id, ok: true, result: result as JsonValue }
       return JSON.stringify(response)
     } catch (error) {

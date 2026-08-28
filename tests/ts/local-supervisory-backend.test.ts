@@ -14,6 +14,7 @@ test.afterEach(() => { for (const root of roots.splice(0)) rmSync(root, { recurs
 
 function lifecycle(): LocalSupervisoryLifecycle {
   return {
+    listGoals: () => [],
     inspectGoal: () => null,
     revocableCapabilities: () => [],
     recoveryRequired: () => false,

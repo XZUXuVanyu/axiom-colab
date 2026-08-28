@@ -121,6 +121,31 @@ std::vector<std::string> parse_workspace_list_result(
     return workspaces;
 }
 
+SupervisoryGoalList parse_goal_list_result(
+    const SupervisoryResponse& response,
+    std::string_view expected_workspace_id) {
+    if (!response.ok) fail("cannot decode goal list from an error response");
+    const auto& result = require_object(response.result, "goal list result");
+    require_exact_fields(result, {"workspaceId", "goals"});
+    const std::string& workspace_id = require_string(
+        response.result.at("workspaceId"), "workspaceId");
+    if (!valid_identity(workspace_id, "workspace:")
+        || workspace_id != expected_workspace_id) {
+        fail("goal list workspace does not match the selection");
+    }
+    const Json& goals_value = response.result.at("goals");
+    if (!goals_value.is_array()) fail("goals must be an array");
+    std::vector<std::string> goals;
+    std::set<std::string, std::less<>> seen;
+    for (const Json& value : goals_value.as_array()) {
+        const std::string& id = require_string(value, "goal identity");
+        if (!valid_identity(id, "goal:")) fail("goal identity is malformed");
+        if (!seen.insert(id).second) fail("goal list contains a duplicate identity");
+        goals.push_back(id);
+    }
+    return {.workspace_id = workspace_id, .goals = std::move(goals)};
+}
+
 SupervisoryWorkspaceInspection parse_workspace_inspection_result(
     const SupervisoryResponse& response, std::string_view expected_workspace_id,
     std::optional<std::string_view> expected_goal_id) {

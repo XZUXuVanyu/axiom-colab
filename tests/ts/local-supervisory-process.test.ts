@@ -5,7 +5,10 @@ import { join, resolve } from 'node:path'
 import { spawn } from 'node:child_process'
 import test from 'node:test'
 
-import { LocalMemoryStore, parseLocalSupervisoryProcessConfig } from '../../dist/index.js'
+import {
+  createLocalApprovedPlanReader, LocalMemoryStore, MemoryWorkflows,
+  parseLocalSupervisoryProcessConfig,
+} from '../../dist/index.js'
 
 const roots: string[] = []
 test.afterEach(() => { for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true }) })
@@ -53,4 +56,48 @@ test('local supervisory process config rejects ambient paths and unknown authori
   assert.throws(() => parseLocalSupervisoryProcessConfig({
     stateRoot: resolve('.'), bridgePath: process.execPath, approval: true,
   }), /unknown field approval/)
+})
+
+test('local approved-plan reader binds committed working state to the exact goal', () => {
+  const root = join(tmpdir(), `axiom-supervisory-plan-${crypto.randomUUID()}`)
+  mkdirSync(root); roots.push(root)
+  const at = new Date('2026-08-29T01:00:00.000Z')
+  const store = new LocalMemoryStore(join(root, 'memory'), { now: () => at })
+  store.createWorkspace('workspace:alpha')
+  const workflows = new MemoryWorkflows(store, { now: () => at })
+  const invocation = (authority: 'model' | 'user', operation: 'working.propose' | 'working.approve') => ({
+    authority,
+    context: { workspaceId: 'workspace:alpha', actorId: `actor:${authority}`, callId: `call:${authority}`, toolId: 'tool:test' },
+    capability: {
+      protocolVersion: '1.0', capabilityId: `capability:${authority}`,
+      workspaceId: 'workspace:alpha', actorId: `actor:${authority}`,
+      toolId: 'tool:test', callId: `call:${authority}`, operations: [operation],
+      issuedAt: at.toISOString(), expiresAt: new Date(at.getTime() + 60_000).toISOString(), nonce: authority,
+    },
+  }) as any
+  const proposal = workflows.proposeWorking(
+    invocation('model', 'working.propose'), 'goal:one:plan',
+    { goalId: 'goal:one', objective: 'Inspect authoritative state.', calls: [] },
+  )
+  const committed = workflows.approveWorking(
+    invocation('user', 'working.approve'), proposal.id,
+    { workspaceId: 'workspace:alpha', proposalId: proposal.id, proposalHash: proposal.hash, decision: 'approved' },
+  )
+  const reader = createLocalApprovedPlanReader(workflows, 'actor:host', () => at)
+  assert.equal(reader('workspace:alpha', 'goal:one')?.id, committed.id)
+  assert.equal(reader('workspace:alpha', 'goal:missing'), null)
+
+  const malformed = workflows.proposeWorking(
+    invocation('model', 'working.propose'), 'goal:bad:plan',
+    { goalId: 'goal:other', objective: 'Wrong binding.', calls: [] },
+  )
+  workflows.approveWorking(
+    invocation('user', 'working.approve'), malformed.id,
+    { workspaceId: 'workspace:alpha', proposalId: malformed.id, proposalHash: malformed.hash, decision: 'approved' },
+  )
+  assert.throws(
+    () => reader('workspace:alpha', 'goal:bad'),
+    (error: unknown) => (error as { code?: string }).code === 'INVALID_APPROVED_PLAN',
+  )
+  workflows.close(); store.close()
 })

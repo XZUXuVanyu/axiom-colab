@@ -35,6 +35,8 @@ public:
     void stop();
     [[nodiscard]] bool is_running() const;
     [[nodiscard]] std::string list_workspaces(ResponseHandler handler);
+    [[nodiscard]] std::string list_goals(
+        std::string_view workspace_id, ResponseHandler handler);
     [[nodiscard]] std::string inspect(
         std::string_view workspace_id,
         std::optional<std::string_view> goal_id,

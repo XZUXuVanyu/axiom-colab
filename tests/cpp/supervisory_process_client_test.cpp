@@ -40,7 +40,24 @@ int main(int argc, char* argv[]) {
                     failure = "list-workspaces returned unexpected content";
                 }
             }
-            if (++received == 2) loop.quit();
+            if (++received == 3) loop.quit();
+        });
+    const std::string goals_id = client.list_goals(
+        "workspace:alpha",
+        [&](const axiom_colab::gui::SupervisoryResponse* response,
+            const std::string* error) {
+            if (error != nullptr) {
+                failure = *error;
+            } else if (response == nullptr || !response->ok) {
+                failure = "list-goals did not return a success response";
+            } else {
+                const auto goals = axiom_colab::gui::parse_goal_list_result(
+                    *response, "workspace:alpha");
+                if (goals.goals.size() != 1 || goals.goals[0] != "goal:one") {
+                    failure = "list-goals returned unexpected content";
+                }
+            }
+            if (++received == 3) loop.quit();
         });
     const std::string inspect_id = client.inspect(
         "workspace:alpha", std::nullopt,
@@ -59,20 +76,21 @@ int main(int argc, char* argv[]) {
                     failure = "inspect did not return the selected workspace";
                 }
             }
-            if (++received == 2) loop.quit();
+            if (++received == 3) loop.quit();
         });
 
     timeout.start(5000);
     loop.exec();
     client.stop();
 
-    if (received != 2) failure = "timed out waiting for supervisory responses";
+    if (received != 3) failure = "timed out waiting for supervisory responses";
     if (request_id != "qt:1") failure = "request ID sequence is not deterministic";
-    if (inspect_id != "qt:2") failure = "inspect request ID sequence is not deterministic";
+    if (goals_id != "qt:2") failure = "goal request ID sequence is not deterministic";
+    if (inspect_id != "qt:3") failure = "inspect request ID sequence is not deterministic";
     if (!failure.empty()) {
         std::cerr << "[FAIL] " << failure << '\n';
         return 1;
     }
-    std::cout << "[PASS] real supervisory process list-workspaces and inspect\n";
+    std::cout << "[PASS] real supervisory process workspace, goal, and inspection reads\n";
     return 0;
 }

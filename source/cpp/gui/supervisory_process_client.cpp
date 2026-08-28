@@ -108,6 +108,18 @@ std::string SupervisoryProcessClient::list_workspaces(ResponseHandler handler) {
     }), std::move(handler));
 }
 
+std::string SupervisoryProcessClient::list_goals(
+    std::string_view workspace_id, ResponseHandler handler) {
+    if (!valid_identity(workspace_id, "workspace:")) {
+        throw std::invalid_argument("workspace identity is malformed");
+    }
+    return send_request(Json::object({
+        {"protocolVersion", "1.0"},
+        {"operation", "list-goals"},
+        {"workspaceId", std::string(workspace_id)},
+    }), std::move(handler));
+}
+
 std::string SupervisoryProcessClient::inspect(
     std::string_view workspace_id, std::optional<std::string_view> goal_id,
     ResponseHandler handler) {

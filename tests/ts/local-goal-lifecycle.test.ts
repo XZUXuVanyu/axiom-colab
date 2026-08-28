@@ -29,6 +29,8 @@ test('goal lifecycle persists stop, capability, and recovery state across restar
   }
   let lifecycle = new LocalGoalLifecycle(path, options as any)
   lifecycle.registerGoal('workspace:alpha', 'goal:one')
+  assert.deepEqual(lifecycle.listGoals('workspace:alpha'), ['goal:one'])
+  assert.deepEqual(lifecycle.listGoals('workspace:beta'), [])
   lifecycle.trackCapability('workspace:alpha', 'goal:one', 'capability:active')
   lifecycle.requireRecovery('workspace:alpha')
   await lifecycle.stopGoal('workspace:alpha', 'goal:one')
@@ -69,6 +71,10 @@ test('goal lifecycle rejects cross-workspace actions, replay, and stale approved
     (error: unknown) => error instanceof LocalGoalLifecycleError && error.code === 'GOAL_NOT_ACTIVE',
   )
   plan = approvedPlan(`sha256:${'2'.repeat(64)}`)
+  assert.throws(
+    () => lifecycle.listGoals('workspace:alpha'),
+    (error: unknown) => error instanceof LocalGoalLifecycleError && error.code === 'STALE_APPROVED_PLAN',
+  )
   assert.throws(
     () => lifecycle.inspectGoal('workspace:alpha', 'goal:one'),
     (error: unknown) => error instanceof LocalGoalLifecycleError && error.code === 'STALE_APPROVED_PLAN',

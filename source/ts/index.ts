@@ -203,6 +203,7 @@ export type { SupervisoryTransportHost } from './supervisory-transport.js'
 export { runSupervisoryTransportServer } from './supervisory-transport-server.js'
 export type { SupervisoryTransportServerOptions } from './supervisory-transport-server.js'
 export {
+  createLocalApprovedPlanReader,
   parseLocalSupervisoryProcessConfig, readLocalSupervisoryProcessConfig,
   runLocalSupervisoryProcess,
 } from './local-supervisory-process.js'

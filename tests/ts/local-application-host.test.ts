@@ -47,6 +47,7 @@ test('application host initializes discovery, enumerates workspaces, and owns sh
   )
   await host.initialize()
   assert.deepEqual(host.workspaces(), ['workspace:alpha', 'workspace:beta'])
+  assert.deepEqual(host.goals('workspace:alpha'), [])
   assert.deepEqual(rediscovered, ['workspace:alpha', 'workspace:beta'])
   const snapshot = await host.model.selectWorkspace('workspace:alpha')
   assert.equal(snapshot.tools[0]?.name, 'add_numbers')

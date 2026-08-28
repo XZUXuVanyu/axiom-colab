@@ -120,6 +120,15 @@ export class LocalGoalLifecycle implements LocalSupervisoryLifecycle {
     return { goalId, plan, canStop: row.state === 'active', canResume: row.state === 'stopped' }
   }
 
+  listGoals(workspaceId: LaboratoryId<'workspace'>): readonly LaboratoryId<'goal'>[] {
+    this.ensureOpen()
+    const rows = this.database.prepare(
+      'SELECT goal_id FROM goals WHERE workspace_id=? ORDER BY goal_id',
+    ).all(workspaceId) as Array<{ goal_id: LaboratoryId<'goal'> }>
+    for (const row of rows) this.inspectGoal(workspaceId, row.goal_id)
+    return rows.map((row) => row.goal_id)
+  }
+
   revocableCapabilities(workspaceId: LaboratoryId<'workspace'>, goalId: LaboratoryId<'goal'> | null): readonly LaboratoryId<'capability'>[] {
     this.ensureOpen()
     const rows = goalId === null

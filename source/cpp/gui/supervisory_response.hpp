@@ -33,10 +33,18 @@ struct SupervisoryWorkspaceInspection final {
     cpp_adapter::Json controls;
 };
 
+struct SupervisoryGoalList final {
+    std::string workspace_id;
+    std::vector<std::string> goals;
+};
+
 [[nodiscard]] SupervisoryResponse parse_supervisory_response(
     std::string_view text, std::string_view expected_request_id);
 [[nodiscard]] std::vector<std::string> parse_workspace_list_result(
     const SupervisoryResponse& response);
+[[nodiscard]] SupervisoryGoalList parse_goal_list_result(
+    const SupervisoryResponse& response,
+    std::string_view expected_workspace_id);
 [[nodiscard]] SupervisoryWorkspaceInspection parse_workspace_inspection_result(
     const SupervisoryResponse& response, std::string_view expected_workspace_id,
     std::optional<std::string_view> expected_goal_id);

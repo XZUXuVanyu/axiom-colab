@@ -53,6 +53,11 @@ export class LocalApplicationHost {
         this.ensureReady();
         return this.options.store.listWorkspaces();
     }
+    goals(workspaceId) {
+        this.ensureReady();
+        this.options.store.reopenWorkspace(workspaceId);
+        return this.options.lifecycle.listGoals(workspaceId);
+    }
     installedRegistrations(workspaceId) {
         this.ensureReady();
         return this.registry.list(workspaceId);

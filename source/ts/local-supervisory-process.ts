@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { isAbsolute, join, resolve } from 'node:path'
 
@@ -8,7 +9,7 @@ import type { LaboratoryId } from './laboratory-contract.js'
 import { LocalApplicationHost } from './local-application-host.js'
 import { LocalGoalLifecycle } from './local-goal-lifecycle.js'
 import { LocalMemoryStore } from './local-memory-store.js'
-import { MemoryWorkflows } from './memory-workflows.js'
+import { MemoryWorkflows, type WorkingRevision } from './memory-workflows.js'
 import { ToolObserver } from './observer.js'
 import { ProcessRunner } from './process-runner.js'
 import { SupervisoryTransport } from './supervisory-transport.js'
@@ -31,6 +32,43 @@ function record(value: unknown): value is Record<string, unknown> {
 function absolute(value: unknown, field: string): string {
   if (typeof value !== 'string' || !isAbsolute(value)) throw new TypeError(`${field} must be an absolute path`)
   return resolve(value)
+}
+
+function approvedPlanValue(value: unknown, goalId: LaboratoryId<'goal'>): value is { readonly objective: string } {
+  return record(value)
+    && value.goalId === goalId
+    && typeof value.objective === 'string'
+    && value.objective.length > 0
+}
+
+export function createLocalApprovedPlanReader(
+  workflows: MemoryWorkflows,
+  hostActorId: LaboratoryId<'actor'>,
+  now: () => Date = () => new Date(),
+): (workspaceId: LaboratoryId<'workspace'>, goalId: LaboratoryId<'goal'>) => WorkingRevision<{ readonly objective: string }> | null {
+  return (workspaceId, goalId) => {
+    const issued = now()
+    const callId = `call:${randomUUID()}` as LaboratoryId<'call'>
+    const toolId = 'tool:supervisory-host' as LaboratoryId<'tool'>
+    const revision = workflows.readWorking<unknown>({
+      authority: 'trusted-host',
+      context: { workspaceId, actorId: hostActorId, callId, toolId },
+      capability: {
+        protocolVersion: '1.0', capabilityId: 'capability:supervisory-plan-read',
+        workspaceId, actorId: hostActorId, toolId, callId,
+        operations: ['working.read'], issuedAt: issued.toISOString(),
+        expiresAt: new Date(issued.getTime() + 60_000).toISOString(),
+        nonce: randomUUID(),
+      },
+    }, `${goalId}:plan`)
+    if (revision === null) return null
+    if (revision.key !== `${goalId}:plan` || !approvedPlanValue(revision.value, goalId)) {
+      throw Object.assign(new Error('approved goal plan is malformed or bound to another goal'), {
+        code: 'INVALID_APPROVED_PLAN',
+      })
+    }
+    return revision as WorkingRevision<{ readonly objective: string }>
+  }
 }
 
 export function parseLocalSupervisoryProcessConfig(value: unknown): LocalSupervisoryProcessConfig {
@@ -71,7 +109,7 @@ export async function runLocalSupervisoryProcess(configValue: unknown): Promise<
   }
   const unavailable = async (): Promise<never> => { throw Object.assign(new Error('lifecycle mutation is not exposed by the read-only process'), { code: 'OPERATION_NOT_AVAILABLE' }) }
   const lifecycle = new LocalGoalLifecycle(join(config.stateRoot, 'lifecycle.sqlite3'), {
-    approvedPlan: () => null,
+    approvedPlan: createLocalApprovedPlanReader(workflows, config.hostActorId),
     revokeCapability: unavailable,
     stopGoal: unavailable,
     resumeGoal: unavailable,

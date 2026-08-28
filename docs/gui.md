@@ -1,8 +1,11 @@
 # Qt supervisory and Tool-authoring GUI
 
-The first Stage 8 read path is available in the **Laboratory** tab. It starts
+The Stage 8 read path is available in the **Laboratory** tab. It starts
 the known local supervisory Node process, lists host-visible workspaces, and
-renders read-only resource, Tool, candidate, and immutable timeline summaries.
+enumerates only goals whose stored lifecycle binding still matches an exact
+approved working-memory plan. Workspace and goal selectors render the approved
+objective, revision identity, and hash beside read-only resource, Tool,
+candidate, and immutable timeline summaries.
 Candidate rows keep model claims, validator outcomes, user decisions, and
 verified installation state visibly separate. No approval, installation,
 memory, or lifecycle mutation operation is present in this transport or view.
@@ -21,8 +24,8 @@ Then launch the GUI with
 `cpp-adapter-gui.exe --supervisory-config D:\Axiom\config\supervisory.json`.
 The Qt process receives projections only through `list-workspaces` and
 workspace-level `inspect`; it does not open SQLite or installed directories.
-Goal selection remains disabled until an authoritative approved-plan reader is
-composed by the production host.
+Malformed, stale, or cross-workspace goal/plan bindings fail closed instead of
+being rendered.
 
 ## Tool authoring
 

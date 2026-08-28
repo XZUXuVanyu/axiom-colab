@@ -21,10 +21,11 @@ namespace {
 
 using cpp_adapter::Json;
 
-void require_object(const Json& value, std::string_view field) {
+const Json::object_t& require_object(const Json& value, std::string_view field) {
     if (!value.is_object()) {
         throw SupervisoryResponseError(std::string(field) + " must be an object");
     }
+    return value.as_object();
 }
 
 const std::string& string_field(const Json& value, std::string_view field) {
@@ -117,9 +118,14 @@ void SupervisoryView::build_ui() {
     workspace_selector_ = new QComboBox(this);
     workspace_selector_->setObjectName("workspaceSelector");
     workspace_selector_->setMinimumWidth(280);
+    goal_selector_ = new QComboBox(this);
+    goal_selector_->setObjectName("goalSelector");
+    goal_selector_->setMinimumWidth(240);
     refresh_button_ = new QPushButton("Refresh", this);
     selection->addWidget(new QLabel("Workspace", this));
     selection->addWidget(workspace_selector_);
+    selection->addWidget(new QLabel("Goal", this));
+    selection->addWidget(goal_selector_);
     selection->addWidget(refresh_button_);
     selection->addStretch();
     selection->addWidget(connection_status_);
@@ -133,6 +139,15 @@ void SupervisoryView::build_ui() {
     resource_layout->addWidget(resources_);
     page->addWidget(resource_group);
 
+    auto* plan_group = new QGroupBox("Approved plan", this);
+    auto* plan_layout = new QVBoxLayout(plan_group);
+    approved_plan_ = new QLabel("Select a goal to inspect its approved plan.", plan_group);
+    approved_plan_->setObjectName("approvedPlan");
+    approved_plan_->setWordWrap(true);
+    approved_plan_->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    plan_layout->addWidget(approved_plan_);
+    page->addWidget(plan_group);
+
     auto* summaries = new QGridLayout();
     summaries->addWidget(list_group("Discovered Tools", &tools_, this), 0, 0);
     summaries->addWidget(list_group("Tool candidates", &candidates_, this), 0, 1);
@@ -144,6 +159,10 @@ void SupervisoryView::build_ui() {
     connect(refresh_button_, &QPushButton::clicked, this,
             &SupervisoryView::load_workspaces);
     connect(workspace_selector_, qOverload<int>(&QComboBox::currentIndexChanged), this,
+            [this](int index) {
+                if (index >= 0 && !busy_) load_goals();
+            });
+    connect(goal_selector_, qOverload<int>(&QComboBox::currentIndexChanged), this,
             [this](int index) {
                 if (index >= 0 && !busy_) inspect_selected_workspace();
             });
@@ -194,8 +213,49 @@ void SupervisoryView::load_workspaces() {
                         candidates_->clear();
                         timeline_->clear();
                     } else {
-                        inspect_selected_workspace();
+                        load_goals();
                     }
+                } catch (const std::exception& decode_error) {
+                    show_error(QString::fromUtf8(decode_error.what()));
+                    set_busy(false);
+                }
+            });
+    } catch (const std::exception& error) {
+        show_error(QString::fromUtf8(error.what()));
+        set_busy(false);
+    }
+}
+
+void SupervisoryView::load_goals() {
+    const QString selected = workspace_selector_->currentText();
+    if (selected.isEmpty()) return;
+    set_busy(true);
+    try {
+        const std::string workspace = selected.toStdString();
+        (void)client_.list_goals(
+            workspace,
+            [this, workspace](const SupervisoryResponse* response,
+                              const std::string* error) {
+                if (error != nullptr) {
+                    show_error(text(*error));
+                    set_busy(false);
+                    return;
+                }
+                try {
+                    const auto result = parse_goal_list_result(*response, workspace);
+                    if (workspace_selector_->currentText() != text(workspace)) {
+                        set_busy(false);
+                        return;
+                    }
+                    goal_selector_->blockSignals(true);
+                    goal_selector_->clear();
+                    goal_selector_->addItem("Workspace overview");
+                    for (const auto& goal : result.goals) {
+                        goal_selector_->addItem(text(goal));
+                    }
+                    goal_selector_->blockSignals(false);
+                    set_busy(false);
+                    inspect_selected_workspace();
                 } catch (const std::exception& decode_error) {
                     show_error(QString::fromUtf8(decode_error.what()));
                     set_busy(false);
@@ -213,9 +273,14 @@ void SupervisoryView::inspect_selected_workspace() {
     set_busy(true);
     try {
         const std::string workspace = selected.toStdString();
+        const std::optional<std::string> goal = goal_selector_->currentIndex() > 0
+            ? std::optional<std::string>(goal_selector_->currentText().toStdString())
+            : std::nullopt;
         (void)client_.inspect(
-            workspace, std::nullopt,
-            [this, workspace](const SupervisoryResponse* response,
+            workspace,
+            goal.has_value()
+                ? std::optional<std::string_view>(*goal) : std::nullopt,
+            [this, workspace, goal](const SupervisoryResponse* response,
                               const std::string* error) {
                 if (error != nullptr) {
                     show_error(text(*error));
@@ -224,8 +289,13 @@ void SupervisoryView::inspect_selected_workspace() {
                 }
                 try {
                     const auto inspection = parse_workspace_inspection_result(
-                        *response, workspace, std::nullopt);
-                    if (workspace_selector_->currentText() == text(workspace)) {
+                        *response, workspace,
+                        goal.has_value()
+                            ? std::optional<std::string_view>(*goal) : std::nullopt);
+                    const bool selection_matches = workspace_selector_->currentText() == text(workspace)
+                        && ((goal_selector_->currentIndex() == 0 && !goal.has_value())
+                            || (goal.has_value() && goal_selector_->currentText() == text(*goal)));
+                    if (selection_matches) {
                         render(inspection);
                         connection_status_->setText("Connected (read-only)");
                     }
@@ -241,6 +311,30 @@ void SupervisoryView::inspect_selected_workspace() {
 }
 
 void SupervisoryView::render(const SupervisoryWorkspaceInspection& inspection) {
+    if (inspection.current_plan.is_null()) {
+        if (inspection.goal_id.has_value()) {
+            throw SupervisoryResponseError(
+                "selected goal does not have an authoritative approved plan");
+        }
+        approved_plan_->setText("Workspace overview; select a goal to inspect its approved plan.");
+        approved_plan_->setToolTip({});
+    } else {
+        const auto& plan = require_object(inspection.current_plan, "currentPlan");
+        if (plan.size() != 4 || !plan.contains("revisionId")
+            || !plan.contains("hash") || !plan.contains("objective")
+            || !plan.contains("approved")) {
+            throw SupervisoryResponseError(
+                "currentPlan has missing or unknown fields");
+        }
+        if (!boolean_field(inspection.current_plan, "approved")) {
+            throw SupervisoryResponseError("currentPlan is not approved");
+        }
+        approved_plan_->setText(text(string_field(inspection.current_plan, "objective")));
+        approved_plan_->setToolTip(
+            "Approved revision: " + text(string_field(inspection.current_plan, "revisionId"))
+            + "\nHash: " + text(string_field(inspection.current_plan, "hash")));
+    }
+
     require_object(inspection.resources, "resources");
     const Json& quota = inspection.resources.at("quota");
     require_object(quota, "resources.quota");
@@ -319,6 +413,7 @@ void SupervisoryView::set_busy(bool busy) {
     busy_ = busy;
     refresh_button_->setEnabled(!busy && client_.is_running());
     workspace_selector_->setEnabled(!busy);
+    goal_selector_->setEnabled(!busy);
 }
 
 } // namespace axiom_colab::gui

@@ -46,10 +46,13 @@ capability revocation, and recovery first delegate to host-owned authoritative
 operations and only then commit their supervisory state. Cross-workspace use,
 replay, changed plan bindings, and unavailable actions fail closed.
 
-The first Qt read slice now exposes workspace selection plus resource, Tool,
-candidate, and timeline summaries. It labels model claims separately from
-validator evidence, user decisions, and verified installed state. Goal
-selection and authority-changing controls remain deferred.
+The Qt read slice now exposes workspace and goal selection plus approved-plan,
+resource, Tool, candidate, and timeline summaries. The production host reads
+the exact `goal:<id>:plan` committed working revision with a call-scoped
+trusted-host read capability, and lifecycle enumeration rechecks its stored
+revision/hash binding before exposing a goal. The UI labels model claims
+separately from validator evidence, user decisions, and verified installed
+state. Authority-changing controls remain deferred.
 
 `LocalApplicationHost` now owns that composition boundary. Startup discovers
 built-ins through the Adapter, enumerates memory-service workspaces, performs
@@ -64,7 +67,7 @@ shell-free child process and does not open SQLite databases or installed-Tool
 directories itself.
 
 `SupervisoryTransport` defines the initial versioned JSON read boundary. It
-accepts only `list-workspaces` and `inspect`, uses strict exact-field parsing,
+accepts only `list-workspaces`, `list-goals`, and `inspect`, uses strict exact-field parsing,
 validates workspace and goal identities, bounds request bytes, correlates every
 valid request ID, and returns structured deterministic failures. There are no
 approval, installation, mutation, or lifecycle commands in this transport

@@ -32,6 +32,7 @@ private:
     void build_ui();
     void start_process();
     void load_workspaces();
+    void load_goals();
     void inspect_selected_workspace();
     void render(const SupervisoryWorkspaceInspection& inspection);
     void show_error(const QString& message);
@@ -42,8 +43,10 @@ private:
     SupervisoryProcessClient client_;
     QLabel* connection_status_{};
     QComboBox* workspace_selector_{};
+    QComboBox* goal_selector_{};
     QPushButton* refresh_button_{};
     QLabel* resources_{};
+    QLabel* approved_plan_{};
     QListWidget* tools_{};
     QListWidget* candidates_{};
     QListWidget* timeline_{};

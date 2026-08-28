@@ -2,10 +2,16 @@ import { SupervisoryTransport, runSupervisoryTransportServer } from '../../dist/
 
 const host = {
   workspaces() { return ['workspace:alpha', 'workspace:beta'] },
+  goals(workspaceId) { return workspaceId === 'workspace:alpha' ? ['goal:one'] : [] },
   async inspect(workspaceId, goalId) {
     if (workspaceId === 'workspace:missing') throw Object.assign(new Error('workspace is not visible'), { code: 'WORKSPACE_NOT_FOUND' })
     return {
-      workspaceId, goalId, currentPlan: null, tools: [], candidates: [], timeline: [],
+      workspaceId, goalId,
+      currentPlan: goalId === null ? null : {
+        revisionId: 'object:plan', hash: `sha256:${'1'.repeat(64)}`,
+        objective: 'Inspect authoritative state.', approved: true,
+      },
+      tools: [], candidates: [], timeline: [],
       resources: { workspaceId, usedBytes: 0, objectCount: 0, quota: { maxBytes: 10, maxObjects: 1 }, expiredObjects: 0, corruptObjects: 0 },
       controls: { canStopGoal: false, revocableCapabilityIds: [], canResumeGoal: false, recoveryRequired: false },
     }

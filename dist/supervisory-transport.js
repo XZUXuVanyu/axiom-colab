@@ -36,6 +36,16 @@ function parseRequest(text, maxBytes) {
         ]);
         return value;
     }
+    if (value.operation === 'list-goals') {
+        exact(value, [
+            'protocolVersion',
+            'id',
+            'operation',
+            'workspaceId'
+        ]);
+        if (typeof value.workspaceId !== 'string' || !/^workspace:[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(value.workspaceId)) fail('INVALID_WORKSPACE_ID', 'workspace identity is malformed');
+        return value;
+    }
     if (value.operation === 'inspect') {
         exact(value, [
             'protocolVersion',
@@ -80,6 +90,11 @@ export class SupervisoryTransport {
             const result = request.operation === 'list-workspaces' ? {
                 workspaces: [
                     ...this.host.workspaces()
+                ]
+            } : request.operation === 'list-goals' ? {
+                workspaceId: request.workspaceId,
+                goals: [
+                    ...this.host.goals(request.workspaceId)
                 ]
             } : await this.host.inspect(request.workspaceId, request.goalId);
             const response = {

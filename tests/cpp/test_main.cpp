@@ -35,6 +35,7 @@ using cpp_adapter::ToolDescriptor;
 using cpp_adapter::ToolError;
 using axiom_colab::gui::SupervisoryResponseError;
 using axiom_colab::gui::parse_supervisory_response;
+using axiom_colab::gui::parse_goal_list_result;
 using axiom_colab::gui::parse_workspace_inspection_result;
 using axiom_colab::gui::parse_workspace_list_result;
 
@@ -80,6 +81,23 @@ void test_supervisory_response_parser() {
     const auto workspaces = parse_workspace_list_result(success);
     CHECK(workspaces.size() == 1);
     CHECK(workspaces[0] == "workspace:one");
+
+    const auto goal_response = parse_supervisory_response(
+        R"({"protocolVersion":"1.0","id":"request:goals","ok":true,"result":{"workspaceId":"workspace:one","goals":["goal:one"]}})",
+        "request:goals");
+    const auto goals = parse_goal_list_result(goal_response, "workspace:one");
+    CHECK(goals.workspace_id == "workspace:one");
+    CHECK(goals.goals.size() == 1);
+    CHECK(goals.goals[0] == "goal:one");
+    check_supervisory_response_error([&] {
+        (void)parse_goal_list_result(goal_response, "workspace:other");
+    });
+    check_supervisory_response_error([] {
+        const auto duplicate_goals = parse_supervisory_response(
+            R"({"protocolVersion":"1.0","id":"request:goals","ok":true,"result":{"workspaceId":"workspace:one","goals":["goal:one","goal:one"]}})",
+            "request:goals");
+        (void)parse_goal_list_result(duplicate_goals, "workspace:one");
+    });
 
     const auto failure = parse_supervisory_response(
         R"({"protocolVersion":"1.0","id":"request:2","ok":false,"error":{"code":"GOAL_NOT_FOUND","message":"missing"}})",

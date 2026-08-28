@@ -101,6 +101,12 @@ export class LocalGoalLifecycle {
             canResume: row.state === 'stopped'
         };
     }
+    listGoals(workspaceId) {
+        this.ensureOpen();
+        const rows = this.database.prepare('SELECT goal_id FROM goals WHERE workspace_id=? ORDER BY goal_id').all(workspaceId);
+        for (const row of rows)this.inspectGoal(workspaceId, row.goal_id);
+        return rows.map((row)=>row.goal_id);
+    }
     revocableCapabilities(workspaceId, goalId) {
         this.ensureOpen();
         const rows = goalId === null ? this.database.prepare("SELECT capability_id FROM capabilities WHERE workspace_id=? AND state='active' ORDER BY capability_id").all(workspaceId) : this.database.prepare("SELECT capability_id FROM capabilities WHERE workspace_id=? AND goal_id=? AND state='active' ORDER BY capability_id").all(workspaceId, goalId);

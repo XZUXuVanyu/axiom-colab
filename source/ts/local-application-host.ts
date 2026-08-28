@@ -86,6 +86,12 @@ export class LocalApplicationHost {
     return this.options.store.listWorkspaces()
   }
 
+  goals(workspaceId: LaboratoryId<'workspace'>): readonly LaboratoryId<'goal'>[] {
+    this.ensureReady()
+    this.options.store.reopenWorkspace(workspaceId)
+    return this.options.lifecycle.listGoals(workspaceId)
+  }
+
   installedRegistrations(workspaceId: LaboratoryId<'workspace'>): readonly InstalledToolRegistration[] {
     this.ensureReady()
     return this.registry.list(workspaceId)

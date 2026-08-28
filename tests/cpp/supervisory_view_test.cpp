@@ -21,9 +21,12 @@ int main(int argc, char* argv[]) {
     });
 
     auto* workspaces = view.findChild<QComboBox*>("workspaceSelector");
+    auto* goals = view.findChild<QComboBox*>("goalSelector");
     auto* resources = view.findChild<QLabel*>("resourceSummary");
+    auto* plan = view.findChild<QLabel*>("approvedPlan");
     auto* status = view.findChild<QLabel*>("connectionStatus");
-    if (workspaces == nullptr || resources == nullptr || status == nullptr) {
+    if (workspaces == nullptr || goals == nullptr || resources == nullptr
+        || plan == nullptr || status == nullptr) {
         std::cerr << "[FAIL] supervisory widgets are not inspectable\n";
         return 1;
     }
@@ -45,6 +48,23 @@ int main(int argc, char* argv[]) {
     if (resources->text()
         != "0 bytes of 10 | 0 objects of 1 | 0 expired | 0 corrupt") {
         std::cerr << "[FAIL] resource summary did not render the inspection\n";
+        return 1;
+    }
+    if (goals->count() != 2 || goals->itemText(0) != "Workspace overview"
+        || goals->itemText(1) != "goal:one") {
+        std::cerr << "[FAIL] goal selector did not render the bound goal list\n";
+        return 1;
+    }
+    goals->setCurrentIndex(1);
+    timer.restart();
+    while (timer.elapsed() < 5000
+           && plan->text() != "Inspect authoritative state.") {
+        application.processEvents();
+        QThread::msleep(10);
+    }
+    if (plan->text() != "Inspect authoritative state."
+        || !plan->toolTip().contains("object:plan")) {
+        std::cerr << "[FAIL] approved plan did not render for the selected goal\n";
         return 1;
     }
     if (status->text() != "Connected (read-only)") {

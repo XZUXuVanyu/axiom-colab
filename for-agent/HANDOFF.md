@@ -4,6 +4,18 @@ Last updated: 2026-08-29
 
 ## Current state
 
+- Production supervisory composition now supplies `LocalGoalLifecycle` with a
+  scoped trusted-host reader for the exact committed `goal:<id>:plan` working
+  revision. The reader rejects malformed values and goal mismatches rather
+  than treating a stored string as an approved plan.
+- Restart-safe lifecycle goal enumeration validates every stored plan
+  revision/hash binding before exposure. `LocalApplicationHost` and transport
+  now provide workspace-bound `list-goals`; strict C++ decoding rejects
+  duplicates, malformed identities, and selection mismatches.
+- The Qt Laboratory tab now has a goal selector and renders the approved
+  objective with its exact revision identity and hash. Workspace overview
+  remains available, while selecting a goal without an authoritative plan
+  fails closed.
 - The first Qt Widgets supervisory view now launches the constrained local
   process from an explicit config, lists visible workspaces, and renders
   read-only resource, discovered-Tool, candidate, and immutable timeline
@@ -11,8 +23,6 @@ Last updated: 2026-08-29
 - Candidate and timeline rows label model claims, validation outcomes, user
   decisions, verified installation state, and authoritative hashes without
   granting the widget any mutation operation or direct state-directory access.
-  Goal selection remains deliberately absent while approved-plan authority is
-  unavailable in production composition.
 - `proj/scripts/new-supervisory-config.ps1` writes a strict UTF-8 config outside
   the authoritative state root, refuses accidental replacement by default, and
   feeds `--supervisory-config` at GUI launch.
@@ -28,18 +38,20 @@ Last updated: 2026-08-29
 - This initial production process deliberately exposes no lifecycle mutation
   authority and cannot author validation evidence. Promotion projection checks
   exact stored evidence plus all five confinement observations through a
-  narrow read-only authority object. Goal-specific approved-plan composition
-  remains deferred; workspace inspection with `goalId: null` is supported.
+  narrow read-only authority object. Goal-specific inspection uses only exact
+  lifecycle and committed-plan bindings; workspace inspection with
+  `goalId: null` remains supported.
 - The first Qt supervisory read-path slice now provides a UI-independent C++
   response parser. It strictly accepts protocol `1.0` success and error
   envelopes, rejects missing or unknown fields, and correlates every renderable
   response with the exact pending request ID before exposing its payload.
 - `SupervisoryProcessClient` now owns a shell-free long-lived Qt `QProcess`,
   ordered pending-request correlation, bounded incremental JSON-lines framing,
-  deterministic `list-workspaces` request IDs, separate diagnostics, and
-  fail-closed handling of malformed, oversized, unsolicited, crashed, or
-  correlation-losing response streams. It is a Qt Core library independent of
-  Widgets and is exercised against the real Node transport fixture.
+  deterministic `list-workspaces`/`list-goals` request IDs, separate
+  diagnostics, and fail-closed handling of malformed, oversized, unsolicited,
+  crashed, or correlation-losing response streams. It is a Qt Core library
+  independent of Widgets and is exercised against the real Node transport
+  fixture.
 - The Qt client now issues strict `inspect` requests with locally validated
   workspace/goal identities and has a constrained launcher for the known
   production script plus an absolute config. Typed result decoders reject
@@ -281,6 +293,13 @@ otherwise modified by the consolidation work.
 
 Passed in `D:\Dev\axiom-colab`:
 
+- Goal/plan read slice `pnpm.cmd test`: all 78 TypeScript tests passed,
+  including exact committed-plan reading, malformed goal binding rejection,
+  stale lifecycle enumeration, and strict workspace-bound `list-goals`.
+- Fresh Qt 6.12.0/MSVC 19.51 build and CTest: all three targets passed. The
+  real child-process test decoded workspace, goal, and inspection responses;
+  the offscreen Widgets test selected `goal:one` and rendered its exact
+  approved objective and revision evidence.
 - Fresh Qt 6.12.0/MSVC 19.51/Ninja Release build in `build/qt612`: every C++
   target, including `cpp-adapter-gui`, compiled with warnings as errors; CTest
   passed `cpp-adapter-tests`, the real-process
@@ -715,14 +734,13 @@ installation controls:
 
 ## Exact next work
 
-Add an authoritative approved-plan reader and goal enumeration to production
-host composition, then extend the read-only transport and Qt view with a goal
-selector and approved plan/progress projection. Keep null-goal workspace
-inspection available, reject non-null goal inspection until its exact approved
-plan can be resolved, and add adversarial transport/decoder coverage for stale
-or cross-workspace goal selection. Do not teach Qt to open SQLite or installed
-directories. Keep approval and all other authority-changing controls deferred
-until the goal read path is exercised against the real host composition.
+Add authoritative goal progress projection from checkpointed working state and
+Tool-call observations, then build detailed memory/artifact lineage and Tool
+call views without giving Qt direct storage access. After that, expose the
+existing-Tool execution workflow through host-owned commands before beginning
+candidate-authoring and approval controls. Keep mutations absent from the
+current read-only transport until their exact authority and refresh behavior
+are implemented and tested independently.
 
 Keep the WSL integration suite opt-in for portable CI, and run it explicitly on
 the supported Windows/Ubuntu composition before changing its confinement
