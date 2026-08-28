@@ -142,6 +142,7 @@ export { LocalSupervisoryBackend, LocalSupervisoryBackendError } from './local-s
 export { LocalGoalLifecycle, LocalGoalLifecycleError } from './local-goal-lifecycle.js';
 export { LocalApplicationHost, LocalApplicationHostError } from './local-application-host.js';
 export { SUPERVISORY_TRANSPORT_VERSION, SupervisoryTransport, SupervisoryTransportError } from './supervisory-transport.js';
+export { runSupervisoryTransportServer } from './supervisory-transport-server.js';
 export { InvocationLedger } from './invocation-ledger.js';
 
 

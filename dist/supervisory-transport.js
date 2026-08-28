@@ -53,6 +53,14 @@ function parseRequest(text, maxBytes) {
 function code(error) {
     return typeof error === 'object' && error !== null && typeof error.code === 'string' ? error.code : 'INTERNAL_ERROR';
 }
+function recoverRequestId(text) {
+    try {
+        const value = JSON.parse(text);
+        return record(value) && typeof value.id === 'string' && value.id.length > 0 && value.id.length <= 128 ? value.id : null;
+    } catch  {
+        return null;
+    }
+}
 export class SupervisoryTransport {
     host;
     maxRequestBytes;
@@ -66,7 +74,7 @@ export class SupervisoryTransport {
         try {
             request = parseRequest(text, this.maxRequestBytes);
         } catch (error) {
-            return JSON.stringify(this.failure(null, code(error), error instanceof Error ? error.message : String(error)));
+            return JSON.stringify(this.failure(recoverRequestId(text), code(error), error instanceof Error ? error.message : String(error)));
         }
         try {
             const result = request.operation === 'list-workspaces' ? {

@@ -4,6 +4,13 @@ Last updated: 2026-08-28
 
 ## Current state
 
+- `runSupervisoryTransportServer` now provides incremental UTF-8 JSON-lines
+  framing for a shell-free local process. Stdout is response-only, diagnostics
+  are separate, responses remain ordered, oversized frames are contained, and
+  parsing resumes at the next newline.
+- Valid request IDs survive parseable rejections such as unknown operations;
+  malformed JSON remains uncorrelated. Real child-process tests exercise the
+  framing rather than only calling the transport in-process.
 - `SupervisoryTransport` now defines version `1.0` read-only JSON operations
   for `list-workspaces` and `inspect`. Requests use strict fields, validated
   identities, a 64 KiB default limit, request-ID correlation, and structured
@@ -231,6 +238,11 @@ otherwise modified by the consolidation work.
 
 Passed in `D:\Dev\axiom-colab`:
 
+- Stage 8 process transport `pnpm.cmd test`: all 75 TypeScript tests passed
+  after correcting an internal test import and then fixing request-ID
+  preservation for parseable rejected operations. Process coverage proves
+  shell-free execution, JSON-only stdout, ordered framing, oversized-line
+  containment, resynchronization, and mutation rejection.
 - Stage 8 supervisory transport `pnpm.cmd test`: all 73 TypeScript tests passed,
   including strict read operations, malformed and oversized input, rejection
   of mutation-shaped requests, request correlation, and deterministic backend
@@ -608,13 +620,13 @@ installation controls:
 
 ## Exact next work
 
-Continue Stage 8 by adding the shell-free local transport process entry point
-and wiring the first Qt workspace, goal, approved-plan, timeline, Tool,
-resource, and candidate views to `SupervisoryTransport` responses. The Qt
-process must not open memory/candidate/lifecycle SQLite files or infer installed
-state from directories. Keep approval and other authority-changing controls
-deferred until the real process read path and startup/recovery composition are
-tested.
+Continue Stage 8 by wiring the first Qt workspace, goal, approved-plan,
+timeline, Tool, resource, and candidate views to the JSON-lines supervisory
+process. Add a Qt-side strict response parser and request-ID correlation before
+rendering any state. The Qt process must not open memory/candidate/lifecycle
+SQLite files or infer installed state from directories. Keep approval and other
+authority-changing controls deferred until this read path is exercised against
+the real host composition.
 
 Keep the WSL integration suite opt-in for portable CI, and run it explicitly on
 the supported Windows/Ubuntu composition before changing its confinement

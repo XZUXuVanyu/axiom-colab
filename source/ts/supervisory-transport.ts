@@ -59,6 +59,13 @@ function code(error: unknown): string {
     ? (error as { code: string }).code : 'INTERNAL_ERROR'
 }
 
+function recoverRequestId(text: string): string | null {
+  try {
+    const value = JSON.parse(text) as unknown
+    return record(value) && typeof value.id === 'string' && value.id.length > 0 && value.id.length <= 128 ? value.id : null
+  } catch { return null }
+}
+
 export class SupervisoryTransport {
   constructor(private readonly host: SupervisoryTransportHost, private readonly maxRequestBytes = 64 * 1024) {
     if (!Number.isSafeInteger(maxRequestBytes) || maxRequestBytes < 256) fail('INVALID_TRANSPORT_LIMIT', 'maxRequestBytes must be a safe integer of at least 256')
@@ -67,7 +74,7 @@ export class SupervisoryTransport {
   async handle(text: string): Promise<string> {
     let request: Request
     try { request = parseRequest(text, this.maxRequestBytes) } catch (error) {
-      return JSON.stringify(this.failure(null, code(error), error instanceof Error ? error.message : String(error)))
+      return JSON.stringify(this.failure(recoverRequestId(text), code(error), error instanceof Error ? error.message : String(error)))
     }
     try {
       const result = request.operation === 'list-workspaces'

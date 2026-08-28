@@ -4,6 +4,30 @@ Entries are chronological. Each entry corresponds to one logical Git commit and
 records its exact subject, purpose, material changes, and validation actually
 performed.
 
+## 2026-08-28 - feat(gui): serve supervisory transport process
+
+Purpose: provide the tested shell-free process framing that the Qt client can
+consume without direct storage access.
+
+Material changes:
+
+- Added incremental UTF-8 JSON-lines serving with ordered responses and
+  separate diagnostics.
+- Added bounded line handling that emits one structured failure, discards the
+  rest of an oversized frame, and resumes at the next newline.
+- Preserved syntactically valid request IDs for rejected parseable requests.
+- Added real child-process coverage for multiple requests, JSON-only stdout,
+  mutation rejection, oversized input, and frame recovery.
+
+Validation actually run:
+
+- Initial `pnpm.cmd test` stopped at module loading because the new test
+  imported internal `ProcessRunner` from the package root, where it is not
+  exported. The test was corrected to use `dist/process-runner.js`.
+- The next run reached the process assertion: 74 of 75 passed and showed that
+  rejected unknown operations lost an otherwise valid request ID.
+- After preserving parseable request IDs, `pnpm.cmd test` passed all 75 tests.
+
 ## 2026-08-28 - feat(gui): define read-only supervisory transport
 
 Purpose: give Qt a narrow, versioned host-facing read protocol without exposing

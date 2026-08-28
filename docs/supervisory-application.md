@@ -69,3 +69,9 @@ valid request ID, and returns structured deterministic failures. There are no
 approval, installation, mutation, or lifecycle commands in this transport
 version. Host inspection bypasses mutable UI selection, so concurrent clients
 cannot redirect one another's workspace or goal request.
+
+`runSupervisoryTransportServer` supplies the shell-free JSON-lines process
+boundary. It incrementally decodes UTF-8, emits only protocol responses on
+stdout, preserves request order, contains oversized frames, and resumes at the
+next newline. Diagnostics use an explicit separate callback suitable for
+stderr. Process-level tests invoke a real Node child without a shell.
