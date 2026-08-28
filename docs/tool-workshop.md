@@ -57,6 +57,11 @@ returns redacted snapshots and records, never private challenge definitions.
 
 ## Deliberate limits
 
-The OS confinement gaps documented in `candidate-validation.md` remain open.
-Consequently the API exposes no approval, installation, registration, or
-rediscovery operation, and the Qt UI must not present any such control yet.
+The optional WSL2 backend now closes the five-class OS confinement gate when it
+is explicitly composed and its exact policy is bound into the candidate
+snapshot. The default direct runner still fails promotion closed.
+
+The API exposes no approval, installation, registration, or rediscovery
+operation yet. Exact candidate, validation record, requested permission, and
+installation-proposal binding remains the next Stage 7 authority boundary, and
+the Qt UI must not present approval or installation controls before it exists.

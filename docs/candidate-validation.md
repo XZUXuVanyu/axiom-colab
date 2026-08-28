@@ -47,13 +47,29 @@ repository contains the matching snapshot and record with valid content
 bindings. Altered or merely record-shaped JSON is not authentic.
 
 Authenticity and observed test success are still insufficient for promotion.
-Every record explicitly binds confinement observations. The current direct
+Every record explicitly binds confinement observations. The default direct
 process runner records all five required controls—filesystem, descendant
 processes, network, CPU, and memory—as unenforced, so promotion eligibility
-fails closed even for an authentic passing record. A later backend must provide
-the actual controls and observations; callers cannot promote by changing the
-record-shaped JSON because that invalidates its record hash and repository
-identity.
+fails closed even for an authentic passing record.
+
+On Windows, a trusted host may instead inject `WslValidationBackend`. It invokes
+the allowlisted absolute Linux executable as an argument vector, never through
+a shell, inside Ubuntu on WSL2. Bubblewrap supplies fresh user, mount, PID,
+network, IPC, UTS, and cgroup namespaces; exposes a read-only Linux runtime plus
+only the staged candidate workspace; clears the ambient environment; and drops
+the process to an unprivileged identity. A transient systemd service applies
+memory, CPU-quota, task-count, runtime, and control-group descendant cleanup
+limits. `prlimit` independently applies address-space, CPU-time, and process-
+count ceilings inside that service.
+
+The memory, CPU-quota, and task limits are required fields in the canonical
+validation policy and therefore participate in the snapshot hash. The WSL
+backend refuses relative Linux executables, unsafe working directories,
+non-drive Windows staging paths, or a policy without resource limits. A record
+names this backend and marks all five observations enforced only when the
+trusted runner was explicitly composed with it; callers cannot promote by
+changing record-shaped JSON because that invalidates its record hash and
+repository identity.
 
 ## Hidden challenge boundary
 
@@ -67,15 +83,17 @@ The public record exposes only command identity, commitment and output hashes,
 byte counts, timing, and outcome. This keeps challenge inputs and detailed
 output hidden by default while preserving attribution.
 
-## Limits of this first slice
+## Platform and composition limits
 
-This is not the Stage 6 exit gate. The current implementation enforces
-shell-free top-level executable admission, canonical staged paths, command
-count, wall-clock time, and stream byte limits. It does not yet provide an OS
-sandbox that blocks ambient filesystem access, descendant processes, or
-networking, and it does not enforce or measure CPU and memory ceilings.
+The direct runner deliberately remains available for portable development and
+unit tests, but its records are non-promotable. The enforcing backend currently
+targets Windows hosts with WSL2, Ubuntu 24.04, systemd, Bubblewrap, and cgroup
+v2. It is not an ambient fallback: production validation must explicitly
+compose the WSL backend and durable evidence repository with a validator
+credential.
 
-Authenticated, restart-safe evidence storage is now available, but storage does
-not prove that declared confinement ran. The next runner backend must add the
-remaining OS controls without treating policy fields or model-authored JSON as
-evidence that confinement occurred.
+The backend records exact configured ceilings and observed command timing,
+exit, signal, stream sizes, and hashes. It does not yet report sampled peak CPU
+or resident-memory usage. Linux-native and other operating-system backends are
+also not implemented. Installation and UI controls remain unavailable until
+the Stage 7 exact proposal/approval/installation binding is implemented.

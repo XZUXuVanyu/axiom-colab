@@ -10,8 +10,14 @@ Last updated: 2026-08-28
   to `D:\Software\Wsl`; the old tree contains no VHDX.
 - Ubuntu identifies as 24.04.4 LTS, boots with systemd, exposes cgroup v2 and
   PID/mount namespaces, automounts `D:` at `/mnt/d`, and provides `unshare`.
-  Bubblewrap is not installed, and actual filesystem, descendant-process,
-  network, CPU, and memory confinement still must be proven independently.
+  Bubblewrap 0.9.0 is installed. The real WSL integration suite proves staged-
+  filesystem isolation, network denial, descendant cleanup, memory exhaustion
+  termination, and CPU exhaustion termination.
+- `WslValidationBackend` is the explicit enforcing validator backend for this
+  Windows platform. Bubblewrap supplies isolated user/mount/PID/network/IPC/UTS
+  namespaces and a minimal filesystem; systemd and `prlimit` enforce policy-
+  bound runtime, memory, CPU, task, process, and descendant limits. The direct
+  backend remains available but records every confinement class false.
 - Stage 7 has started with `source/ts/tool-workshop.ts`. Model or trusted-host
   authority can define copied, canonical-hash-bound structured Tool
   specifications and create captured candidate revisions whose descriptor,
@@ -46,9 +52,11 @@ Last updated: 2026-08-28
   low-entropy inputs cannot be guessed from the public commitment. The
   in-process runner refuses promotion eligibility for copied or fabricated
   record-shaped JSON and for a changed candidate snapshot hash.
-- This is not yet the Stage 6 exit gate. OS-enforced filesystem,
-  descendant-process, network, CPU, and memory confinement remain to be
-  implemented.
+- The Stage 6 confinement gate is closed for the explicitly composed WSL2
+  backend. Its real integration tests adversarially exercise all five required
+  classes; it will not accept relative Linux executables, unsafe working
+  directories, non-drive staging roots, or policies without hashed resource
+  limits.
 - Validation records now bind explicit observations for all five confinement
   classes. The current direct runner records every class as unenforced, and
   promotion eligibility fails closed even for an authentic passing record.
@@ -155,6 +163,18 @@ otherwise modified by the consolidation work.
 
 Passed in `D:\Dev\axiom-colab`:
 
+- WSL confinement `pnpm.cmd test`: all 55 TypeScript tests passed, including
+  fail-closed direct execution, required resource policy, local-drive path
+  projection, and shell-free WSL argument construction.
+- Real WSL confinement integration with
+  `AXIOM_TEST_WSL_CONFINEMENT=1`: all 3 tests passed. A promotable passing run
+  could not see `/mnt/c`, could not reach an external IP socket, and killed a
+  delayed descendant before the next suite. Separate runs terminated a 256 MiB
+  allocation under a 64 MiB policy and a busy CPU loop within its 1.5-second
+  runtime policy.
+- `pnpm.cmd run test:integration`: all 4 existing Bridge/built-in integration
+  tests passed; the 3 WSL cases skipped by design because the opt-in environment
+  flag was absent from this portable entry point.
 - Post-install WSL health and relocation checks passed. `Ubuntu-24.04`
   launched as Ubuntu 24.04.4 LTS on the WSL2 kernel with systemd, cgroup v2,
   PID/mount namespaces, `/mnt/d`, and `/usr/bin/unshare`. WSL's supported move
@@ -455,10 +475,11 @@ installation controls:
   authenticated restart-safe immutable candidate/evidence storage. Keep the
   `WeakSet` only as a process-local fallback and ensure production composition
   always supplies the durable repository and validator credential.
-- The runner stages canonical files, allowlists the top-level executable, and
-  limits commands, wall time, and streams, but it does not prevent ambient
-  filesystem access, descendant processes, networking, or excessive CPU and
-  memory. Declared policy and toolchain hashes do not prove those controls ran.
+- The default direct runner still does not provide OS confinement and must
+  remain non-promotable. Production composition must explicitly supply the WSL
+  backend, durable repository, and validator credential. The WSL backend binds
+  configured resource ceilings but does not yet sample peak resident memory or
+  CPU consumption for reporting.
 - Hidden challenge definitions, output, and fresh per-run commitment salts are
   redacted. The authenticated repository privately stores and rechecks salts;
   retain this access boundary when composing production services and UI.
@@ -468,8 +489,9 @@ installation controls:
 - Approval must come from trusted user context and bind the exact candidate,
   validation record, requested permissions, and installation proposal hash.
   Model-authored strings or record-shaped JSON cannot approve or install.
-- Installation and rediscovery must remain disabled until the Stage 6 storage
-  and confinement gaps above are closed and adversarially re-tested.
+- Installation and rediscovery must remain disabled until the exact Stage 7
+  proposal and trusted-user approval binding is implemented and adversarially
+  tested.
 - Ignored C++ build products can be stale. Rebuild the selected Bridge before
   real integration checks; the recent regression run initially found a stale
   `build/windows/Release` binary rather than a source defect.
@@ -482,23 +504,15 @@ installation controls:
 
 ## Exact next work
 
-Ubuntu 24.04 LTS is installed, launchable, and stored on `D:`. Install or
-otherwise provide Bubblewrap inside the distribution, then verify user, mount,
-PID, and network namespace behavior; cgroup CPU/memory enforcement; Windows
-interoperability; the intended read-only/tool-output filesystem projection;
-network denial; descendant cleanup; and Windows-drive exposure from inside the
-sandbox. WSL by itself is not evidence of confinement.
+Add and adversarially test the exact candidate + authentic passing validation
+record + requested permissions + installation proposal binding. The proposal
+must be immutable and content-hashed; approval must come from trusted user
+context and bind that exact proposal hash. Changed candidates, policies,
+validation records, permissions, stale proposals, replay, model-authored
+approval strings, and records produced by the direct backend must fail closed.
 
-Continue Stage 7 by adding an OS-specific validation backend that actually
-enforces and records filesystem, descendant-process, network, CPU, and memory
-confinement.
-
-The machine now has a usable WSL2 Linux environment but not yet a proven
-external sandbox backend. Do not mark any confinement observation true based
-only on the installed WSL platform, available namespace primitives, or declared
-policy.
-
-Only after those evidence blockers close, add and adversarially test the exact
-candidate + validation record + requested permissions + installation proposal
-approval binding. Do not add installation or Stage 8 controls until the gate
-confirms that UI controls can consume authoritative backend state safely.
+Do not add actual installation, rediscovery, or Stage 8 controls until this
+authority gate confirms that UI controls can consume authoritative backend
+state safely. Keep the WSL integration suite opt-in for portable CI, and run it
+explicitly on the supported Windows/Ubuntu composition before changing its
+confinement claims.

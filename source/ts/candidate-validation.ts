@@ -22,6 +22,7 @@ import {
   ProcessExecutionError,
   ProcessRunner,
   type ProcessLimits,
+  type ProcessResult,
 } from './process-runner.js'
 
 export type ValidationSuiteKind = 'candidate' | 'standard' | 'challenge'
@@ -38,7 +39,14 @@ export interface CandidateToolchain {
 export interface CandidateValidationPolicy {
   readonly allowedExecutables: readonly string[]
   readonly process: ProcessLimits
+  readonly resources?: ValidationResourceLimits
   readonly maxCommands: number
+}
+
+export interface ValidationResourceLimits {
+  readonly maxMemoryBytes: number
+  readonly cpuQuotaPercent: number
+  readonly maxProcesses: number
 }
 
 export interface ValidationCommand {
@@ -159,12 +167,19 @@ export class CandidateValidationError extends Error {
 
 export interface CandidateValidationRunnerOptions {
   readonly runner?: ProcessRunner
+  readonly executionBackend?: ValidationExecutionBackend
   readonly temporaryRoot?: string
   readonly now?: () => Date
   readonly idFactory?: () => string
   readonly challengeSaltFactory?: () => string
   readonly evidenceRepository?: ValidationEvidenceRepository
   readonly validatorCredential?: string
+}
+
+export interface ValidationExecutionBackend {
+  readonly confinement: ValidationConfinement
+  validatePolicy(policy: CandidateValidationPolicy): void
+  run(command: ValidationCommand, root: string, limits: ProcessLimits, resources: ValidationResourceLimits | undefined): Promise<ProcessResult>
 }
 
 export interface ValidationEvidenceRepository {
@@ -273,6 +288,11 @@ function validatePolicy(policy: CandidateValidationPolicy): void {
   for (const [field, value] of Object.entries(policy.process)) {
     if (!Number.isSafeInteger(value) || value <= 0) fail('INVALID_VALIDATION_POLICY', `process.${field} must be a positive safe integer`)
   }
+  if (policy.resources !== undefined) {
+    for (const [field, value] of Object.entries(policy.resources)) {
+      if (!Number.isSafeInteger(value) || value <= 0) fail('INVALID_VALIDATION_POLICY', `resources.${field} must be a positive safe integer`)
+    }
+  }
 }
 
 function assertAllowedCommand(command: ValidationCommand, policy: CandidateValidationPolicy): void {
@@ -289,8 +309,32 @@ function assertAllowedCommand(command: ValidationCommand, policy: CandidateValid
   }
 }
 
+class DirectValidationBackend implements ValidationExecutionBackend {
+  readonly confinement: ValidationConfinement = {
+    backend: 'none',
+    filesystem: false,
+    descendantProcesses: false,
+    network: false,
+    cpu: false,
+    memory: false,
+  }
+
+  constructor(private readonly runner: ProcessRunner) {}
+
+  validatePolicy(_policy: CandidateValidationPolicy): void {}
+
+  async run(command: ValidationCommand, root: string, limits: ProcessLimits): Promise<ProcessResult> {
+    return await this.runner.run(command.executable, {
+      ...limits,
+      args: command.args,
+      stdin: command.stdin,
+      cwd: resolve(root, command.cwd ?? '.'),
+    })
+  }
+}
+
 export class CandidateValidationRunner {
-  private readonly runner: ProcessRunner
+  private readonly executionBackend: ValidationExecutionBackend
   private readonly temporaryRoot: string
   private readonly now: () => Date
   private readonly idFactory: () => string
@@ -300,7 +344,11 @@ export class CandidateValidationRunner {
   private readonly issuedRecords = new WeakSet<ValidationRecord>()
 
   constructor(options: CandidateValidationRunnerOptions = {}) {
-    this.runner = options.runner ?? new ProcessRunner()
+    if (options.runner !== undefined && options.executionBackend !== undefined) {
+      fail('INVALID_VALIDATION_BACKEND', 'runner and executionBackend cannot both be configured')
+    }
+    const runner = options.runner ?? new ProcessRunner()
+    this.executionBackend = options.executionBackend ?? new DirectValidationBackend(runner)
     this.temporaryRoot = options.temporaryRoot ?? tmpdir()
     this.now = options.now ?? (() => new Date())
     this.idFactory = options.idFactory ?? randomUUID
@@ -314,6 +362,7 @@ export class CandidateValidationRunner {
 
   async validate(request: CandidateValidationRequest): Promise<CandidateValidationResult> {
     validatePolicy(request.policy)
+    this.executionBackend.validatePolicy(request.policy)
     const totalCommands = request.suites.reduce((sum, suite) => sum + suite.commands.length, 0)
     if (totalCommands > request.policy.maxCommands) fail('COMMAND_LIMIT', `validation requests ${totalCommands} commands but policy allows ${request.policy.maxCommands}`)
     const prepared = await this.prepare(request)
@@ -327,7 +376,13 @@ export class CandidateValidationRunner {
         const processes: ObservedProcessResult[] = []
         for (const command of suite.commands) {
           assertAllowedCommand(command, prepared.policy)
-          processes.push(await this.execute(command, prepared.root, binding.hidden, prepared.policy.process))
+          processes.push(await this.execute(
+            command,
+            prepared.root,
+            binding.hidden,
+            prepared.policy.process,
+            prepared.policy.resources,
+          ))
         }
         suiteRuns.push({
           ...binding,
@@ -347,14 +402,7 @@ export class CandidateValidationRunner {
         startedAt,
         completedAt,
         outcome: overallOutcome(suiteRuns.map((suite) => suite.outcome)),
-        confinement: {
-          backend: 'none' as const,
-          filesystem: false as const,
-          descendantProcesses: false as const,
-          network: false as const,
-          cpu: false as const,
-          memory: false as const,
-        },
+        confinement: { ...this.executionBackend.confinement },
         suites: suiteRuns,
       }
       const record = deepFreeze({ ...recordWithoutHash, recordHash: contentHash(recordWithoutHash) })
@@ -401,6 +449,7 @@ export class CandidateValidationRunner {
     const capturedPolicy: CandidateValidationPolicy = {
       allowedExecutables: [...request.policy.allowedExecutables],
       process: { ...request.policy.process },
+      ...(request.policy.resources === undefined ? {} : { resources: { ...request.policy.resources } }),
       maxCommands: request.policy.maxCommands,
     }
     const allPaths = new Set(sources.map((file) => file.path))
@@ -455,16 +504,17 @@ export class CandidateValidationRunner {
     }
   }
 
-  private async execute(command: ValidationCommand, root: string, hidden: boolean, limits: ProcessLimits): Promise<ObservedProcessResult> {
+  private async execute(
+    command: ValidationCommand,
+    root: string,
+    hidden: boolean,
+    limits: ProcessLimits,
+    resources: ValidationResourceLimits | undefined,
+  ): Promise<ObservedProcessResult> {
     const startedAt = performance.now()
     const bindingHash = commandHash(command)
     try {
-      const result = await this.runner.run(command.executable, {
-        ...limits,
-        args: command.args,
-        stdin: command.stdin,
-        cwd: resolve(root, command.cwd ?? '.'),
-      })
+      const result = await this.executionBackend.run(command, root, limits, resources)
       return {
         commandId: command.commandId,
         commandHash: bindingHash,
