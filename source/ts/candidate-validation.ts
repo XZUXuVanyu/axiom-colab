@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto'
+import { randomBytes, randomUUID } from 'node:crypto'
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, resolve } from 'node:path'
@@ -73,6 +73,7 @@ export interface BoundValidationSuite {
   readonly definitionHash: `sha256:${string}`
   readonly commandCount: number
   readonly hidden: boolean
+  readonly commitment: 'plain-sha256' | 'salted-sha256'
 }
 
 export interface CandidateSnapshot {
@@ -151,6 +152,7 @@ export interface CandidateValidationRunnerOptions {
   readonly temporaryRoot?: string
   readonly now?: () => Date
   readonly idFactory?: () => string
+  readonly challengeSaltFactory?: () => string
   readonly evidenceRepository?: ValidationEvidenceRepository
   readonly validatorCredential?: string
 }
@@ -206,7 +208,7 @@ function commandHash(command: ValidationCommand): `sha256:${string}` {
   return contentHash(publicCommandBinding(command))
 }
 
-function bindSuites(suites: readonly ValidationSuite[]): readonly BoundValidationSuite[] {
+function bindSuites(suites: readonly ValidationSuite[], challengeSalt: string): readonly BoundValidationSuite[] {
   const seenKinds = new Set<ValidationSuiteKind>()
   const seenIds = new Set<string>()
   const seenCommandIds = new Set<string>()
@@ -220,12 +222,16 @@ function bindSuites(suites: readonly ValidationSuite[]): readonly BoundValidatio
       if (seenCommandIds.has(command.commandId)) fail('DUPLICATE_COMMAND_ID', `validation command ${command.commandId} is duplicated`)
       seenCommandIds.add(command.commandId)
     }
+    const definition = suite.commands.map(publicCommandBinding)
     return {
       suiteId: suite.suiteId,
       kind: suite.kind,
-      definitionHash: contentHash(suite.commands.map(publicCommandBinding)),
+      definitionHash: suite.kind === 'challenge'
+        ? contentHash({ salt: challengeSalt, definition })
+        : contentHash(definition),
       commandCount: suite.commands.length,
       hidden: suite.kind === 'challenge',
+      commitment: suite.kind === 'challenge' ? 'salted-sha256' as const : 'plain-sha256' as const,
     }
   }).sort((left, right) => suiteOrder[left.kind] - suiteOrder[right.kind])
   for (const kind of Object.keys(suiteOrder) as ValidationSuiteKind[]) {
@@ -280,6 +286,7 @@ export class CandidateValidationRunner {
   private readonly idFactory: () => string
   private readonly evidenceRepository?: ValidationEvidenceRepository
   private readonly validatorCredential?: string
+  private readonly challengeSaltFactory: () => string
   private readonly issuedRecords = new WeakSet<ValidationRecord>()
 
   constructor(options: CandidateValidationRunnerOptions = {}) {
@@ -289,6 +296,7 @@ export class CandidateValidationRunner {
     this.idFactory = options.idFactory ?? randomUUID
     this.evidenceRepository = options.evidenceRepository
     this.validatorCredential = options.validatorCredential
+    this.challengeSaltFactory = options.challengeSaltFactory ?? (() => randomBytes(32).toString('hex'))
     if ((this.evidenceRepository === undefined) !== (this.validatorCredential === undefined)) {
       fail('INVALID_VALIDATION_REPOSITORY', 'evidenceRepository and validatorCredential must be configured together')
     }
@@ -377,7 +385,9 @@ export class CandidateValidationRunner {
       if (allPaths.has(fixture.path)) fail('DUPLICATE_SNAPSHOT_PATH', `fixture path ${fixture.path} collides with a source`)
       allPaths.add(fixture.path)
     }
-    const suites = bindSuites(capturedSuites)
+    const challengeSalt = this.challengeSaltFactory()
+    if (!/^[a-f0-9]{64}$/.test(challengeSalt)) fail('INVALID_CHALLENGE_SALT', 'challenge commitment salt must be 32 lowercase hexadecimal bytes')
+    const suites = bindSuites(capturedSuites, challengeSalt)
     const binding = {
       workspaceId: request.workspaceId,
       candidateId: request.candidateId,
@@ -413,6 +423,7 @@ export class CandidateValidationRunner {
         toolchain: request.toolchain,
         policy: capturedPolicy,
         suites: capturedSuites,
+        challengeCommitmentSalt: challengeSalt,
       }
       return { snapshot, root, policy: capturedPolicy, suites: capturedSuites, privatePayload }
     } catch (error) {

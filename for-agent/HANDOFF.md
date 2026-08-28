@@ -33,9 +33,11 @@ Last updated: 2026-08-28
   toolchain, descriptor, sources, fixtures, and suite definitions. Candidate
   JSON claiming success cannot override a non-zero exit.
 - Challenge command details, stdin, and output remain hidden from public
-  snapshots and records. The in-process runner refuses promotion eligibility
-  for copied or fabricated record-shaped JSON and for a changed candidate
-  snapshot hash.
+  snapshots and records. Challenge definition hashes are now fresh per-run
+  salted commitments; the salt stays in authenticated private evidence, so
+  low-entropy inputs cannot be guessed from the public commitment. The
+  in-process runner refuses promotion eligibility for copied or fabricated
+  record-shaped JSON and for a changed candidate snapshot hash.
 - This is not yet the Stage 6 exit gate. OS-enforced filesystem,
   descendant-process, network, CPU, and memory confinement remain to be
   implemented.
@@ -141,6 +143,11 @@ otherwise modified by the consolidation work.
 
 Passed in `D:\Dev\axiom-colab`:
 
+- Salted challenge commitment `pnpm.cmd test`: all 53 TypeScript tests passed,
+  including fresh commitment variance, unsalted-guess rejection, stable public
+  suite hashes, private salt binding, and salt redaction.
+- Salted challenge commitment `git diff --check`: passed with
+  newline-conversion notices only.
 - Durable candidate/evidence `pnpm.cmd test`: all 52 TypeScript tests passed,
   including restart-safe candidate history and bytes, authenticated validator
   persistence, exact-record restart eligibility, private evidence binding,
@@ -415,10 +422,9 @@ installation controls:
   limits commands, wall time, and streams, but it does not prevent ambient
   filesystem access, descendant processes, networking, or excessive CPU and
   memory. Declared policy and toolchain hashes do not prove those controls ran.
-- Hidden challenge definitions and output are redacted, but their public hashes
-  may permit guessing when secret material has low entropy. Review keyed or
-  salted commitments and access-controlled challenge storage before UI
-  disclosure boundaries are frozen.
+- Hidden challenge definitions, output, and fresh per-run commitment salts are
+  redacted. The authenticated repository privately stores and rechecks salts;
+  retain this access boundary when composing production services and UI.
 - The workshop must create immutable candidate revisions and keep failed,
   rejected, and superseded revisions visible. A source change must invalidate
   validation and any installation proposal.
@@ -441,9 +447,7 @@ installation controls:
 
 Continue Stage 7 by adding an OS-specific validation backend that actually
 enforces and records filesystem, descendant-process, network, CPU, and memory
-confinement. Review hidden-challenge definition hashes and replace public raw
-hashes with access-controlled keyed or salted commitments where guessing could
-disclose low-entropy inputs.
+confinement.
 
 Only after those evidence blockers close, add and adversarially test the exact
 candidate + validation record + requested permissions + installation proposal

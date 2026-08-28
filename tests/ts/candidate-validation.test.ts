@@ -4,8 +4,9 @@ import test from 'node:test'
 
 import {
   CandidateValidationRunner,
+  contentHash,
   validationRecordJson,
-} from '../../dist/candidate-validation.js'
+} from '../../dist/index.js'
 
 const fixture = fileURLToPath(new URL('../fixtures/validation-child.mjs', import.meta.url))
 const limits = {
@@ -58,12 +59,32 @@ test('validation binds an immutable candidate snapshot and keeps challenge input
   assert.equal(result.record.authority, 'validator')
   assert.equal(result.record.candidateSnapshotHash, result.snapshot.snapshotHash)
   assert.equal(result.snapshot.suites.map((suite) => suite.kind).join(','), 'candidate,standard,challenge')
+  assert.equal(result.snapshot.suites[2]?.commitment, 'salted-sha256')
   assert.equal(result.record.suites[2]?.hidden, true)
   assert.equal(result.record.suites[2]?.processes[0]?.stdout, null)
   assert.equal(result.record.suites[2]?.processes[0]?.stderr, null)
   assert.equal(validationRecordJson(result.record).includes('hidden-value-7391'), false)
   assert.equal(Object.isFrozen(result.snapshot), true)
   assert.equal(Object.isFrozen(result.record.suites), true)
+})
+
+test('hidden challenge definition commitments use a fresh undisclosed salt', async () => {
+  const runner = createRunner()
+  const first = await runner.validate(request())
+  const second = await runner.validate(request())
+  const firstChallenge = first.snapshot.suites[2]
+  const secondChallenge = second.snapshot.suites[2]
+  const guessableUnsalted = contentHash([{
+    commandId: 'challenge-1',
+    executable: process.execPath,
+    args: [fixture, 'challenge'],
+    stdinHash: contentHash('hidden-value-7391'),
+    cwd: '.',
+  }])
+  assert.notEqual(firstChallenge?.definitionHash, guessableUnsalted)
+  assert.notEqual(firstChallenge?.definitionHash, secondChallenge?.definitionHash)
+  assert.equal(first.snapshot.suites[0]?.definitionHash, second.snapshot.suites[0]?.definitionHash)
+  assert.equal(validationRecordJson(first.record).includes('challengeCommitmentSalt'), false)
 })
 
 test('candidate-authored passing JSON cannot fabricate a passing validation', async () => {

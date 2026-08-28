@@ -4,6 +4,30 @@ Entries are chronological. Each entry corresponds to one logical Git commit and
 records its exact subject, purpose, material changes, and validation actually
 performed.
 
+## 2026-08-28 - fix(validation): salt hidden challenge commitments
+
+Purpose: prevent public validation metadata from enabling offline guesses of
+low-entropy hidden challenge inputs.
+
+Material changes:
+
+- Replaced raw challenge-suite definition hashes with per-run salted SHA-256
+  commitments while retaining ordinary deterministic suite hashes.
+- Generated and validated a fresh cryptographically random 32-byte salt for
+  every validation run and kept it only in the private evidence payload.
+- Made the authenticated repository rederive the salted commitment from the
+  private challenge definition before accepting validator evidence.
+- Kept salts, commands, stdin, and outputs absent from public snapshots and
+  records while identifying the public commitment scheme explicitly.
+
+Validation actually run:
+
+- `pnpm.cmd test`: passed all 53 TypeScript tests and regenerated `dist/`.
+- Tests prove repeated identical challenge definitions have different public
+  commitments, an unsalted guessed definition does not match, ordinary suite
+  hashes remain stable, and neither records nor inspection disclose the salt.
+- `git diff --check`: passed with newline-conversion notices only.
+
 ## 2026-08-28 - feat(validation): persist authenticated candidate evidence
 
 Purpose: close the restart-safety gap that prevented exact candidate and

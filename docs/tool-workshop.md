@@ -57,7 +57,6 @@ returns redacted snapshots and records, never private challenge definitions.
 
 ## Deliberate limits
 
-The OS confinement gaps documented in `candidate-validation.md` remain open,
-and public challenge hashes still require a keyed or salted commitment review.
+The OS confinement gaps documented in `candidate-validation.md` remain open.
 Consequently the API exposes no approval, installation, registration, or
 rediscovery operation, and the Qt UI must not present any such control yet.

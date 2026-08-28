@@ -48,11 +48,15 @@ content bindings. Altered or merely record-shaped JSON remains ineligible.
 
 ## Hidden challenge boundary
 
-Challenge commands are bound by an exact definition hash, but their executable,
-arguments, stdin, stdout, and stderr are not included in the public snapshot or
-validation record. The public record exposes only command identity, binding and
-output hashes, byte counts, timing, and outcome. This keeps challenge inputs
-and detailed output hidden by default while preserving attribution.
+Challenge commands are bound by an exact per-run salted SHA-256 commitment, but
+their executable, arguments, stdin, salt, stdout, and stderr are not included in
+the public snapshot or validation record. A fresh cryptographically random
+32-byte salt prevents practical offline guessing of low-entropy challenge
+inputs from the public commitment. The authenticated repository keeps the salt
+only inside the private evidence payload and rechecks the commitment on write.
+The public record exposes only command identity, commitment and output hashes,
+byte counts, timing, and outcome. This keeps challenge inputs and detailed
+output hidden by default while preserving attribution.
 
 ## Limits of this first slice
 

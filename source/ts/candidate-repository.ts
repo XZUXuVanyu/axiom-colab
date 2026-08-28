@@ -109,8 +109,8 @@ function encodedFiles(value: unknown, field: string): readonly CandidateFile[] {
   })
 }
 
-function suiteDefinitionHash(commands: readonly unknown[]): `sha256:${string}` {
-  return contentHash(commands.map((value) => {
+function suiteDefinitionHash(commands: readonly unknown[], salt: string | null): `sha256:${string}` {
+  const definition = commands.map((value) => {
     if (typeof value !== 'object' || value === null) fail('INVALID_VALIDATION_EVIDENCE', 'private suite command is malformed')
     const command = value as Record<string, unknown>
     if (typeof command.commandId !== 'string' || typeof command.executable !== 'string'
@@ -126,12 +126,17 @@ function suiteDefinitionHash(commands: readonly unknown[]): `sha256:${string}` {
       stdinHash: contentHash(command.stdin ?? ''),
       cwd: command.cwd ?? '.',
     }
-  }))
+  })
+  return salt === null ? contentHash(definition) : contentHash({ salt, definition })
 }
 
 function assertPrivateValidationBinding(snapshot: CandidateSnapshot, value: unknown): void {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) fail('INVALID_VALIDATION_EVIDENCE', 'private validation payload is malformed')
   const payload = value as Record<string, unknown>
+  const challengeSalt = payload.challengeCommitmentSalt
+  if (typeof challengeSalt !== 'string' || !/^[a-f0-9]{64}$/.test(challengeSalt)) {
+    fail('INVALID_VALIDATION_EVIDENCE', 'private challenge commitment salt is malformed')
+  }
   const sources = captureCandidateFiles(encodedFiles(payload.sources, 'sources'), 'sources').map((file) => file.binding)
   const fixtures = captureCandidateFiles(encodedFiles(payload.fixtures, 'fixtures'), 'fixtures').map((file) => file.binding)
   if (contentHash(payload.descriptor) !== snapshot.descriptorHash
@@ -148,8 +153,11 @@ function assertPrivateValidationBinding(snapshot: CandidateSnapshot, value: unkn
     const suite = payload.suites.find((item) => typeof item === 'object' && item !== null
       && (item as Record<string, unknown>).suiteId === binding.suiteId
       && (item as Record<string, unknown>).kind === binding.kind) as Record<string, unknown> | undefined
-    if (suite === undefined || !Array.isArray(suite.commands) || suite.commands.length !== binding.commandCount
-        || suiteDefinitionHash(suite.commands) !== binding.definitionHash) {
+    const expectedCommitment = binding.kind === 'challenge' ? 'salted-sha256' : 'plain-sha256'
+    const salt = binding.kind === 'challenge' ? challengeSalt : null
+    if (binding.commitment !== expectedCommitment
+        || suite === undefined || !Array.isArray(suite.commands) || suite.commands.length !== binding.commandCount
+        || suiteDefinitionHash(suite.commands, salt) !== binding.definitionHash) {
       fail('INVALID_VALIDATION_EVIDENCE', 'private suite definitions do not match the public validation snapshot')
     }
   }
