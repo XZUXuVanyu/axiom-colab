@@ -4,6 +4,13 @@ Last updated: 2026-08-28
 
 ## Current state
 
+- `LocalApplicationHost` now owns Adapter descriptor discovery, deterministic
+  memory-workspace enumeration, trusted per-workspace installed-Tool
+  rediscovery, supervisory backend/model construction, partial-startup
+  registration rollback, and idempotent service shutdown.
+- The host rejects access before successful initialization. If rediscovery for
+  any workspace fails, registrations captured for earlier workspaces are
+  cleared and no initialized host state is exposed.
 - `LocalGoalLifecycle` now provides restart-safe local supervisory lifecycle
   state. Registered goals bind the exact current approved working-memory plan
   revision and hash; the lifecycle cannot author or approve a replacement.
@@ -218,6 +225,9 @@ otherwise modified by the consolidation work.
 
 Passed in `D:\Dev\axiom-colab`:
 
+- Stage 8 application host `pnpm.cmd test`: all 70 TypeScript tests passed,
+  including deterministic workspace discovery, model projection, owned
+  shutdown, and rollback after partial multi-workspace rediscovery failure.
 - Stage 8 goal lifecycle `pnpm.cmd test`: all 68 TypeScript tests passed after
   correcting one new assertion to expect the actual fail-closed
   `GOAL_NOT_FOUND` cross-workspace result. Coverage includes restart, stop and
@@ -588,13 +598,13 @@ installation controls:
 
 ## Exact next work
 
-Continue Stage 8 by defining the local application-host composition that owns
-the authoritative service lifetimes, Adapter discovery, verified installed-Tool
-rediscovery, `LocalGoalLifecycle`, `LocalSupervisoryBackend`, and
-`SupervisoryApplicationModel`. Then wire the first read-only Qt workspace/goal,
-approved-plan, timeline, Tool, resource, and candidate views to that host-facing
-protocol. Keep approval and other authority-changing Qt controls deferred until
-the read path and application startup/recovery composition are tested.
+Continue Stage 8 by defining a narrow versioned JSON transport for read-only
+host discovery and supervisory snapshots, then wire the first Qt workspace,
+goal, approved-plan, timeline, Tool, resource, and candidate views to that
+transport. The Qt process must not open memory/candidate/lifecycle SQLite files
+or infer installed state from directories. Keep approval and other authority-
+changing Qt controls deferred until the read path and startup/recovery
+composition are tested through the real transport.
 
 Keep the WSL integration suite opt-in for portable CI, and run it explicitly on
 the supported Windows/Ubuntu composition before changing its confinement

@@ -49,3 +49,15 @@ replay, changed plan bindings, and unavailable actions fail closed.
 The next slice can compose these services into an application host and expose
 the first read-only workspace, goal, timeline, Tool, resource, and candidate
 views through Qt before adding authority-changing controls.
+
+`LocalApplicationHost` now owns that composition boundary. Startup discovers
+built-ins through the Adapter, enumerates memory-service workspaces, performs
+trusted installed-Tool rediscovery for each workspace, and exposes one
+`SupervisoryApplicationModel`. A failure during any workspace rediscovery
+clears every registration captured earlier in the startup attempt. Shutdown is
+idempotent and closes the Adapter, lifecycle, workflows, candidate repository,
+and memory store in ownership order.
+
+The Qt layer still needs a narrow transport to this host. It must consume
+serialized supervisory projections and must not open the SQLite databases or
+installed-Tool directories itself.

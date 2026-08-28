@@ -194,5 +194,9 @@ export type {
 } from './local-supervisory-backend.js'
 export { LocalGoalLifecycle, LocalGoalLifecycleError } from './local-goal-lifecycle.js'
 export type { LocalGoalLifecycleOptions } from './local-goal-lifecycle.js'
+export { LocalApplicationHost, LocalApplicationHostError } from './local-application-host.js'
+export type {
+  InstalledToolRediscovery, LocalApplicationHostOptions,
+} from './local-application-host.js'
 export { InvocationLedger } from './invocation-ledger.js'
 export type { ExpectedCallPolicy, InvocationRecord, VerificationResult } from './invocation-ledger.js'

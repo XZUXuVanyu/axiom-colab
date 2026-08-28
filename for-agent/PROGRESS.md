@@ -4,6 +4,27 @@ Entries are chronological. Each entry corresponds to one logical Git commit and
 records its exact subject, purpose, material changes, and validation actually
 performed.
 
+## 2026-08-28 - feat(gui): compose local application host
+
+Purpose: establish one tested owner for Stage 8 service startup, verified
+discovery, supervisory projection, rollback, and shutdown before Qt wiring.
+
+Material changes:
+
+- Added deterministic workspace enumeration to the memory store.
+- Added `LocalApplicationHost`, which initializes Adapter discovery, performs
+  trusted installed-Tool rediscovery for every workspace, and exposes one
+  supervisory application model.
+- Added a capture-only installed registry whose contents are cleared when any
+  later workspace fails rediscovery, preventing partial startup exposure.
+- Added guarded pre-initialization access, duplicate-state protection, and
+  idempotent ownership-ordered shutdown.
+
+Validation actually run:
+
+- `pnpm.cmd test`: all 70 TypeScript tests passed, including successful host
+  startup/shutdown and rollback after partial multi-workspace rediscovery.
+
 ## 2026-08-28 - feat(gui): persist supervised goal lifecycle
 
 Purpose: provide restart-safe stop, resume, revocation, and recovery state

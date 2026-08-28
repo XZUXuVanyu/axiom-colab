@@ -121,6 +121,10 @@ export class LocalMemoryStore {
         this.requireWorkspace(id);
         return this.resources(id);
     }
+    listWorkspaces() {
+        this.ensureOpen();
+        return this.database.prepare('SELECT id FROM workspaces ORDER BY id').all().map((row)=>row.id);
+    }
     putPayload(id, bytes, expiresAt = null) {
         this.ensureOpen();
         const quota = this.requireWorkspace(id);

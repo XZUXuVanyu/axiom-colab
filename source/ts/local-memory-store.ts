@@ -152,6 +152,11 @@ export class LocalMemoryStore {
 
   reopenWorkspace(id: string): WorkspaceResources { this.ensureOpen(); this.requireWorkspace(id); return this.resources(id) }
 
+  listWorkspaces(): readonly LaboratoryId<'workspace'>[] {
+    this.ensureOpen()
+    return (this.database.prepare('SELECT id FROM workspaces ORDER BY id').all() as Array<{ id: LaboratoryId<'workspace'> }>).map((row) => row.id)
+  }
+
   putPayload(id: string, bytes: Uint8Array, expiresAt: string | null = null): PayloadInspection {
     this.ensureOpen(); const quota = this.requireWorkspace(id)
     const createdAt = this.now()
