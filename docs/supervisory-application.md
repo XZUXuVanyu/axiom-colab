@@ -46,9 +46,10 @@ capability revocation, and recovery first delegate to host-owned authoritative
 operations and only then commit their supervisory state. Cross-workspace use,
 replay, changed plan bindings, and unavailable actions fail closed.
 
-The next slice can compose these services into an application host and expose
-the first read-only workspace, goal, timeline, Tool, resource, and candidate
-views through Qt before adding authority-changing controls.
+The first Qt read slice now exposes workspace selection plus resource, Tool,
+candidate, and timeline summaries. It labels model claims separately from
+validator evidence, user decisions, and verified installed state. Goal
+selection and authority-changing controls remain deferred.
 
 `LocalApplicationHost` now owns that composition boundary. Startup discovers
 built-ins through the Adapter, enumerates memory-service workspaces, performs
@@ -58,9 +59,9 @@ clears every registration captured earlier in the startup attempt. Shutdown is
 idempotent and closes the Adapter, lifecycle, workflows, candidate repository,
 and memory store in ownership order.
 
-The Qt layer still needs a narrow transport to this host. It must consume
-serialized supervisory projections and must not open the SQLite databases or
-installed-Tool directories itself.
+The Qt layer consumes serialized supervisory projections through a long-lived,
+shell-free child process and does not open SQLite databases or installed-Tool
+directories itself.
 
 `SupervisoryTransport` defines the initial versioned JSON read boundary. It
 accepts only `list-workspaces` and `inspect`, uses strict exact-field parsing,

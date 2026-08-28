@@ -1,12 +1,13 @@
 #include "main_window.hpp"
 
 #include <QApplication>
+#include <QCommandLineParser>
 #include <QStyleFactory>
 
 int main(int argc, char* argv[]) {
     QApplication application(argc, argv);
-    application.setApplicationName("C++ Tool Adapter");
-    application.setOrganizationName("general-ts-cpp-adapter");
+    application.setApplicationName("Axiom CoLab");
+    application.setOrganizationName("Axiom CoLab");
     application.setStyle(QStyleFactory::create("Fusion"));
 
     application.setStyleSheet(R"(
@@ -35,7 +36,17 @@ int main(int argc, char* argv[]) {
         QStatusBar { background: #007acc; color: white; }
     )");
 
-    MainWindow window;
+    QCommandLineParser parser;
+    parser.setApplicationDescription("Axiom CoLab local supervisory IDE");
+    parser.addHelpOption();
+    QCommandLineOption supervisory_config(
+        "supervisory-config",
+        "Absolute path to a read-only local supervisory process config.",
+        "path");
+    parser.addOption(supervisory_config);
+    parser.process(application);
+
+    MainWindow window(parser.value(supervisory_config));
     window.show();
     return application.exec();
 }

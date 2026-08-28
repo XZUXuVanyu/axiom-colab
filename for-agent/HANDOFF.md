@@ -4,6 +4,21 @@ Last updated: 2026-08-29
 
 ## Current state
 
+- The first Qt Widgets supervisory view now launches the constrained local
+  process from an explicit config, lists visible workspaces, and renders
+  read-only resource, discovered-Tool, candidate, and immutable timeline
+  summaries beside the preserved Tool-authoring shell.
+- Candidate and timeline rows label model claims, validation outcomes, user
+  decisions, verified installation state, and authoritative hashes without
+  granting the widget any mutation operation or direct state-directory access.
+  Goal selection remains deliberately absent while approved-plan authority is
+  unavailable in production composition.
+- `proj/scripts/new-supervisory-config.ps1` writes a strict UTF-8 config outside
+  the authoritative state root, refuses accidental replacement by default, and
+  feeds `--supervisory-config` at GUI launch.
+- A complete Qt 6.12.0 MSVC 2022 64-bit kit is installed side-by-side at
+  `C:\Qt\6.12.0\msvc2022_64`; its Widgets header is intact and all current GUI
+  targets compile. The damaged 6.11.2 kit remains untouched.
 - `runLocalSupervisoryProcess` and `proj/scripts/run-supervisory.mjs` now provide
   the production read-only Node entry point. Strict explicit configuration
   selects absolute state, Bridge, and working-directory paths; the process
@@ -266,6 +281,19 @@ otherwise modified by the consolidation work.
 
 Passed in `D:\Dev\axiom-colab`:
 
+- Fresh Qt 6.12.0/MSVC 19.51/Ninja Release build in `build/qt612`: every C++
+  target, including `cpp-adapter-gui`, compiled with warnings as errors; CTest
+  passed `cpp-adapter-tests`, the real-process
+  `axiom-supervisory-process-tests`, and an offscreen Widgets regression that
+  decoded two workspaces and rendered the selected resource projection.
+- The new GUI remained live for a three-second offscreen smoke run while using
+  `--supervisory-config` to compose the real production supervisory process.
+  The same generated config returned a correlated empty workspace list through
+  the production JSON-lines entry point.
+- Supervisory config generation produced BOM-free JSON outside the selected
+  state root, and a negative run rejected an output path inside that root.
+- Post-view `pnpm.cmd test`: all 77 TypeScript tests passed and regenerated
+  `dist/`.
 - Extended Qt supervisory read path Release build: the real Node fixture
   accepted ordered `list-workspaces` and `inspect(workspace:alpha, null)`
   requests with deterministic IDs `qt:1` and `qt:2`; both responses passed the
@@ -687,24 +715,14 @@ installation controls:
 
 ## Exact next work
 
-Repair or reinstall the damaged external Qt Widgets SDK, then add the first
-read-only workspace selector and resource/Tool/candidate/timeline summary views
-using `start_local_supervisory_process`, `list_workspaces`, `inspect`, and the
-typed result decoders. Generate the explicit local process config outside the
-authoritative state directories; do not teach Qt to open SQLite or installed
-directories. Add an authoritative approved-plan reader before allowing
-non-null goal inspection. Keep approval and all other authority-changing
-controls deferred until this read path is exercised against the real host
-composition.
-
-Environment help requested from the user if the next agent cannot repair Qt
-non-destructively: reinstall the exact `Qt 6.11.2 / MSVC 2022 64-bit` component
-with Qt Maintenance Tool (or install another complete MSVC Qt 6 kit), then
-confirm `include\QtWidgets\qapplication.h` contains the `QApplication` class
-rather than the current 279-byte empty guard. Afterward rerun the Release
-`cpp-adapter-gui` target. Do not remove the current kit until a replacement is
-available because its Qt Core libraries still build and pass the supervisory
-process tests.
+Add an authoritative approved-plan reader and goal enumeration to production
+host composition, then extend the read-only transport and Qt view with a goal
+selector and approved plan/progress projection. Keep null-goal workspace
+inspection available, reject non-null goal inspection until its exact approved
+plan can be resolved, and add adversarial transport/decoder coverage for stale
+or cross-workspace goal selection. Do not teach Qt to open SQLite or installed
+directories. Keep approval and all other authority-changing controls deferred
+until the goal read path is exercised against the real host composition.
 
 Keep the WSL integration suite opt-in for portable CI, and run it explicitly on
 the supported Windows/Ubuntu composition before changing its confinement

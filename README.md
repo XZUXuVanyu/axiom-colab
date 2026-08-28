@@ -25,7 +25,9 @@ powershell.exe -ExecutionPolicy Bypass `
 ```
 
 The optional Qt frontend is built by the CMake project when Qt 6 Widgets is
-available. The default direct validator remains non-promotable; production must
+available. Its first read-only supervisory workflow and explicit local config
+are documented in [docs/gui.md](docs/gui.md). The default direct validator
+remains non-promotable; production must
 explicitly compose the enforcing validator, durable repository, installation
 root, and installed-Tool registry before exposing the workflow in the UI.
 

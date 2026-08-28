@@ -1,4 +1,30 @@
-# Qt Import and Build GUI
+# Qt supervisory and Tool-authoring GUI
+
+The first Stage 8 read path is available in the **Laboratory** tab. It starts
+the known local supervisory Node process, lists host-visible workspaces, and
+renders read-only resource, Tool, candidate, and immutable timeline summaries.
+Candidate rows keep model claims, validator outcomes, user decisions, and
+verified installation state visibly separate. No approval, installation,
+memory, or lifecycle mutation operation is present in this transport or view.
+
+Create the explicit process config outside the authoritative state directory:
+
+```powershell
+powershell.exe -ExecutionPolicy Bypass `
+  -File .\proj\scripts\new-supervisory-config.ps1 `
+  -StateRoot D:\Axiom\state `
+  -BridgePath D:\Dev\axiom-colab\build\windows\Release\cpp-tool-bridge.exe `
+  -OutputPath D:\Axiom\config\supervisory.json
+```
+
+Then launch the GUI with
+`cpp-adapter-gui.exe --supervisory-config D:\Axiom\config\supervisory.json`.
+The Qt process receives projections only through `list-workspaces` and
+workspace-level `inspect`; it does not open SQLite or installed directories.
+Goal selection remains disabled until an authoritative approved-plan reader is
+composed by the production host.
+
+## Tool authoring
 
 `cpp-adapter-gui` is a thin desktop frontend for the existing C++-first
 workflow. It does not own Tool schemas and does not generate descriptor or

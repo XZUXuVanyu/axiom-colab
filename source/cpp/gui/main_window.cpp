@@ -1,4 +1,5 @@
 #include "main_window.hpp"
+#include "supervisory_view.hpp"
 
 #include <QDir>
 #include <QCheckBox>
@@ -20,9 +21,12 @@
 #include <QSet>
 #include <QStatusBar>
 #include <QTextCursor>
+#include <QTabWidget>
 #include <QtAlgorithms>
 #include <QUrl>
 #include <QVBoxLayout>
+
+#include <utility>
 
 namespace {
 
@@ -38,12 +42,14 @@ QString default_project_directory() {
 
 } // namespace
 
-MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
-    setWindowTitle("C++ Tool Adapter — Import & Build");
+MainWindow::MainWindow(QString supervisory_config_path, QWidget* parent)
+    : QMainWindow(parent) {
+    setWindowTitle("Axiom CoLab");
     resize(980, 720);
     setAcceptDrops(true);
 
-    auto* central = new QWidget(this);
+    auto* tabs = new QTabWidget(this);
+    auto* central = new QWidget(tabs);
     auto* page = new QVBoxLayout(central);
     page->setContentsMargins(20, 18, 20, 18);
     page->setSpacing(14);
@@ -146,7 +152,12 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     output_layout->addWidget(m_output);
     page->addWidget(output_group, 1);
 
-    setCentralWidget(central);
+    tabs->addTab(new axiom_colab::gui::SupervisoryView(
+                     default_project_directory(),
+                     std::move(supervisory_config_path), tabs),
+                 "Laboratory");
+    tabs->addTab(central, "Tool authoring");
+    setCentralWidget(tabs);
     statusBar()->showMessage("Ready");
 
     m_build_process = new QProcess(this);

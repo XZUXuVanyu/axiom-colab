@@ -14,7 +14,8 @@ class MainWindow final : public QMainWindow {
     Q_OBJECT
 
 public:
-    explicit MainWindow(QWidget* parent = nullptr);
+    explicit MainWindow(QString supervisory_config_path = {},
+                        QWidget* parent = nullptr);
 
 protected:
     void dragEnterEvent(QDragEnterEvent* event) override;

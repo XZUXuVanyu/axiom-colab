@@ -1,0 +1,324 @@
+#include "supervisory_view.hpp"
+
+#include <QComboBox>
+#include <QFont>
+#include <QGridLayout>
+#include <QGroupBox>
+#include <QHBoxLayout>
+#include <QLabel>
+#include <QListWidget>
+#include <QPushButton>
+#include <QVBoxLayout>
+
+#include <optional>
+#include <stdexcept>
+#include <string>
+#include <string_view>
+#include <utility>
+
+namespace axiom_colab::gui {
+namespace {
+
+using cpp_adapter::Json;
+
+void require_object(const Json& value, std::string_view field) {
+    if (!value.is_object()) {
+        throw SupervisoryResponseError(std::string(field) + " must be an object");
+    }
+}
+
+const std::string& string_field(const Json& value, std::string_view field) {
+    const Json& member = value.at(field);
+    if (!member.is_string()) {
+        throw SupervisoryResponseError(std::string(field) + " must be a string");
+    }
+    return member.as_string();
+}
+
+std::int64_t integer_field(const Json& value, std::string_view field) {
+    const Json& member = value.at(field);
+    if (!member.is_integer()) {
+        throw SupervisoryResponseError(std::string(field) + " must be an integer");
+    }
+    return member.as_integer();
+}
+
+bool boolean_field(const Json& value, std::string_view field) {
+    const Json& member = value.at(field);
+    if (!member.is_bool()) {
+        throw SupervisoryResponseError(std::string(field) + " must be a boolean");
+    }
+    return member.as_bool();
+}
+
+QString text(const std::string& value) {
+    return QString::fromUtf8(value.data(), static_cast<qsizetype>(value.size()));
+}
+
+QString optional_state(const Json& value, std::string_view field,
+                       std::string_view nested_field) {
+    const Json& member = value.at(field);
+    if (member.is_null()) return "none";
+    require_object(member, field);
+    return text(string_field(member, nested_field));
+}
+
+QGroupBox* list_group(const QString& title, QListWidget** list, QWidget* parent) {
+    auto* group = new QGroupBox(title, parent);
+    auto* layout = new QVBoxLayout(group);
+    *list = new QListWidget(group);
+    (*list)->setAlternatingRowColors(true);
+    layout->addWidget(*list);
+    return group;
+}
+
+} // namespace
+
+SupervisoryView::SupervisoryView(QString repository_root, QString config_path,
+                                 QWidget* parent)
+    : QWidget(parent), repository_root_(std::move(repository_root)),
+      config_path_(std::move(config_path)) {
+    build_ui();
+    start_process();
+}
+
+SupervisoryView::SupervisoryView(SupervisoryProcessLaunch launch,
+                                 QWidget* parent)
+    : QWidget(parent) {
+    build_ui();
+    try {
+        client_.start(launch.program, launch.arguments, launch.working_directory);
+        connection_status_->setText("Connected (read-only)");
+        load_workspaces();
+    } catch (const std::exception& error) {
+        show_error(QString::fromUtf8(error.what()));
+        refresh_button_->setEnabled(false);
+    }
+}
+
+void SupervisoryView::build_ui() {
+    auto* page = new QVBoxLayout(this);
+    page->setContentsMargins(20, 18, 20, 18);
+    page->setSpacing(12);
+
+    auto* heading = new QLabel("Laboratory supervision", this);
+    QFont heading_font = heading->font();
+    heading_font.setPointSize(17);
+    heading_font.setBold(true);
+    heading->setFont(heading_font);
+    page->addWidget(heading);
+    page->addWidget(new QLabel(
+        "Read-only projection of host-verified workspace state. This view cannot approve, install, or mutate laboratory state.",
+        this));
+
+    auto* selection = new QHBoxLayout();
+    connection_status_ = new QLabel(this);
+    connection_status_->setObjectName("connectionStatus");
+    workspace_selector_ = new QComboBox(this);
+    workspace_selector_->setObjectName("workspaceSelector");
+    workspace_selector_->setMinimumWidth(280);
+    refresh_button_ = new QPushButton("Refresh", this);
+    selection->addWidget(new QLabel("Workspace", this));
+    selection->addWidget(workspace_selector_);
+    selection->addWidget(refresh_button_);
+    selection->addStretch();
+    selection->addWidget(connection_status_);
+    page->addLayout(selection);
+
+    auto* resource_group = new QGroupBox("Resources", this);
+    auto* resource_layout = new QVBoxLayout(resource_group);
+    resources_ = new QLabel("No workspace selected", resource_group);
+    resources_->setObjectName("resourceSummary");
+    resources_->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    resource_layout->addWidget(resources_);
+    page->addWidget(resource_group);
+
+    auto* summaries = new QGridLayout();
+    summaries->addWidget(list_group("Discovered Tools", &tools_, this), 0, 0);
+    summaries->addWidget(list_group("Tool candidates", &candidates_, this), 0, 1);
+    summaries->addWidget(list_group("Immutable activity timeline", &timeline_, this), 1, 0, 1, 2);
+    summaries->setRowStretch(0, 1);
+    summaries->setRowStretch(1, 1);
+    page->addLayout(summaries, 1);
+
+    connect(refresh_button_, &QPushButton::clicked, this,
+            &SupervisoryView::load_workspaces);
+    connect(workspace_selector_, qOverload<int>(&QComboBox::currentIndexChanged), this,
+            [this](int index) {
+                if (index >= 0 && !busy_) inspect_selected_workspace();
+            });
+}
+
+void SupervisoryView::start_process() {
+    if (config_path_.isEmpty()) {
+        show_error("Not connected: start with --supervisory-config <absolute-config.json>");
+        refresh_button_->setEnabled(false);
+        return;
+    }
+    try {
+        client_.start_local_supervisory_process(
+            "node", repository_root_, config_path_);
+        connection_status_->setText("Connected (read-only)");
+        load_workspaces();
+    } catch (const std::exception& error) {
+        show_error(QString::fromUtf8(error.what()));
+        refresh_button_->setEnabled(false);
+    }
+}
+
+void SupervisoryView::load_workspaces() {
+    set_busy(true);
+    try {
+        (void)client_.list_workspaces(
+            [this](const SupervisoryResponse* response, const std::string* error) {
+                if (error != nullptr) {
+                    show_error(text(*error));
+                    set_busy(false);
+                    return;
+                }
+                try {
+                    const auto workspaces = parse_workspace_list_result(*response);
+                    const QString previous = workspace_selector_->currentText();
+                    workspace_selector_->blockSignals(true);
+                    workspace_selector_->clear();
+                    for (const auto& workspace : workspaces) {
+                        workspace_selector_->addItem(text(workspace));
+                    }
+                    const int previous_index = workspace_selector_->findText(previous);
+                    if (previous_index >= 0) workspace_selector_->setCurrentIndex(previous_index);
+                    workspace_selector_->blockSignals(false);
+                    set_busy(false);
+                    if (workspace_selector_->count() == 0) {
+                        resources_->setText("No visible workspaces");
+                        tools_->clear();
+                        candidates_->clear();
+                        timeline_->clear();
+                    } else {
+                        inspect_selected_workspace();
+                    }
+                } catch (const std::exception& decode_error) {
+                    show_error(QString::fromUtf8(decode_error.what()));
+                    set_busy(false);
+                }
+            });
+    } catch (const std::exception& error) {
+        show_error(QString::fromUtf8(error.what()));
+        set_busy(false);
+    }
+}
+
+void SupervisoryView::inspect_selected_workspace() {
+    const QString selected = workspace_selector_->currentText();
+    if (selected.isEmpty()) return;
+    set_busy(true);
+    try {
+        const std::string workspace = selected.toStdString();
+        (void)client_.inspect(
+            workspace, std::nullopt,
+            [this, workspace](const SupervisoryResponse* response,
+                              const std::string* error) {
+                if (error != nullptr) {
+                    show_error(text(*error));
+                    set_busy(false);
+                    return;
+                }
+                try {
+                    const auto inspection = parse_workspace_inspection_result(
+                        *response, workspace, std::nullopt);
+                    if (workspace_selector_->currentText() == text(workspace)) {
+                        render(inspection);
+                        connection_status_->setText("Connected (read-only)");
+                    }
+                } catch (const std::exception& decode_error) {
+                    show_error(QString::fromUtf8(decode_error.what()));
+                }
+                set_busy(false);
+            });
+    } catch (const std::exception& error) {
+        show_error(QString::fromUtf8(error.what()));
+        set_busy(false);
+    }
+}
+
+void SupervisoryView::render(const SupervisoryWorkspaceInspection& inspection) {
+    require_object(inspection.resources, "resources");
+    const Json& quota = inspection.resources.at("quota");
+    require_object(quota, "resources.quota");
+    resources_->setText(QString(
+        "%1 bytes of %2 | %3 objects of %4 | %5 expired | %6 corrupt")
+        .arg(integer_field(inspection.resources, "usedBytes"))
+        .arg(integer_field(quota, "maxBytes"))
+        .arg(integer_field(inspection.resources, "objectCount"))
+        .arg(integer_field(quota, "maxObjects"))
+        .arg(integer_field(inspection.resources, "expiredObjects"))
+        .arg(integer_field(inspection.resources, "corruptObjects")));
+
+    tools_->clear();
+    for (const Json& tool : inspection.tools.as_array()) {
+        require_object(tool, "tool");
+        const QString name = text(string_field(tool, "name"));
+        const QString source = text(string_field(tool, "source"));
+        auto* item = new QListWidgetItem(QString("%1  [%2]").arg(name, source), tools_);
+        const Json& evidence = tool.at("installationEvidenceHash");
+        if (!evidence.is_null()) {
+            if (!evidence.is_string()) throw SupervisoryResponseError(
+                "installationEvidenceHash must be null or a string");
+            item->setToolTip("Verified installation evidence: " + text(evidence.as_string()));
+        }
+    }
+
+    candidates_->clear();
+    for (const Json& candidate : inspection.candidates.as_array()) {
+        require_object(candidate, "candidate");
+        const QString candidate_id = text(string_field(candidate, "candidateId"));
+        const QString state = text(string_field(candidate, "state"));
+        const QString validation = optional_state(candidate, "validation", "outcome");
+        const QString approval = optional_state(candidate, "approval", "decision");
+        const QString installation = optional_state(candidate, "installation", "outcome");
+        auto* item = new QListWidgetItem(
+            QString("%1  [%2] | validation: %3 | user decision: %4 | installation: %5")
+                .arg(candidate_id, state, validation, approval, installation),
+            candidates_);
+        const Json& claim = candidate.at("modelClaim");
+        if (!claim.is_null()) {
+            if (!claim.is_string()) throw SupervisoryResponseError(
+                "modelClaim must be null or a string");
+            item->setToolTip("Model claim (not evidence): " + text(claim.as_string()));
+        }
+        const Json& validation_value = candidate.at("validation");
+        if (!validation_value.is_null()) {
+            item->setText(item->text() + QString(" | promotable: %1")
+                .arg(boolean_field(validation_value, "promotable") ? "yes" : "no"));
+        }
+    }
+
+    timeline_->clear();
+    for (const Json& entry : inspection.timeline.as_array()) {
+        require_object(entry, "timeline entry");
+        const QString kind = text(string_field(entry, "kind"));
+        const QString occurred_at = text(string_field(entry, "occurredAt"));
+        const QString summary = text(string_field(entry, "summary"));
+        auto* item = new QListWidgetItem(
+            QString("%1  [%2] %3").arg(occurred_at, kind, summary), timeline_);
+        const Json& hash = entry.at("authoritativeHash");
+        if (!hash.is_null()) {
+            if (!hash.is_string()) throw SupervisoryResponseError(
+                "authoritativeHash must be null or a string");
+            item->setToolTip("Authoritative hash: " + text(hash.as_string()));
+        } else if (kind == "model-claim") {
+            item->setToolTip("Model claim only; no authoritative evidence hash");
+        }
+    }
+}
+
+void SupervisoryView::show_error(const QString& message) {
+    connection_status_->setText("Unavailable: " + message);
+}
+
+void SupervisoryView::set_busy(bool busy) {
+    busy_ = busy;
+    refresh_button_->setEnabled(!busy && client_.is_running());
+    workspace_selector_->setEnabled(!busy);
+}
+
+} // namespace axiom_colab::gui

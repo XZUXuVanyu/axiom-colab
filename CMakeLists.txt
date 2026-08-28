@@ -140,6 +140,17 @@ if(CPP_ADAPTER_BUILD_GUI)
             Qt6::Core cpp_adapter_core
         )
         cpp_adapter_target_defaults(axiom-supervisory-process)
+        add_library(axiom-supervisory-widgets STATIC
+            source/cpp/gui/supervisory_view.cpp
+            source/cpp/gui/supervisory_view.hpp
+        )
+        target_include_directories(axiom-supervisory-widgets PUBLIC
+            source/cpp/gui
+        )
+        target_link_libraries(axiom-supervisory-widgets PUBLIC
+            Qt6::Widgets axiom-supervisory-process
+        )
+        cpp_adapter_target_defaults(axiom-supervisory-widgets)
         if(BUILD_TESTING)
             add_executable(axiom-supervisory-process-tests
                 tests/cpp/supervisory_process_client_test.cpp
@@ -156,6 +167,21 @@ if(CPP_ADAPTER_BUILD_GUI)
             cpp_adapter_target_defaults(axiom-supervisory-process-tests)
             add_test(NAME axiom-supervisory-process-tests
                      COMMAND axiom-supervisory-process-tests)
+            add_executable(axiom-supervisory-view-tests
+                tests/cpp/supervisory_view_test.cpp
+            )
+            target_link_libraries(axiom-supervisory-view-tests PRIVATE
+                axiom-supervisory-widgets
+            )
+            target_compile_definitions(axiom-supervisory-view-tests PRIVATE
+                CPP_ADAPTER_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}"
+            )
+            cpp_adapter_target_defaults(axiom-supervisory-view-tests)
+            add_test(NAME axiom-supervisory-view-tests
+                     COMMAND axiom-supervisory-view-tests)
+            set_tests_properties(axiom-supervisory-view-tests PROPERTIES
+                ENVIRONMENT "QT_QPA_PLATFORM=offscreen"
+            )
         endif()
         qt_add_executable(cpp-adapter-gui WIN32
             source/cpp/gui/main.cpp
@@ -164,7 +190,7 @@ if(CPP_ADAPTER_BUILD_GUI)
         )
         target_include_directories(cpp-adapter-gui PRIVATE source/cpp/adapter/include)
         target_link_libraries(cpp-adapter-gui PRIVATE
-            Qt6::Widgets axiom-supervisory-process
+            Qt6::Widgets axiom-supervisory-widgets
         )
         target_compile_definitions(cpp-adapter-gui PRIVATE
             CPP_ADAPTER_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}"
