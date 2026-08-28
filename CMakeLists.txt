@@ -97,10 +97,11 @@ if(BUILD_TESTING)
 
     add_executable(cpp-adapter-tests
         tests/cpp/test_main.cpp
+        source/cpp/gui/supervisory_response.cpp
         $<TARGET_OBJECTS:cpp_adapter_tools>
     )
     target_include_directories(cpp-adapter-tests PRIVATE
-        source/cpp/adapter/include source/cpp/bridge source/cpp/tools
+        source/cpp/adapter/include source/cpp/bridge source/cpp/tools source/cpp/gui
     )
     target_link_libraries(cpp-adapter-tests PRIVATE
         cpp_adapter_bridge cpp_adapter_core
@@ -123,15 +124,48 @@ if(CPP_ADAPTER_BUILD_GUI)
             list(APPEND CMAKE_PREFIX_PATH "${CPP_ADAPTER_QT_PREFIX}")
         endif()
     endif()
-    find_package(Qt6 QUIET COMPONENTS Widgets)
+    find_package(Qt6 QUIET COMPONENTS Core Widgets)
     if(Qt6Widgets_FOUND)
         qt_standard_project_setup()
+        add_library(axiom-supervisory-process STATIC
+            source/cpp/gui/supervisory_process_client.cpp
+            source/cpp/gui/supervisory_process_client.hpp
+            source/cpp/gui/supervisory_response.cpp
+            source/cpp/gui/supervisory_response.hpp
+        )
+        target_include_directories(axiom-supervisory-process PUBLIC
+            source/cpp/adapter/include source/cpp/gui
+        )
+        target_link_libraries(axiom-supervisory-process PUBLIC
+            Qt6::Core cpp_adapter_core
+        )
+        cpp_adapter_target_defaults(axiom-supervisory-process)
+        if(BUILD_TESTING)
+            add_executable(axiom-supervisory-process-tests
+                tests/cpp/supervisory_process_client_test.cpp
+            )
+            target_include_directories(axiom-supervisory-process-tests PRIVATE
+                source/cpp/gui
+            )
+            target_link_libraries(axiom-supervisory-process-tests PRIVATE
+                Qt6::Core axiom-supervisory-process
+            )
+            target_compile_definitions(axiom-supervisory-process-tests PRIVATE
+                CPP_ADAPTER_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}"
+            )
+            cpp_adapter_target_defaults(axiom-supervisory-process-tests)
+            add_test(NAME axiom-supervisory-process-tests
+                     COMMAND axiom-supervisory-process-tests)
+        endif()
         qt_add_executable(cpp-adapter-gui WIN32
             source/cpp/gui/main.cpp
             source/cpp/gui/main_window.cpp
             source/cpp/gui/main_window.hpp
         )
-        target_link_libraries(cpp-adapter-gui PRIVATE Qt6::Widgets)
+        target_include_directories(cpp-adapter-gui PRIVATE source/cpp/adapter/include)
+        target_link_libraries(cpp-adapter-gui PRIVATE
+            Qt6::Widgets axiom-supervisory-process
+        )
         target_compile_definitions(cpp-adapter-gui PRIVATE
             CPP_ADAPTER_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}"
         )

@@ -3,6 +3,7 @@
 #include "cpp_adapter/errors.hpp"
 #include "cpp_adapter/json.hpp"
 #include "cpp_adapter/memory_client.hpp"
+#include "supervisory_response.hpp"
 
 #include <functional>
 #include <iostream>
@@ -32,6 +33,10 @@ using cpp_adapter::RegistryError;
 using cpp_adapter::ToolCallContext;
 using cpp_adapter::ToolDescriptor;
 using cpp_adapter::ToolError;
+using axiom_colab::gui::SupervisoryResponseError;
+using axiom_colab::gui::parse_supervisory_response;
+using axiom_colab::gui::parse_workspace_inspection_result;
+using axiom_colab::gui::parse_workspace_list_result;
 
 struct TestFailure final : std::runtime_error {
     using std::runtime_error::runtime_error;
@@ -55,6 +60,73 @@ void check_error_code(Callable&& callable, const std::string& expected_code) {
         return;
     }
     throw TestFailure("expected ToolError code " + expected_code);
+}
+
+template <typename Callable>
+void check_supervisory_response_error(Callable&& callable) {
+    try {
+        std::forward<Callable>(callable)();
+    } catch (const SupervisoryResponseError&) {
+        return;
+    }
+    throw TestFailure("expected SupervisoryResponseError");
+}
+
+void test_supervisory_response_parser() {
+    const auto success = parse_supervisory_response(
+        R"({"protocolVersion":"1.0","id":"request:1","ok":true,"result":{"workspaces":["workspace:one"]}})",
+        "request:1");
+    CHECK(success.ok);
+    const auto workspaces = parse_workspace_list_result(success);
+    CHECK(workspaces.size() == 1);
+    CHECK(workspaces[0] == "workspace:one");
+
+    const auto failure = parse_supervisory_response(
+        R"({"protocolVersion":"1.0","id":"request:2","ok":false,"error":{"code":"GOAL_NOT_FOUND","message":"missing"}})",
+        "request:2");
+    CHECK(!failure.ok);
+    CHECK(failure.error_code == "GOAL_NOT_FOUND");
+    CHECK(failure.error_message == "missing");
+
+    check_supervisory_response_error([] {
+        (void)parse_supervisory_response(
+            R"({"protocolVersion":"1.0","id":"other","ok":true,"result":null})",
+            "request:1");
+    });
+    check_supervisory_response_error([] {
+        (void)parse_supervisory_response(
+            R"({"protocolVersion":"1.0","id":"request:1","ok":true,"result":null,"approval":true})",
+            "request:1");
+    });
+    check_supervisory_response_error([] {
+        (void)parse_supervisory_response(
+            R"({"protocolVersion":"2.0","id":"request:1","ok":true,"result":null})",
+            "request:1");
+    });
+    check_supervisory_response_error([] {
+        (void)parse_supervisory_response(
+            R"({"protocolVersion":"1.0","id":"request:1","result":null})",
+            "request:1");
+    });
+
+    const auto inspection_response = parse_supervisory_response(
+        R"({"protocolVersion":"1.0","id":"request:3","ok":true,"result":{"workspaceId":"workspace:one","goalId":null,"currentPlan":null,"tools":[],"resources":{},"candidates":[],"timeline":[],"controls":{}}})",
+        "request:3");
+    const auto inspection = parse_workspace_inspection_result(
+        inspection_response, "workspace:one", std::nullopt);
+    CHECK(inspection.workspace_id == "workspace:one");
+    CHECK(!inspection.goal_id.has_value());
+    CHECK(inspection.tools.as_array().empty());
+    check_supervisory_response_error([&] {
+        (void)parse_workspace_inspection_result(
+            inspection_response, "workspace:other", std::nullopt);
+    });
+    check_supervisory_response_error([] {
+        const auto duplicate = parse_supervisory_response(
+            R"({"protocolVersion":"1.0","id":"request:4","ok":true,"result":{"workspaces":["workspace:one","workspace:one"]}})",
+            "request:4");
+        (void)parse_workspace_list_result(duplicate);
+    });
 }
 
 ToolDescriptor fake_descriptor(std::string name) {
@@ -438,6 +510,7 @@ using Test = std::pair<const char*, std::function<void()>>;
 int main() {
     const std::vector<Test> tests = {
         {"json round trip", test_json_round_trip},
+        {"strict supervisory response parsing", test_supervisory_response_parser},
         {"descriptor builders", test_descriptor_builders},
         {"dependency topological sort", test_topological_sort},
         {"missing dependency", test_missing_dependency},

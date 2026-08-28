@@ -1,9 +1,37 @@
 # Axiom CoLab Current Handoff
 
-Last updated: 2026-08-28
+Last updated: 2026-08-29
 
 ## Current state
 
+- `runLocalSupervisoryProcess` and `proj/scripts/run-supervisory.mjs` now provide
+  the production read-only Node entry point. Strict explicit configuration
+  selects absolute state, Bridge, and working-directory paths; the process
+  composes durable memory/candidate/lifecycle repositories, Adapter discovery,
+  installed-Tool rediscovery, authentic promotion inspection, the local host,
+  and the JSON-lines server without putting diagnostics on stdout.
+- This initial production process deliberately exposes no lifecycle mutation
+  authority and cannot author validation evidence. Promotion projection checks
+  exact stored evidence plus all five confinement observations through a
+  narrow read-only authority object. Goal-specific approved-plan composition
+  remains deferred; workspace inspection with `goalId: null` is supported.
+- The first Qt supervisory read-path slice now provides a UI-independent C++
+  response parser. It strictly accepts protocol `1.0` success and error
+  envelopes, rejects missing or unknown fields, and correlates every renderable
+  response with the exact pending request ID before exposing its payload.
+- `SupervisoryProcessClient` now owns a shell-free long-lived Qt `QProcess`,
+  ordered pending-request correlation, bounded incremental JSON-lines framing,
+  deterministic `list-workspaces` request IDs, separate diagnostics, and
+  fail-closed handling of malformed, oversized, unsolicited, crashed, or
+  correlation-losing response streams. It is a Qt Core library independent of
+  Widgets and is exercised against the real Node transport fixture.
+- The Qt client now issues strict `inspect` requests with locally validated
+  workspace/goal identities and has a constrained launcher for the known
+  production script plus an absolute config. Typed result decoders reject
+  duplicate/malformed workspace lists, unknown inspection fields, wrong field
+  shapes, and workspace/goal selection mismatches before data can reach a
+  widget; tools, resources, candidates, timeline, and controls remain copied
+  JSON subtrees for later view-specific decoding.
 - `runSupervisoryTransportServer` now provides incremental UTF-8 JSON-lines
   framing for a shell-free local process. Stdout is response-only, diagnostics
   are separate, responses remain ordered, oversized frames are contained, and
@@ -238,6 +266,45 @@ otherwise modified by the consolidation work.
 
 Passed in `D:\Dev\axiom-colab`:
 
+- Extended Qt supervisory read path Release build: the real Node fixture
+  accepted ordered `list-workspaces` and `inspect(workspace:alpha, null)`
+  requests with deterministic IDs `qt:1` and `qt:2`; both responses passed the
+  typed decoders. The 16-test C++ regression executable also passed, including
+  duplicate workspace rejection and inspection selection-mismatch rejection.
+- Production supervisory process `pnpm.cmd test`: all 77 TypeScript tests
+  passed. New coverage creates durable workspace state, starts the explicit
+  process entry shell-free, discovers descriptors through the fake Bridge,
+  serves correlated `list-workspaces` JSON, keeps diagnostics off stdout, and
+  rejects relative paths and unknown authority-shaped configuration fields.
+- The first production-process test failed because a read-only validation
+  runner was incorrectly composed with a repository but no authoring
+  credential. Replacing it with a narrow stored-evidence/confinement inspector
+  preserved the trust boundary and produced the passing full run above.
+- Qt supervisory response parser Release build and C++ test executable: all
+  16 tests passed, including strict success/error envelopes, request-ID
+  mismatch, unsupported version, missing fields, and unknown fields. The first
+  managed build attempt was blocked by Visual Studio FileTracker access; the
+  approved out-of-sandbox retry compiled the new parser and passed.
+- Qt Core supervisory process integration: the Release library and test
+  executable compiled, and a real shell-free Node child returned the two
+  expected workspaces through the strict parser with request ID `qt:1`.
+- The first process-test build failed because the new library's public Qt/JSON
+  include dependencies were private in CMake. Marking the public header
+  dependencies public produced the passing build above.
+- The Qt Widgets executable remains blocked by a damaged external Qt 6.11.2
+  installation: `C:\Qt\6.11.2\msvc2022_64\include\QtWidgets\qapplication.h`
+  is only 279 bytes and contains an empty include guard with no `QApplication`
+  declaration. Reordering repository includes did not change MSVC C2079 and
+  was reverted. No external SDK file was modified, and the GUI executable is
+  not claimed as passing.
+- Qt Maintenance Tool identifies the affected installed package as
+  `qt.qt6.6112.win64_msvc2022_64`. Its exact-package update path refreshed
+  metadata successfully but reported no updates, so it did not repair the
+  empty header. A matching installed source package is absent; an online source
+  package search later failed on a remote-host connection. Removing and
+  reinstalling the same package was not attempted because its current archive
+  may reproduce the packaging defect and a failed reinstall would remove the
+  otherwise usable Qt Core environment.
 - Stage 8 process transport `pnpm.cmd test`: all 75 TypeScript tests passed
   after correcting an internal test import and then fixing request-ID
   preservation for parseable rejected operations. Process coverage proves
@@ -620,13 +687,24 @@ installation controls:
 
 ## Exact next work
 
-Continue Stage 8 by wiring the first Qt workspace, goal, approved-plan,
-timeline, Tool, resource, and candidate views to the JSON-lines supervisory
-process. Add a Qt-side strict response parser and request-ID correlation before
-rendering any state. The Qt process must not open memory/candidate/lifecycle
-SQLite files or infer installed state from directories. Keep approval and other
-authority-changing controls deferred until this read path is exercised against
-the real host composition.
+Repair or reinstall the damaged external Qt Widgets SDK, then add the first
+read-only workspace selector and resource/Tool/candidate/timeline summary views
+using `start_local_supervisory_process`, `list_workspaces`, `inspect`, and the
+typed result decoders. Generate the explicit local process config outside the
+authoritative state directories; do not teach Qt to open SQLite or installed
+directories. Add an authoritative approved-plan reader before allowing
+non-null goal inspection. Keep approval and all other authority-changing
+controls deferred until this read path is exercised against the real host
+composition.
+
+Environment help requested from the user if the next agent cannot repair Qt
+non-destructively: reinstall the exact `Qt 6.11.2 / MSVC 2022 64-bit` component
+with Qt Maintenance Tool (or install another complete MSVC Qt 6 kit), then
+confirm `include\QtWidgets\qapplication.h` contains the `QApplication` class
+rather than the current 279-byte empty guard. Afterward rerun the Release
+`cpp-adapter-gui` target. Do not remove the current kit until a replacement is
+available because its Qt Core libraries still build and pass the supervisory
+process tests.
 
 Keep the WSL integration suite opt-in for portable CI, and run it explicitly on
 the supported Windows/Ubuntu composition before changing its confinement

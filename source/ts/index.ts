@@ -202,5 +202,10 @@ export { SUPERVISORY_TRANSPORT_VERSION, SupervisoryTransport, SupervisoryTranspo
 export type { SupervisoryTransportHost } from './supervisory-transport.js'
 export { runSupervisoryTransportServer } from './supervisory-transport-server.js'
 export type { SupervisoryTransportServerOptions } from './supervisory-transport-server.js'
+export {
+  parseLocalSupervisoryProcessConfig, readLocalSupervisoryProcessConfig,
+  runLocalSupervisoryProcess,
+} from './local-supervisory-process.js'
+export type { LocalSupervisoryProcessConfig } from './local-supervisory-process.js'
 export { InvocationLedger } from './invocation-ledger.js'
 export type { ExpectedCallPolicy, InvocationRecord, VerificationResult } from './invocation-ledger.js'
