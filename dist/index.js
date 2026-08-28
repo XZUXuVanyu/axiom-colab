@@ -10,6 +10,7 @@ export * from './authenticated-memory-http.js';
 export * from './memory-session-provider.js';
 export * from './goal-coordinator.js';
 export * from './candidate-validation.js';
+export * from './tool-workshop.js';
 export const name = 'general-ts-cpp-adapter';
 export const inject = [
     'tools',

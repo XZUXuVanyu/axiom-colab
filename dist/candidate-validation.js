@@ -1,7 +1,8 @@
-import { createHash, randomUUID } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { dirname, isAbsolute, relative, resolve, sep } from 'node:path';
+import { dirname, resolve } from 'node:path';
+import { CandidateContentError, captureCandidateFiles, safeCandidateRelativePath } from './candidate-content.js';
 import { LABORATORY_PROTOCOL_VERSION, canonicalJson, contentHash } from './laboratory-contract.js';
 import { ProcessExecutionError, ProcessRunner } from './process-runner.js';
 export class CandidateValidationError extends Error {
@@ -18,45 +19,6 @@ const suiteOrder = {
 };
 function fail(code, message) {
     throw new CandidateValidationError(code, message);
-}
-function byteContent(content) {
-    return typeof content === 'string' ? Buffer.from(content, 'utf8') : content;
-}
-function byteHash(content) {
-    return `sha256:${createHash('sha256').update(content).digest('hex')}`;
-}
-function safeRelativePath(value, field) {
-    if (value.length === 0 || isAbsolute(value) || value.includes('\0')) {
-        fail('INVALID_SNAPSHOT_PATH', `${field} must be a non-empty relative path`);
-    }
-    const normalized = value.replaceAll('\\', '/');
-    if (normalized.split('/').some((part)=>part === '' || part === '.' || part === '..')) {
-        fail('INVALID_SNAPSHOT_PATH', `${field} must use canonical relative path segments`);
-    }
-    const resolved = resolve('snapshot-root', normalized);
-    const rel = relative(resolve('snapshot-root'), resolved);
-    if (rel === '..' || rel.startsWith(`..${sep}`) || isAbsolute(rel)) {
-        fail('SNAPSHOT_PATH_ESCAPE', `${field} escapes the candidate snapshot`);
-    }
-    return normalized;
-}
-function captureFiles(files, field) {
-    const paths = new Set();
-    return files.map((file, index)=>{
-        const path = safeRelativePath(file.path, `${field}[${index}].path`);
-        if (paths.has(path)) fail('DUPLICATE_SNAPSHOT_PATH', `${field} contains duplicate path ${path}`);
-        paths.add(path);
-        const bytes = Buffer.from(byteContent(file.content));
-        return {
-            path,
-            bytes,
-            binding: {
-                path,
-                size: bytes.byteLength,
-                hash: byteHash(bytes)
-            }
-        };
-    }).sort((left, right)=>left.path.localeCompare(right.path));
 }
 function captureSuites(suites) {
     return suites.map((suite)=>({
@@ -143,7 +105,14 @@ function assertAllowedCommand(command, policy) {
     if (!policy.allowedExecutables.includes(command.executable)) {
         fail('EXECUTABLE_NOT_ALLOWED', `command ${command.commandId} uses an executable outside the validation policy`);
     }
-    if (command.cwd !== undefined) safeRelativePath(command.cwd, `command ${command.commandId} cwd`);
+    if (command.cwd !== undefined) {
+        try {
+            safeCandidateRelativePath(command.cwd, `command ${command.commandId} cwd`);
+        } catch (error) {
+            if (error instanceof CandidateContentError) fail(error.code, error.message.slice(error.message.indexOf(']') + 2));
+            throw error;
+        }
+    }
 }
 export class CandidateValidationRunner {
     runner;
@@ -218,8 +187,15 @@ export class CandidateValidationRunner {
         return record.outcome === 'passed' && record.candidateSnapshotHash === snapshotHash && recordHash === contentHash(recordWithoutHash);
     }
     async prepare(request) {
-        const capturedSources = captureFiles(request.sources, 'sources');
-        const capturedFixtures = captureFiles(request.fixtures, 'fixtures');
+        let capturedSources;
+        let capturedFixtures;
+        try {
+            capturedSources = captureCandidateFiles(request.sources, 'sources');
+            capturedFixtures = captureCandidateFiles(request.fixtures, 'fixtures');
+        } catch (error) {
+            if (error instanceof CandidateContentError) fail(error.code, error.message.slice(error.message.indexOf(']') + 2));
+            throw error;
+        }
         const sources = capturedSources.map((file)=>file.binding);
         const fixtures = capturedFixtures.map((file)=>file.binding);
         const capturedSuites = captureSuites(request.suites);

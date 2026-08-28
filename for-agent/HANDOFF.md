@@ -4,6 +4,19 @@ Last updated: 2026-08-28
 
 ## Current state
 
+- Stage 7 has started with `source/ts/tool-workshop.ts`. Model or trusted-host
+  authority can define copied, canonical-hash-bound structured Tool
+  specifications and create captured candidate revisions whose descriptor,
+  ordered source bytes, specification, stable candidate identity, and prior
+  candidate hash are bound exactly.
+- Only a current candidate revision can be revised. Superseded revisions remain
+  inspectable and materializable, stale-parent branching and cross-workspace
+  lookup fail closed, and materialization returns fresh copies for the existing
+  Stage 6 validator to recapture. Workshop code cannot issue validation,
+  approval, installation, registration, or rediscovery authority.
+- The workshop repository is currently process-local. Restart-safe immutable
+  candidate storage and authenticated validator-record storage remain blockers
+  for trusted promotion, along with the Stage 6 OS confinement gaps below.
 - Stage 6 has started with `source/ts/candidate-validation.ts`. It captures
   caller-owned bytes and command definitions before execution, produces an
   exact content-bound candidate snapshot, and runs candidate, standard, and
@@ -75,8 +88,9 @@ Last updated: 2026-08-28
   envelopes, trusted authority, capabilities, canonical hashing, exact approval
   binding, operation rules, lifecycle transitions, deterministic errors, and
   mandatory audit outputs, with adversarial executable coverage.
-- Stage 0 consolidation is complete. Adapter redesign, validation service, and
-  workshop implementation have not begun.
+- Stage 0 consolidation is complete. The scoped adapter/memory integration,
+  initial validation runner, and initial workshop contract now build on that
+  imported baseline as described above.
 - The repository is on branch `main`; Stage 0 is saved in root commit
   `1e6a216` (`chore(project): consolidate Stage 0 baseline`).
 - The current non-ignored filesystem state of
@@ -120,6 +134,11 @@ otherwise modified by the consolidation work.
 
 Passed in `D:\Dev\axiom-colab`:
 
+- Stage 7 initial `pnpm.cmd test`: all 49 TypeScript tests passed, including
+  caller-mutation capture, candidate hash chaining, preserved superseded
+  revisions, stale-parent rejection, cross-workspace isolation, descriptor
+  binding, path rejection, and author-authority checks.
+- Stage 7 `git diff --check`: passed with newline-conversion notices only.
 - Post-Stage 6 regression check rebuilt the previously stale ignored
   `build/windows/Release` Bridge, passed Release `ctest`, and passed all 4 real
   process integration tests covering scoped sharing, revocation,
@@ -404,12 +423,14 @@ installation controls:
 
 ## Exact next work
 
-By explicit user direction, begin Stage 7 in the next context with the
-constrained Tool workshop contract and its structured specification -> immutable
-candidate revision path. Reuse the current Stage 6 snapshot and observed-runner
-boundary; do not add an alternate validation authority.
+Continue Stage 7 by replacing the process-local workshop and validator
+`WeakSet` authority with authenticated, restart-safe immutable storage for
+captured candidate payloads and validator-issued records. Preserve the current
+candidate hash chain and use the Stage 6 observed runner as the only validation
+authority; do not add approval or installation yet.
 
-During Stage 7, run the blocking/potential-problem re-check above and close any
-issue required for trusted promotion or installation. Then continue into the
-Stage 8 IDE implementation in the new context only after the re-check confirms
-that UI controls can consume authoritative backend state safely.
+Then add and adversarially test the exact candidate + validation record +
+requested permissions + installation proposal approval binding while closing
+the OS confinement and hidden-challenge commitment issues in the blocking gate
+above. Continue into Stage 8 only after the gate confirms that UI controls can
+consume authoritative backend state safely.

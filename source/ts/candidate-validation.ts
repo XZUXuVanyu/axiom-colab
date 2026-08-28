@@ -1,7 +1,16 @@
-import { createHash, randomUUID } from 'node:crypto'
+import { randomUUID } from 'node:crypto'
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { dirname, isAbsolute, relative, resolve, sep } from 'node:path'
+import { dirname, resolve } from 'node:path'
+
+import {
+  CandidateContentError,
+  captureCandidateFiles,
+  safeCandidateRelativePath,
+  type BoundFile,
+  type CandidateFile,
+  type CapturedCandidateFile,
+} from './candidate-content.js'
 
 import {
   LABORATORY_PROTOCOL_VERSION,
@@ -18,10 +27,7 @@ import {
 export type ValidationSuiteKind = 'candidate' | 'standard' | 'challenge'
 export type ValidationOutcome = 'passed' | 'failed' | 'limited'
 
-export interface CandidateFile {
-  readonly path: string
-  readonly content: string | Uint8Array
-}
+export type { BoundFile, CandidateFile } from './candidate-content.js'
 
 export interface CandidateToolchain {
   readonly name: string
@@ -59,12 +65,6 @@ export interface CandidateValidationRequest {
   readonly toolchain: CandidateToolchain
   readonly policy: CandidateValidationPolicy
   readonly suites: readonly ValidationSuite[]
-}
-
-export interface BoundFile {
-  readonly path: string
-  readonly size: number
-  readonly hash: `sha256:${string}`
 }
 
 export interface BoundValidationSuite {
@@ -160,12 +160,6 @@ interface PreparedCandidate {
   readonly suites: readonly ValidationSuite[]
 }
 
-interface CapturedFile {
-  readonly path: string
-  readonly bytes: Uint8Array
-  readonly binding: BoundFile
-}
-
 const suiteOrder: Readonly<Record<ValidationSuiteKind, number>> = {
   candidate: 0,
   standard: 1,
@@ -174,41 +168,6 @@ const suiteOrder: Readonly<Record<ValidationSuiteKind, number>> = {
 
 function fail(code: string, message: string): never {
   throw new CandidateValidationError(code, message)
-}
-
-function byteContent(content: string | Uint8Array): Uint8Array {
-  return typeof content === 'string' ? Buffer.from(content, 'utf8') : content
-}
-
-function byteHash(content: Uint8Array): `sha256:${string}` {
-  return `sha256:${createHash('sha256').update(content).digest('hex')}`
-}
-
-function safeRelativePath(value: string, field: string): string {
-  if (value.length === 0 || isAbsolute(value) || value.includes('\0')) {
-    fail('INVALID_SNAPSHOT_PATH', `${field} must be a non-empty relative path`)
-  }
-  const normalized = value.replaceAll('\\', '/')
-  if (normalized.split('/').some((part) => part === '' || part === '.' || part === '..')) {
-    fail('INVALID_SNAPSHOT_PATH', `${field} must use canonical relative path segments`)
-  }
-  const resolved = resolve('snapshot-root', normalized)
-  const rel = relative(resolve('snapshot-root'), resolved)
-  if (rel === '..' || rel.startsWith(`..${sep}`) || isAbsolute(rel)) {
-    fail('SNAPSHOT_PATH_ESCAPE', `${field} escapes the candidate snapshot`)
-  }
-  return normalized
-}
-
-function captureFiles(files: readonly CandidateFile[], field: string): readonly CapturedFile[] {
-  const paths = new Set<string>()
-  return files.map((file, index) => {
-    const path = safeRelativePath(file.path, `${field}[${index}].path`)
-    if (paths.has(path)) fail('DUPLICATE_SNAPSHOT_PATH', `${field} contains duplicate path ${path}`)
-    paths.add(path)
-    const bytes = Buffer.from(byteContent(file.content))
-    return { path, bytes, binding: { path, size: bytes.byteLength, hash: byteHash(bytes) } }
-  }).sort((left, right) => left.path.localeCompare(right.path))
 }
 
 function captureSuites(suites: readonly ValidationSuite[]): readonly ValidationSuite[] {
@@ -296,7 +255,14 @@ function assertAllowedCommand(command: ValidationCommand, policy: CandidateValid
   if (!policy.allowedExecutables.includes(command.executable)) {
     fail('EXECUTABLE_NOT_ALLOWED', `command ${command.commandId} uses an executable outside the validation policy`)
   }
-  if (command.cwd !== undefined) safeRelativePath(command.cwd, `command ${command.commandId} cwd`)
+  if (command.cwd !== undefined) {
+    try {
+      safeCandidateRelativePath(command.cwd, `command ${command.commandId} cwd`)
+    } catch (error) {
+      if (error instanceof CandidateContentError) fail(error.code, error.message.slice(error.message.indexOf(']') + 2))
+      throw error
+    }
+  }
 }
 
 export class CandidateValidationRunner {
@@ -367,8 +333,15 @@ export class CandidateValidationRunner {
   }
 
   private async prepare(request: CandidateValidationRequest): Promise<PreparedCandidate> {
-    const capturedSources = captureFiles(request.sources, 'sources')
-    const capturedFixtures = captureFiles(request.fixtures, 'fixtures')
+    let capturedSources: readonly CapturedCandidateFile[]
+    let capturedFixtures: readonly CapturedCandidateFile[]
+    try {
+      capturedSources = captureCandidateFiles(request.sources, 'sources')
+      capturedFixtures = captureCandidateFiles(request.fixtures, 'fixtures')
+    } catch (error) {
+      if (error instanceof CandidateContentError) fail(error.code, error.message.slice(error.message.indexOf(']') + 2))
+      throw error
+    }
     const sources = capturedSources.map((file) => file.binding)
     const fixtures = capturedFixtures.map((file) => file.binding)
     const capturedSuites = captureSuites(request.suites)

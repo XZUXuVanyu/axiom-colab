@@ -4,6 +4,33 @@ Entries are chronological. Each entry corresponds to one logical Git commit and
 records its exact subject, purpose, material changes, and validation actually
 performed.
 
+## 2026-08-28 - feat(workshop): bind immutable candidate revisions
+
+Purpose: begin Stage 7 with the authority-preserving path from a structured
+missing-capability specification to exact candidate revisions, without opening
+an approval or installation path around the Stage 6 validator.
+
+Material changes:
+
+- Added model/trusted-host-authored structured Tool specifications with copied
+  JSON content, host identities, attribution, validation, and canonical hashes.
+- Added captured candidate source revisions binding descriptor, ordered raw-byte
+  source metadata, specification, stable candidate identity, and the previous
+  candidate hash.
+- Preserved superseded revisions, rejected stale-parent branching,
+  cross-workspace lookup, mismatched descriptors, unsafe paths, and unauthorized
+  authors, and exposed copy-on-read materialization for the existing validator.
+- Extracted the Stage 6 candidate path/byte capture primitive so workshop and
+  validation use one boundary while validation remains the only evidence
+  authority.
+- Documented that the current repository is process-local and deliberately has
+  no approval, installation, registration, or rediscovery operation.
+
+Validation actually run:
+
+- `pnpm.cmd test`: passed all 49 TypeScript tests and regenerated `dist/`.
+- `git diff --check`: passed with newline-conversion notices only.
+
 ## 2026-08-28 - docs(agent): preserve Stage 7 re-check gate
 
 Purpose: make the next-context transition from the Tool workshop to IDE

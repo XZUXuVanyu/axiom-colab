@@ -8,7 +8,9 @@ visible and user-controlled.
 The backend now includes the Stage 5 supervised goal loop, three C++-first
 built-ins, restart-safe structured memory, scoped process-per-call memory
 integration, and the first Stage 6 candidate-validation contract and runner
-slice. Its root validation entry points are:
+slice. Stage 7 now includes its first constrained workshop slice for structured
+Tool specifications and immutable in-process candidate revisions. Its root
+validation entry points are:
 
 ```powershell
 pnpm.cmd test
@@ -18,9 +20,10 @@ powershell.exe -ExecutionPolicy Bypass `
 ```
 
 The optional Qt frontend is built by the CMake project when Qt 6 Widgets is
-available. The constrained Tool workshop and complete OS sandbox are later
-stages.
+available. Durable workshop/validation storage, trusted promotion, and the
+complete OS sandbox remain later work.
 
 See `docs/built-in-tools-and-goals.md` for the built-in/fixture boundary and
 minimal goal flow, and `docs/candidate-validation.md` for the current validation
-boundary. Read `AGENTS.md` and `for-agent/HANDOFF.md` before changing the project.
+boundary. `docs/tool-workshop.md` records the current workshop boundary. Read
+`AGENTS.md` and `for-agent/HANDOFF.md` before changing the project.
