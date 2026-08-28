@@ -39,7 +39,13 @@ hash match stored successful evidence; its descriptor is parsed again at this
 boundary.
 
 The composition retains workspace isolation and survives repository restart.
-Goal lifecycle and capability actions use the `LocalSupervisoryLifecycle`
-boundary until the next Stage 8 slice supplies a restart-safe coordinator.
-Qt should consume the application model only after that lifecycle composition
-is covered by adversarial tests.
+`LocalGoalLifecycle` supplies the restart-safe lifecycle boundary. Its SQLite
+state binds a goal to the identity and hash of the current approved working-
+memory plan; it never stores or approves a replacement plan. Stop, resume,
+capability revocation, and recovery first delegate to host-owned authoritative
+operations and only then commit their supervisory state. Cross-workspace use,
+replay, changed plan bindings, and unavailable actions fail closed.
+
+The next slice can compose these services into an application host and expose
+the first read-only workspace, goal, timeline, Tool, resource, and candidate
+views through Qt before adding authority-changing controls.

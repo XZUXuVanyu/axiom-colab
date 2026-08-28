@@ -192,5 +192,7 @@ export { LocalSupervisoryBackend, LocalSupervisoryBackendError } from './local-s
 export type {
   LocalGoalProjection, LocalSupervisoryBackendOptions, LocalSupervisoryLifecycle,
 } from './local-supervisory-backend.js'
+export { LocalGoalLifecycle, LocalGoalLifecycleError } from './local-goal-lifecycle.js'
+export type { LocalGoalLifecycleOptions } from './local-goal-lifecycle.js'
 export { InvocationLedger } from './invocation-ledger.js'
 export type { ExpectedCallPolicy, InvocationRecord, VerificationResult } from './invocation-ledger.js'

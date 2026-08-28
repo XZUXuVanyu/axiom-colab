@@ -4,6 +4,29 @@ Entries are chronological. Each entry corresponds to one logical Git commit and
 records its exact subject, purpose, material changes, and validation actually
 performed.
 
+## 2026-08-28 - feat(gui): persist supervised goal lifecycle
+
+Purpose: provide restart-safe stop, resume, revocation, and recovery state
+without creating a second plan or approval authority in the UI layer.
+
+Material changes:
+
+- Added a local SQLite goal lifecycle that binds each registered goal to the
+  exact identity and hash of its current approved working-memory plan.
+- Persisted active/stopped goal state, scoped active/revoked capabilities, and
+  workspace recovery requirements across restart.
+- Delegated real stop, resume, capability revocation, and recovery operations
+  to host-owned services before committing their supervisory state.
+- Rejected cross-workspace actions, replayed transitions, revoked-capability
+  replay, and stale approved-plan bindings.
+
+Validation actually run:
+
+- Initial `pnpm.cmd test`: 67 of 68 passed. The new cross-workspace stop test
+  expected `GOAL_NOT_ACTIVE`; the service correctly failed earlier with the
+  more precise `GOAL_NOT_FOUND`.
+- Corrected `pnpm.cmd test`: all 68 TypeScript tests passed.
+
 ## 2026-08-28 - feat(gui): compose local supervisory backend
 
 Purpose: project the existing authoritative local services through the Stage 8

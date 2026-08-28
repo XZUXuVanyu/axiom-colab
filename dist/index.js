@@ -139,6 +139,7 @@ export async function apply(ctx, rawConfig = {}) {
 }
 export { SupervisoryApplicationError, SupervisoryApplicationModel } from './supervisory-application.js';
 export { LocalSupervisoryBackend, LocalSupervisoryBackendError } from './local-supervisory-backend.js';
+export { LocalGoalLifecycle, LocalGoalLifecycleError } from './local-goal-lifecycle.js';
 export { InvocationLedger } from './invocation-ledger.js';
 
 

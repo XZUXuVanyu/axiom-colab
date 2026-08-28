@@ -4,6 +4,13 @@ Last updated: 2026-08-28
 
 ## Current state
 
+- `LocalGoalLifecycle` now provides restart-safe local supervisory lifecycle
+  state. Registered goals bind the exact current approved working-memory plan
+  revision and hash; the lifecycle cannot author or approve a replacement.
+- Stop, resume, capability revocation, and recovery delegate to host-owned
+  authoritative operations before their local state changes. Active/stopped
+  goal state, scoped capability state, and recovery requirements survive
+  restart; cross-workspace actions, replay, and stale plan bindings fail closed.
 - `LocalSupervisoryBackend` now composes resource status from
   `LocalMemoryStore`, audit history from `MemoryWorkflows`, and candidate,
   validation, proposal, approval, and installation projections through new
@@ -211,6 +218,10 @@ otherwise modified by the consolidation work.
 
 Passed in `D:\Dev\axiom-colab`:
 
+- Stage 8 goal lifecycle `pnpm.cmd test`: all 68 TypeScript tests passed after
+  correcting one new assertion to expect the actual fail-closed
+  `GOAL_NOT_FOUND` cross-workspace result. Coverage includes restart, stop and
+  resume delegation, revocation, recovery, replay, and stale approved plans.
 - Stage 8 local composition `pnpm.cmd test`: all 66 TypeScript tests passed,
   including restart-safe projection, cross-workspace isolation, and rejection
   of rediscovered Tools without matching successful installation evidence.
@@ -577,12 +588,13 @@ installation controls:
 
 ## Exact next work
 
-Continue Stage 8 with a restart-safe local goal lifecycle coordinator behind
-`LocalSupervisoryLifecycle`. It must own goal selection/status and active
-capability revocation, delegate workspace recovery to authoritative services,
-and preserve stop/resume state across restart without inventing a second
-working-memory or approval authority. Add adversarial tests for cross-workspace
-actions, stale controls, replay, and restart before wiring Qt controls.
+Continue Stage 8 by defining the local application-host composition that owns
+the authoritative service lifetimes, Adapter discovery, verified installed-Tool
+rediscovery, `LocalGoalLifecycle`, `LocalSupervisoryBackend`, and
+`SupervisoryApplicationModel`. Then wire the first read-only Qt workspace/goal,
+approved-plan, timeline, Tool, resource, and candidate views to that host-facing
+protocol. Keep approval and other authority-changing Qt controls deferred until
+the read path and application startup/recovery composition are tested.
 
 Keep the WSL integration suite opt-in for portable CI, and run it explicitly on
 the supported Windows/Ubuntu composition before changing its confinement
