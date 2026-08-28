@@ -61,12 +61,14 @@ function descriptorName(descriptor) {
 export class ToolWorkshop {
     now;
     idFactory;
+    repository;
     specifications = new Map();
     revisions = new Map();
     candidateRevisions = new Map();
     constructor(options = {}){
         this.now = options.now ?? (()=>new Date());
         this.idFactory = options.idFactory ?? randomUUID;
+        this.repository = options.repository;
     }
     defineSpecification(context, input) {
         assertAuthor(context);
@@ -101,13 +103,14 @@ export class ToolWorkshop {
             ...captured,
             specificationHash: contentHash(binding)
         });
+        this.repository?.saveSpecification(specification);
         this.specifications.set(specification.specificationId, specification);
         return specification;
     }
     createCandidateRevision(context, input) {
         assertAuthor(context);
-        const specification = this.specifications.get(input.specificationId);
-        if (specification === undefined || specification.workspaceId !== context.workspaceId) {
+        const specification = this.specifications.get(input.specificationId) ?? this.repository?.readSpecification(context.workspaceId, input.specificationId);
+        if (specification === undefined || specification === null || specification.workspaceId !== context.workspaceId) {
             fail('SPECIFICATION_NOT_FOUND', 'specification is not visible in this workspace');
         }
         if (descriptorName(input.descriptor) !== specification.publicName) {
@@ -124,14 +127,14 @@ export class ToolWorkshop {
         contentHash(input.descriptor);
         const descriptor = deepCopy(input.descriptor);
         const bindings = files.map((file)=>file.binding);
-        const priorIds = this.candidateIdsForSpecification(specification.specificationId);
+        const priorIds = this.candidateIdsForSpecification(context.workspaceId, specification.specificationId);
         let candidateId;
         let parent;
         if (input.parentRevisionId === undefined) {
             if (priorIds.length !== 0) fail('PARENT_REVISION_REQUIRED', 'an existing candidate must be revised from its current revision');
             candidateId = `tool:${this.idFactory()}`;
         } else {
-            parent = this.revisions.get(input.parentRevisionId);
+            parent = this.storedRevision(context.workspaceId, input.parentRevisionId);
             if (parent === undefined || parent.public.workspaceId !== context.workspaceId) {
                 fail('CANDIDATE_REVISION_NOT_FOUND', 'parent revision is not visible in this workspace');
             }
@@ -169,6 +172,7 @@ export class ToolWorkshop {
             createdAt: this.now().toISOString(),
             createdBy: context.actorId
         });
+        this.repository?.saveRevision(publicRevision, descriptor, input.sources);
         if (parent !== undefined) {
             parent.public = deepFreeze({
                 ...parent.public,
@@ -187,13 +191,18 @@ export class ToolWorkshop {
         return publicRevision;
     }
     inspectRevision(context, revisionId) {
-        const revision = this.visibleRevision(context, revisionId);
-        return revision.public;
+        return this.visibleRevision(context, revisionId).public;
     }
     listCandidateRevisions(context, candidateId) {
+        if (this.repository !== undefined) return this.repository.listCandidateRevisions(context.workspaceId, candidateId);
         return (this.candidateRevisions.get(candidateId) ?? []).map((revisionId)=>this.revisions.get(revisionId)).filter((revision)=>revision !== undefined && revision.public.workspaceId === context.workspaceId).map((revision)=>revision.public);
     }
     materializeRevision(context, revisionId) {
+        if (this.repository !== undefined) {
+            const materialized = this.repository.materializeRevision(context.workspaceId, revisionId);
+            if (materialized === null) fail('CANDIDATE_REVISION_NOT_FOUND', 'candidate revision is not visible in this workspace');
+            return materialized;
+        }
         const stored = this.visibleRevision(context, revisionId);
         return {
             revision: stored.public,
@@ -204,17 +213,31 @@ export class ToolWorkshop {
                 }))
         };
     }
-    candidateIdsForSpecification(specificationId) {
+    candidateIdsForSpecification(workspaceId, specificationId) {
+        if (this.repository !== undefined) {
+            return this.repository.listSpecificationRevisions(workspaceId, specificationId).map((revision)=>revision.revisionId);
+        }
         return [
             ...this.revisions.values()
         ].filter((revision)=>revision.public.specificationId === specificationId).map((revision)=>revision.public.revisionId);
     }
     visibleRevision(context, revisionId) {
-        const revision = this.revisions.get(revisionId);
+        const revision = this.storedRevision(context.workspaceId, revisionId);
         if (revision === undefined || revision.public.workspaceId !== context.workspaceId) {
             fail('CANDIDATE_REVISION_NOT_FOUND', 'candidate revision is not visible in this workspace');
         }
         return revision;
+    }
+    storedRevision(workspaceId, revisionId) {
+        const memory = this.revisions.get(revisionId);
+        if (memory !== undefined) return memory;
+        const materialized = this.repository?.materializeRevision(workspaceId, revisionId);
+        if (materialized === undefined || materialized === null) return undefined;
+        return {
+            public: materialized.revision,
+            descriptor: materialized.descriptor,
+            files: captureCandidateFiles(materialized.sources, 'sources')
+        };
     }
 }
 

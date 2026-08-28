@@ -119,12 +119,19 @@ export class CandidateValidationRunner {
     temporaryRoot;
     now;
     idFactory;
+    evidenceRepository;
+    validatorCredential;
     issuedRecords = new WeakSet();
     constructor(options = {}){
         this.runner = options.runner ?? new ProcessRunner();
         this.temporaryRoot = options.temporaryRoot ?? tmpdir();
         this.now = options.now ?? (()=>new Date());
         this.idFactory = options.idFactory ?? randomUUID;
+        this.evidenceRepository = options.evidenceRepository;
+        this.validatorCredential = options.validatorCredential;
+        if (this.evidenceRepository === undefined !== (this.validatorCredential === undefined)) {
+            fail('INVALID_VALIDATION_REPOSITORY', 'evidenceRepository and validatorCredential must be configured together');
+        }
     }
     async validate(request) {
         validatePolicy(request.policy);
@@ -169,11 +176,15 @@ export class CandidateValidationRunner {
                 ...recordWithoutHash,
                 recordHash: contentHash(recordWithoutHash)
             });
-            this.issuedRecords.add(record);
-            return deepFreeze({
+            const result = deepFreeze({
                 snapshot: prepared.snapshot,
                 record
             });
+            if (this.evidenceRepository !== undefined && this.validatorCredential !== undefined) {
+                this.evidenceRepository.recordValidation(this.validatorCredential, result, prepared.privatePayload);
+            }
+            this.issuedRecords.add(record);
+            return result;
         } finally{
             await rm(prepared.root, {
                 recursive: true,
@@ -182,6 +193,9 @@ export class CandidateValidationRunner {
         }
     }
     isPromotionEligible(snapshotHash, record) {
+        if (this.evidenceRepository !== undefined) {
+            return this.evidenceRepository.isPromotionEligible(snapshotHash, record);
+        }
         if (!this.issuedRecords.has(record)) return false;
         const { recordHash, ...recordWithoutHash } = record;
         return record.outcome === 'passed' && record.candidateSnapshotHash === snapshotHash && recordHash === contentHash(recordWithoutHash);
@@ -251,11 +265,26 @@ export class CandidateValidationRunner {
                     flag: 'wx'
                 });
             }
+            const privatePayload = {
+                descriptor: request.descriptor,
+                sources: capturedSources.map((file)=>({
+                        path: file.path,
+                        contentBase64: Buffer.from(file.bytes).toString('base64')
+                    })),
+                fixtures: capturedFixtures.map((file)=>({
+                        path: file.path,
+                        contentBase64: Buffer.from(file.bytes).toString('base64')
+                    })),
+                toolchain: request.toolchain,
+                policy: capturedPolicy,
+                suites: capturedSuites
+            };
             return {
                 snapshot,
                 root,
                 policy: capturedPolicy,
-                suites: capturedSuites
+                suites: capturedSuites,
+                privatePayload
             };
         } catch (error) {
             await rm(root, {

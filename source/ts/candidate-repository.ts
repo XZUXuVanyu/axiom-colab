@@ -1,0 +1,389 @@
+import { createHash, randomBytes } from 'node:crypto'
+import { mkdirSync } from 'node:fs'
+import { dirname, resolve } from 'node:path'
+import { DatabaseSync } from 'node:sqlite'
+
+import { captureCandidateFiles, type CandidateFile } from './candidate-content.js'
+import type { CandidateSnapshot, CandidateValidationResult, ValidationRecord } from './candidate-validation.js'
+import { canonicalJson, contentHash, type LaboratoryId } from './laboratory-contract.js'
+import type {
+  CandidateRevision,
+  MaterializedCandidateRevision,
+  ToolSpecification,
+} from './tool-workshop.js'
+
+export class CandidateRepositoryError extends Error {
+  constructor(readonly code: string, message: string) {
+    super(`[${code}] ${message}`)
+    this.name = 'CandidateRepositoryError'
+  }
+}
+
+export interface StoredValidationInspection extends CandidateValidationResult {
+  readonly privatePayloadHash: `sha256:${string}`
+}
+
+type SpecificationRow = { public_json: string }
+type RevisionRow = { public_json: string; state: string; descriptor_json: string; sources_json: string }
+type ValidationRow = { snapshot_json: string; record_json: string; private_payload_json: string; private_payload_hash: string }
+
+function fail(code: string, message: string): never {
+  throw new CandidateRepositoryError(code, message)
+}
+
+function digest(value: string): string {
+  return createHash('sha256').update(value, 'utf8').digest('hex')
+}
+
+function bytesHash(bytes: Uint8Array): `sha256:${string}` {
+  return `sha256:${createHash('sha256').update(bytes).digest('hex')}`
+}
+
+function candidateBinding(revision: CandidateRevision): unknown {
+  return {
+    workspaceId: revision.workspaceId,
+    candidateId: revision.candidateId,
+    specificationId: revision.specificationId,
+    specificationHash: revision.specificationHash,
+    revision: revision.revision,
+    parentCandidateHash: revision.parentCandidateHash,
+    descriptorHash: revision.descriptorHash,
+    sourceHash: revision.sourceHash,
+    sources: revision.sources,
+  }
+}
+
+function specificationBinding(specification: ToolSpecification): unknown {
+  return {
+    workspaceId: specification.workspaceId,
+    createdBy: specification.createdBy,
+    problem: specification.problem,
+    publicName: specification.publicName,
+    description: specification.description,
+    inputSchema: specification.inputSchema,
+    outputSchema: specification.outputSchema,
+    requestedPermissions: specification.requestedPermissions,
+    acceptanceCriteria: specification.acceptanceCriteria,
+    constraints: specification.constraints ?? [],
+  }
+}
+
+function snapshotBinding(snapshot: CandidateSnapshot): unknown {
+  const { protocolVersion: _protocol, snapshotId: _id, createdAt: _created, snapshotHash: _hash, ...binding } = snapshot
+  return binding
+}
+
+function validRecord(record: ValidationRecord): boolean {
+  const { recordHash, ...binding } = record
+  return recordHash === contentHash(binding)
+}
+
+function parsed<T>(value: string, code: string): T {
+  try { return JSON.parse(value) as T } catch { fail(code, 'stored canonical JSON is malformed') }
+}
+
+function sourceJson(files: readonly CandidateFile[]): string {
+  return canonicalJson(files.map((file) => ({
+    path: file.path,
+    contentBase64: Buffer.from(typeof file.content === 'string' ? Buffer.from(file.content) : file.content).toString('base64'),
+  })))
+}
+
+function sourceFiles(value: string): readonly CandidateFile[] {
+  const rows = parsed<Array<{ path: string; contentBase64: string }>>(value, 'CORRUPT_CANDIDATE_PAYLOAD')
+  if (!Array.isArray(rows) || !rows.every((row) => typeof row?.path === 'string' && typeof row?.contentBase64 === 'string')) {
+    fail('CORRUPT_CANDIDATE_PAYLOAD', 'stored candidate source manifest is invalid')
+  }
+  return rows.map((row) => ({ path: row.path, content: Buffer.from(row.contentBase64, 'base64') }))
+}
+
+function encodedFiles(value: unknown, field: string): readonly CandidateFile[] {
+  if (!Array.isArray(value) || !value.every((row) => typeof row === 'object' && row !== null
+      && typeof (row as Record<string, unknown>).path === 'string'
+      && typeof (row as Record<string, unknown>).contentBase64 === 'string')) {
+    fail('INVALID_VALIDATION_EVIDENCE', `${field} payload is malformed`)
+  }
+  return value.map((row) => {
+    const item = row as { path: string; contentBase64: string }
+    return { path: item.path, content: Buffer.from(item.contentBase64, 'base64') }
+  })
+}
+
+function suiteDefinitionHash(commands: readonly unknown[]): `sha256:${string}` {
+  return contentHash(commands.map((value) => {
+    if (typeof value !== 'object' || value === null) fail('INVALID_VALIDATION_EVIDENCE', 'private suite command is malformed')
+    const command = value as Record<string, unknown>
+    if (typeof command.commandId !== 'string' || typeof command.executable !== 'string'
+        || (command.args !== undefined && (!Array.isArray(command.args) || !command.args.every((item) => typeof item === 'string')))
+        || (command.stdin !== undefined && typeof command.stdin !== 'string')
+        || (command.cwd !== undefined && typeof command.cwd !== 'string')) {
+      fail('INVALID_VALIDATION_EVIDENCE', 'private suite command is malformed')
+    }
+    return {
+      commandId: command.commandId,
+      executable: command.executable,
+      args: command.args ?? [],
+      stdinHash: contentHash(command.stdin ?? ''),
+      cwd: command.cwd ?? '.',
+    }
+  }))
+}
+
+function assertPrivateValidationBinding(snapshot: CandidateSnapshot, value: unknown): void {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) fail('INVALID_VALIDATION_EVIDENCE', 'private validation payload is malformed')
+  const payload = value as Record<string, unknown>
+  const sources = captureCandidateFiles(encodedFiles(payload.sources, 'sources'), 'sources').map((file) => file.binding)
+  const fixtures = captureCandidateFiles(encodedFiles(payload.fixtures, 'fixtures'), 'fixtures').map((file) => file.binding)
+  if (contentHash(payload.descriptor) !== snapshot.descriptorHash
+      || contentHash(sources) !== snapshot.sourceHash
+      || contentHash(fixtures) !== snapshot.fixtureHash
+      || canonicalJson(sources) !== canonicalJson(snapshot.sources)
+      || canonicalJson(fixtures) !== canonicalJson(snapshot.fixtures)
+      || contentHash(payload.toolchain) !== snapshot.toolchainHash
+      || contentHash(payload.policy) !== snapshot.policyHash
+      || !Array.isArray(payload.suites)) {
+    fail('INVALID_VALIDATION_EVIDENCE', 'private payload does not match the public validation snapshot')
+  }
+  for (const binding of snapshot.suites) {
+    const suite = payload.suites.find((item) => typeof item === 'object' && item !== null
+      && (item as Record<string, unknown>).suiteId === binding.suiteId
+      && (item as Record<string, unknown>).kind === binding.kind) as Record<string, unknown> | undefined
+    if (suite === undefined || !Array.isArray(suite.commands) || suite.commands.length !== binding.commandCount
+        || suiteDefinitionHash(suite.commands) !== binding.definitionHash) {
+      fail('INVALID_VALIDATION_EVIDENCE', 'private suite definitions do not match the public validation snapshot')
+    }
+  }
+}
+
+export class LocalCandidateRepository {
+  readonly databasePath: string
+  private readonly database: DatabaseSync
+  private closed = false
+
+  constructor(path: string) {
+    this.databasePath = resolve(path)
+    mkdirSync(dirname(this.databasePath), { recursive: true })
+    this.database = new DatabaseSync(this.databasePath)
+    this.database.exec('PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL; PRAGMA synchronous = FULL;')
+    this.migrate()
+  }
+
+  private migrate(): void {
+    const version = (this.database.prepare('PRAGMA user_version').get() as { user_version: number }).user_version
+    if (version > 1) fail('UNSUPPORTED_CANDIDATE_STORE_VERSION', `candidate schema version ${version} is newer than supported version 1`)
+    if (version === 0) this.database.exec(`
+      BEGIN IMMEDIATE;
+      CREATE TABLE specifications (
+        workspace_id TEXT NOT NULL,
+        specification_id TEXT NOT NULL,
+        specification_hash TEXT NOT NULL,
+        public_json TEXT NOT NULL,
+        PRIMARY KEY(workspace_id, specification_id)
+      ) STRICT;
+      CREATE TABLE candidate_revisions (
+        workspace_id TEXT NOT NULL,
+        revision_id TEXT NOT NULL,
+        candidate_id TEXT NOT NULL,
+        specification_id TEXT NOT NULL,
+        revision INTEGER NOT NULL CHECK(revision > 0),
+        candidate_hash TEXT NOT NULL,
+        state TEXT NOT NULL CHECK(state IN ('current','superseded')),
+        public_json TEXT NOT NULL,
+        descriptor_json TEXT NOT NULL,
+        sources_json TEXT NOT NULL,
+        PRIMARY KEY(workspace_id, revision_id),
+        UNIQUE(workspace_id, candidate_id, revision),
+        UNIQUE(workspace_id, candidate_hash)
+      ) STRICT;
+      CREATE INDEX candidate_history ON candidate_revisions(workspace_id, candidate_id, revision);
+      CREATE TABLE validator_credentials (
+        token_digest TEXT PRIMARY KEY,
+        actor_id TEXT NOT NULL,
+        revoked INTEGER NOT NULL CHECK(revoked IN (0,1)) DEFAULT 0
+      ) STRICT;
+      CREATE TABLE validations (
+        workspace_id TEXT NOT NULL,
+        validation_id TEXT NOT NULL,
+        candidate_id TEXT NOT NULL,
+        snapshot_hash TEXT NOT NULL,
+        record_hash TEXT NOT NULL,
+        snapshot_json TEXT NOT NULL,
+        record_json TEXT NOT NULL,
+        private_payload_json TEXT NOT NULL,
+        private_payload_hash TEXT NOT NULL,
+        PRIMARY KEY(workspace_id, validation_id),
+        UNIQUE(workspace_id, record_hash)
+      ) STRICT;
+      PRAGMA user_version = 1;
+      COMMIT;
+    `)
+  }
+
+  private ensureOpen(): void { if (this.closed) fail('CANDIDATE_STORE_CLOSED', 'candidate repository is closed') }
+
+  saveSpecification(specification: ToolSpecification): void {
+    this.ensureOpen()
+    if (specification.specificationHash !== contentHash(specificationBinding(specification))) {
+      fail('SPECIFICATION_HASH_MISMATCH', 'specification does not match its content hash')
+    }
+    const existing = this.database.prepare('SELECT public_json FROM specifications WHERE workspace_id=? AND specification_id=?').get(specification.workspaceId, specification.specificationId) as SpecificationRow | undefined
+    const value = canonicalJson(specification)
+    if (existing !== undefined) {
+      if (existing.public_json !== value) fail('IMMUTABLE_SPECIFICATION', 'stored specification cannot be replaced')
+      return
+    }
+    this.database.prepare('INSERT INTO specifications VALUES (?,?,?,?)').run(specification.workspaceId, specification.specificationId, specification.specificationHash, value)
+  }
+
+  readSpecification(workspaceId: LaboratoryId<'workspace'>, specificationId: LaboratoryId<'proposal'>): ToolSpecification | null {
+    this.ensureOpen()
+    const row = this.database.prepare('SELECT public_json FROM specifications WHERE workspace_id=? AND specification_id=?').get(workspaceId, specificationId) as SpecificationRow | undefined
+    if (row === undefined) return null
+    const specification = parsed<ToolSpecification>(row.public_json, 'CORRUPT_SPECIFICATION')
+    if (specification.workspaceId !== workspaceId || specification.specificationId !== specificationId
+        || specification.specificationHash !== contentHash(specificationBinding(specification))) {
+      fail('CORRUPT_SPECIFICATION', 'stored specification failed its identity or hash binding')
+    }
+    return specification
+  }
+
+  saveRevision(revision: CandidateRevision, descriptor: unknown, sources: readonly CandidateFile[]): void {
+    this.ensureOpen()
+    if (revision.state !== 'current') fail('INVALID_CANDIDATE_STATE', 'a new stored revision must be current')
+    if (contentHash(descriptor) !== revision.descriptorHash) fail('CANDIDATE_HASH_MISMATCH', 'descriptor does not match candidate revision')
+    const captured = captureCandidateFiles(sources, 'sources')
+    const bindings = captured.map((file) => file.binding)
+    if (canonicalJson(bindings) !== canonicalJson(revision.sources)
+        || contentHash(bindings) !== revision.sourceHash
+        || contentHash(candidateBinding(revision)) !== revision.candidateHash) {
+      fail('CANDIDATE_HASH_MISMATCH', 'source payload does not match candidate revision')
+    }
+    const specification = this.readSpecification(revision.workspaceId, revision.specificationId)
+    if (specification === null || specification.specificationHash !== revision.specificationHash) {
+      fail('SPECIFICATION_NOT_FOUND', 'bound specification is not stored in this workspace')
+    }
+    this.database.exec('BEGIN IMMEDIATE')
+    try {
+      if (revision.parentRevisionId !== null) {
+        const parent = this.database.prepare("SELECT candidate_id,specification_id,revision,state,candidate_hash FROM candidate_revisions WHERE workspace_id=? AND revision_id=?").get(revision.workspaceId, revision.parentRevisionId) as { candidate_id: string; specification_id: string; revision: number; state: string; candidate_hash: string } | undefined
+        if (parent === undefined || parent.candidate_id !== revision.candidateId || parent.candidate_hash !== revision.parentCandidateHash) fail('CANDIDATE_REVISION_NOT_FOUND', 'parent revision does not match the candidate chain')
+        if (parent.specification_id !== revision.specificationId || revision.revision !== parent.revision + 1) fail('INVALID_CANDIDATE_REVISION', 'candidate revision does not continue its specification and sequence')
+        if (parent.state !== 'current') fail('STALE_CANDIDATE_REVISION', 'only the current stored revision can be revised')
+        this.database.prepare("UPDATE candidate_revisions SET state='superseded' WHERE workspace_id=? AND revision_id=?").run(revision.workspaceId, revision.parentRevisionId)
+      } else {
+        const count = this.database.prepare('SELECT COUNT(*) AS count FROM candidate_revisions WHERE workspace_id=? AND (candidate_id=? OR specification_id=?)').get(revision.workspaceId, revision.candidateId, revision.specificationId) as { count: number }
+        if (count.count !== 0 || revision.revision !== 1 || revision.parentCandidateHash !== null) fail('INVALID_CANDIDATE_ROOT', 'candidate root revision is invalid')
+      }
+      this.database.prepare('INSERT INTO candidate_revisions VALUES (?,?,?,?,?,?,?,?,?,?)').run(
+        revision.workspaceId, revision.revisionId, revision.candidateId, revision.specificationId,
+        revision.revision, revision.candidateHash, revision.state, canonicalJson(revision),
+        canonicalJson(descriptor), sourceJson(sources),
+      )
+      this.database.exec('COMMIT')
+    } catch (error) { this.database.exec('ROLLBACK'); throw error }
+  }
+
+  inspectRevision(workspaceId: LaboratoryId<'workspace'>, revisionId: LaboratoryId<'evidence'>): CandidateRevision | null {
+    const row = this.revisionRow(workspaceId, revisionId)
+    if (row === null) return null
+    const revision = parsed<CandidateRevision>(row.public_json, 'CORRUPT_CANDIDATE_REVISION')
+    if (contentHash(candidateBinding(revision)) !== revision.candidateHash) fail('CORRUPT_CANDIDATE_REVISION', 'stored candidate binding is corrupt')
+    return { ...revision, state: row.state as CandidateRevision['state'] }
+  }
+
+  listCandidateRevisions(workspaceId: LaboratoryId<'workspace'>, candidateId: LaboratoryId<'tool'>): readonly CandidateRevision[] {
+    this.ensureOpen()
+    const rows = this.database.prepare('SELECT revision_id FROM candidate_revisions WHERE workspace_id=? AND candidate_id=? ORDER BY revision').all(workspaceId, candidateId) as Array<{ revision_id: LaboratoryId<'evidence'> }>
+    return rows.map((row) => this.inspectRevision(workspaceId, row.revision_id)).filter((item): item is CandidateRevision => item !== null)
+  }
+
+  listSpecificationRevisions(workspaceId: LaboratoryId<'workspace'>, specificationId: LaboratoryId<'proposal'>): readonly CandidateRevision[] {
+    this.ensureOpen()
+    const rows = this.database.prepare('SELECT revision_id FROM candidate_revisions WHERE workspace_id=? AND specification_id=? ORDER BY revision').all(workspaceId, specificationId) as Array<{ revision_id: LaboratoryId<'evidence'> }>
+    return rows.map((row) => this.inspectRevision(workspaceId, row.revision_id)).filter((item): item is CandidateRevision => item !== null)
+  }
+
+  materializeRevision(workspaceId: LaboratoryId<'workspace'>, revisionId: LaboratoryId<'evidence'>): MaterializedCandidateRevision | null {
+    const row = this.revisionRow(workspaceId, revisionId)
+    if (row === null) return null
+    const revision = this.inspectRevision(workspaceId, revisionId)
+    if (revision === null) return null
+    const descriptor = parsed<unknown>(row.descriptor_json, 'CORRUPT_CANDIDATE_PAYLOAD')
+    const sources = sourceFiles(row.sources_json)
+    const captured = captureCandidateFiles(sources, 'sources')
+    if (contentHash(descriptor) !== revision.descriptorHash
+        || contentHash(captured.map((file) => file.binding)) !== revision.sourceHash) {
+      fail('CORRUPT_CANDIDATE_PAYLOAD', 'stored descriptor or source bytes do not match the revision')
+    }
+    return { revision, descriptor, sources }
+  }
+
+  issueValidatorCredential(actorId: LaboratoryId<'actor'>): string {
+    this.ensureOpen()
+    const token = randomBytes(32).toString('hex')
+    this.database.prepare('INSERT INTO validator_credentials(token_digest,actor_id,revoked) VALUES (?,?,0)').run(digest(token), actorId)
+    return token
+  }
+
+  revokeValidatorCredential(token: string): void {
+    this.ensureOpen()
+    this.database.prepare('UPDATE validator_credentials SET revoked=1 WHERE token_digest=?').run(digest(token))
+  }
+
+  recordValidation(token: string, result: CandidateValidationResult, privatePayload: unknown): void {
+    this.ensureOpen()
+    const credential = this.database.prepare('SELECT actor_id,revoked FROM validator_credentials WHERE token_digest=?').get(digest(token)) as { actor_id: string; revoked: number } | undefined
+    if (credential === undefined || credential.revoked !== 0) fail('VALIDATOR_NOT_AUTHENTICATED', 'validator credential is invalid or revoked')
+    if (credential.actor_id !== result.record.validatorActorId) fail('VALIDATOR_ACTOR_MISMATCH', 'validator credential belongs to another actor')
+    if (result.snapshot.workspaceId !== result.record.workspaceId
+        || result.snapshot.candidateId !== result.record.candidateId
+        || result.snapshot.snapshotHash !== result.record.candidateSnapshotHash
+        || result.snapshot.snapshotHash !== contentHash(snapshotBinding(result.snapshot))
+        || !validRecord(result.record)) {
+      fail('INVALID_VALIDATION_EVIDENCE', 'validation snapshot and record bindings are invalid')
+    }
+    assertPrivateValidationBinding(result.snapshot, privatePayload)
+    const privateJson = canonicalJson(privatePayload)
+    try {
+      this.database.prepare('INSERT INTO validations VALUES (?,?,?,?,?,?,?,?,?)').run(
+        result.record.workspaceId, result.record.validationId, result.record.candidateId,
+        result.snapshot.snapshotHash, result.record.recordHash, canonicalJson(result.snapshot),
+        canonicalJson(result.record), privateJson, bytesHash(Buffer.from(privateJson)),
+      )
+    } catch (error) {
+      if (String(error).includes('UNIQUE constraint failed')) fail('IMMUTABLE_VALIDATION_RECORD', 'validation record identity or hash is already stored')
+      throw error
+    }
+  }
+
+  inspectValidation(workspaceId: LaboratoryId<'workspace'>, validationId: LaboratoryId<'validation'>): StoredValidationInspection | null {
+    this.ensureOpen()
+    const row = this.database.prepare('SELECT snapshot_json,record_json,private_payload_json,private_payload_hash FROM validations WHERE workspace_id=? AND validation_id=?').get(workspaceId, validationId) as ValidationRow | undefined
+    if (row === undefined) return null
+    const snapshot = parsed<CandidateSnapshot>(row.snapshot_json, 'CORRUPT_VALIDATION_EVIDENCE')
+    const record = parsed<ValidationRecord>(row.record_json, 'CORRUPT_VALIDATION_EVIDENCE')
+    if (snapshot.snapshotHash !== contentHash(snapshotBinding(snapshot)) || !validRecord(record)
+        || record.candidateSnapshotHash !== snapshot.snapshotHash
+        || bytesHash(Buffer.from(row.private_payload_json)) !== row.private_payload_hash) {
+      fail('CORRUPT_VALIDATION_EVIDENCE', 'stored validation evidence failed integrity checks')
+    }
+    return { snapshot, record, privatePayloadHash: row.private_payload_hash as `sha256:${string}` }
+  }
+
+  isPromotionEligible(snapshotHash: string, record: ValidationRecord): boolean {
+    try {
+      const stored = this.inspectValidation(record.workspaceId, record.validationId)
+      return stored !== null
+        && stored.record.outcome === 'passed'
+        && stored.snapshot.snapshotHash === snapshotHash
+        && canonicalJson(stored.record) === canonicalJson(record)
+    } catch { return false }
+  }
+
+  private revisionRow(workspaceId: LaboratoryId<'workspace'>, revisionId: LaboratoryId<'evidence'>): RevisionRow | null {
+    this.ensureOpen()
+    return (this.database.prepare('SELECT public_json,state,descriptor_json,sources_json FROM candidate_revisions WHERE workspace_id=? AND revision_id=?').get(workspaceId, revisionId) as RevisionRow | undefined) ?? null
+  }
+
+  close(): void { if (!this.closed) { this.database.close(); this.closed = true } }
+}

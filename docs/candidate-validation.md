@@ -36,10 +36,15 @@ Timeout and stdin/stdout/stderr limits produce a distinct `limited` outcome.
 The overall record fails or is limited if any of the three independent suite
 classes is not observed passing.
 
-The runner recognizes promotion eligibility only for a deeply frozen record
-it issued in the current process, whose record hash and candidate snapshot hash
-still match. Deserialized or candidate-fabricated validation-shaped JSON is not
-accepted by this in-process boundary.
+Without a durable repository, the runner recognizes promotion eligibility only
+for a deeply frozen record it issued in the current process. When configured
+with `LocalCandidateRepository` and a host-issued validator credential, it
+atomically stores the public snapshot/record plus the private captured
+descriptor, source, fixture, policy, toolchain, and complete suite definitions.
+The credential is persisted only as a SHA-256 digest bound to the validator
+actor. After restart, an exact deserialized record is eligible only when the
+repository contains the matching passing snapshot and record with valid
+content bindings. Altered or merely record-shaped JSON remains ineligible.
 
 ## Hidden challenge boundary
 
@@ -57,7 +62,7 @@ count, wall-clock time, and stream byte limits. It does not yet provide an OS
 sandbox that blocks ambient filesystem access, descendant processes, or
 networking, and it does not enforce or measure CPU and memory ceilings.
 
-Validation records and captured candidate payloads also need an authenticated,
-restart-safe immutable repository before promotion can survive process restart.
-The next runner backend must add those controls without treating policy fields
-or model-authored JSON as evidence that confinement occurred.
+Authenticated, restart-safe evidence storage is now available, but storage does
+not prove that declared confinement ran. The next runner backend must add the
+remaining OS controls without treating policy fields or model-authored JSON as
+evidence that confinement occurred.

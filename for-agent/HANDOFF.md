@@ -14,9 +14,16 @@ Last updated: 2026-08-28
   lookup fail closed, and materialization returns fresh copies for the existing
   Stage 6 validator to recapture. Workshop code cannot issue validation,
   approval, installation, registration, or rediscovery authority.
-- The workshop repository is currently process-local. Restart-safe immutable
-  candidate storage and authenticated validator-record storage remain blockers
-  for trusted promotion, along with the Stage 6 OS confinement gaps below.
+- `LocalCandidateRepository` now provides transactional, restart-safe storage
+  for specifications, exact candidate descriptor/source payloads, revision
+  chains, and current/superseded state. Repository-backed workshops reopen,
+  inspect, materialize, and revise candidates without losing their bindings.
+- The repository issues validator bearer credentials, persists only their
+  actor-bound digests, and atomically stores public snapshots/records beside
+  private captured source, fixture, policy, toolchain, and hidden-suite
+  material. Exact passing records remain promotion-eligible after restart;
+  altered, unauthenticated, mismatched, corrupt, or cross-workspace evidence
+  fails closed. Private challenge material is not returned by inspection.
 - Stage 6 has started with `source/ts/candidate-validation.ts`. It captures
   caller-owned bytes and command definitions before execution, produces an
   exact content-bound candidate snapshot, and runs candidate, standard, and
@@ -29,9 +36,9 @@ Last updated: 2026-08-28
   snapshots and records. The in-process runner refuses promotion eligibility
   for copied or fabricated record-shaped JSON and for a changed candidate
   snapshot hash.
-- This is an initial Stage 6 slice, not its exit gate. Restart-safe validation
-  storage plus OS-enforced filesystem, descendant-process, network, CPU, and
-  memory confinement remain to be implemented.
+- This is not yet the Stage 6 exit gate. OS-enforced filesystem,
+  descendant-process, network, CPU, and memory confinement remain to be
+  implemented.
 - Stage 5 is complete. Production discovery now exposes the pure
   `add_numbers`, scoped `compute_buffer`, and trusted immutable
   `derive_artifact` C++ built-ins. The memory-only test Tool remains linked
@@ -134,6 +141,15 @@ otherwise modified by the consolidation work.
 
 Passed in `D:\Dev\axiom-colab`:
 
+- Durable candidate/evidence `pnpm.cmd test`: all 52 TypeScript tests passed,
+  including restart-safe candidate history and bytes, authenticated validator
+  persistence, exact-record restart eligibility, private evidence binding,
+  cross-workspace denial, and candidate/validation corruption rejection.
+- The initial new persistence-test run failed because its source path did not
+  match the existing validation fixture's expected `src/tool.cpp`; correcting
+  the staged path produced the passing complete run above.
+- Durable candidate/evidence `git diff --check`: passed with
+  newline-conversion notices only.
 - Stage 7 initial `pnpm.cmd test`: all 49 TypeScript tests passed, including
   caller-mutation capture, candidate hash chaining, preserved superseded
   revisions, stale-parent rejection, cross-workspace isolation, descriptor
@@ -391,10 +407,10 @@ approval or evidence.
 Treat this as a mandatory gate before Stage 8 exposes validation, approval, or
 installation controls:
 
-- Validator issuance is currently recognized by an in-process `WeakSet`.
-  Restart loses that authority, and deserialized records are intentionally not
-  promotion-eligible. Add authenticated restart-safe immutable storage for the
-  captured candidate payload and validator-issued record.
+- Repository-backed validation now replaces the in-process `WeakSet` with
+  authenticated restart-safe immutable candidate/evidence storage. Keep the
+  `WeakSet` only as a process-local fallback and ensure production composition
+  always supplies the durable repository and validator credential.
 - The runner stages canonical files, allowlists the top-level executable, and
   limits commands, wall time, and streams, but it does not prevent ambient
   filesystem access, descendant processes, networking, or excessive CPU and
@@ -423,14 +439,13 @@ installation controls:
 
 ## Exact next work
 
-Continue Stage 7 by replacing the process-local workshop and validator
-`WeakSet` authority with authenticated, restart-safe immutable storage for
-captured candidate payloads and validator-issued records. Preserve the current
-candidate hash chain and use the Stage 6 observed runner as the only validation
-authority; do not add approval or installation yet.
+Continue Stage 7 by adding an OS-specific validation backend that actually
+enforces and records filesystem, descendant-process, network, CPU, and memory
+confinement. Review hidden-challenge definition hashes and replace public raw
+hashes with access-controlled keyed or salted commitments where guessing could
+disclose low-entropy inputs.
 
-Then add and adversarially test the exact candidate + validation record +
-requested permissions + installation proposal approval binding while closing
-the OS confinement and hidden-challenge commitment issues in the blocking gate
-above. Continue into Stage 8 only after the gate confirms that UI controls can
-consume authoritative backend state safely.
+Only after those evidence blockers close, add and adversarially test the exact
+candidate + validation record + requested permissions + installation proposal
+approval binding. Do not add installation or Stage 8 controls until the gate
+confirms that UI controls can consume authoritative backend state safely.

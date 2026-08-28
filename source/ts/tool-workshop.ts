@@ -77,6 +77,17 @@ export interface MaterializedCandidateRevision {
 export interface ToolWorkshopOptions {
   readonly now?: () => Date
   readonly idFactory?: () => string
+  readonly repository?: CandidateRevisionRepository
+}
+
+export interface CandidateRevisionRepository {
+  saveSpecification(specification: ToolSpecification): void
+  readSpecification(workspaceId: LaboratoryId<'workspace'>, specificationId: LaboratoryId<'proposal'>): ToolSpecification | null
+  saveRevision(revision: CandidateRevision, descriptor: unknown, sources: readonly CandidateFile[]): void
+  inspectRevision(workspaceId: LaboratoryId<'workspace'>, revisionId: LaboratoryId<'evidence'>): CandidateRevision | null
+  listCandidateRevisions(workspaceId: LaboratoryId<'workspace'>, candidateId: LaboratoryId<'tool'>): readonly CandidateRevision[]
+  listSpecificationRevisions(workspaceId: LaboratoryId<'workspace'>, specificationId: LaboratoryId<'proposal'>): readonly CandidateRevision[]
+  materializeRevision(workspaceId: LaboratoryId<'workspace'>, revisionId: LaboratoryId<'evidence'>): MaterializedCandidateRevision | null
 }
 
 interface StoredRevision {
@@ -152,6 +163,7 @@ function descriptorName(descriptor: unknown): string | null {
 export class ToolWorkshop {
   private readonly now: () => Date
   private readonly idFactory: () => string
+  private readonly repository?: CandidateRevisionRepository
   private readonly specifications = new Map<string, ToolSpecification>()
   private readonly revisions = new Map<string, StoredRevision>()
   private readonly candidateRevisions = new Map<string, string[]>()
@@ -159,6 +171,7 @@ export class ToolWorkshop {
   constructor(options: ToolWorkshopOptions = {}) {
     this.now = options.now ?? (() => new Date())
     this.idFactory = options.idFactory ?? randomUUID
+    this.repository = options.repository
   }
 
   defineSpecification(context: WorkshopContext, input: ToolSpecificationInput): ToolSpecification {
@@ -188,6 +201,7 @@ export class ToolWorkshop {
       ...captured,
       specificationHash: contentHash(binding),
     })
+    this.repository?.saveSpecification(specification)
     this.specifications.set(specification.specificationId, specification)
     return specification
   }
@@ -195,7 +209,8 @@ export class ToolWorkshop {
   createCandidateRevision(context: WorkshopContext, input: CandidateRevisionInput): CandidateRevision {
     assertAuthor(context)
     const specification = this.specifications.get(input.specificationId)
-    if (specification === undefined || specification.workspaceId !== context.workspaceId) {
+      ?? this.repository?.readSpecification(context.workspaceId, input.specificationId)
+    if (specification === undefined || specification === null || specification.workspaceId !== context.workspaceId) {
       fail('SPECIFICATION_NOT_FOUND', 'specification is not visible in this workspace')
     }
     if (descriptorName(input.descriptor) !== specification.publicName) {
@@ -212,14 +227,14 @@ export class ToolWorkshop {
     contentHash(input.descriptor)
     const descriptor = deepCopy(input.descriptor)
     const bindings = files.map((file) => file.binding)
-    const priorIds = this.candidateIdsForSpecification(specification.specificationId)
+    const priorIds = this.candidateIdsForSpecification(context.workspaceId, specification.specificationId)
     let candidateId: LaboratoryId<'tool'>
     let parent: StoredRevision | undefined
     if (input.parentRevisionId === undefined) {
       if (priorIds.length !== 0) fail('PARENT_REVISION_REQUIRED', 'an existing candidate must be revised from its current revision')
       candidateId = `tool:${this.idFactory()}` as LaboratoryId<'tool'>
     } else {
-      parent = this.revisions.get(input.parentRevisionId)
+      parent = this.storedRevision(context.workspaceId, input.parentRevisionId)
       if (parent === undefined || parent.public.workspaceId !== context.workspaceId) {
         fail('CANDIDATE_REVISION_NOT_FOUND', 'parent revision is not visible in this workspace')
       }
@@ -259,6 +274,7 @@ export class ToolWorkshop {
       createdAt: this.now().toISOString(),
       createdBy: context.actorId,
     })
+    this.repository?.saveRevision(publicRevision, descriptor, input.sources)
     if (parent !== undefined) {
       parent.public = deepFreeze({ ...parent.public, state: 'superseded' as const })
     }
@@ -268,11 +284,11 @@ export class ToolWorkshop {
   }
 
   inspectRevision(context: WorkshopContext, revisionId: LaboratoryId<'evidence'>): CandidateRevision {
-    const revision = this.visibleRevision(context, revisionId)
-    return revision.public
+    return this.visibleRevision(context, revisionId).public
   }
 
   listCandidateRevisions(context: WorkshopContext, candidateId: LaboratoryId<'tool'>): readonly CandidateRevision[] {
+    if (this.repository !== undefined) return this.repository.listCandidateRevisions(context.workspaceId, candidateId)
     return (this.candidateRevisions.get(candidateId) ?? [])
       .map((revisionId) => this.revisions.get(revisionId))
       .filter((revision): revision is StoredRevision => revision !== undefined && revision.public.workspaceId === context.workspaceId)
@@ -280,6 +296,11 @@ export class ToolWorkshop {
   }
 
   materializeRevision(context: WorkshopContext, revisionId: LaboratoryId<'evidence'>): MaterializedCandidateRevision {
+    if (this.repository !== undefined) {
+      const materialized = this.repository.materializeRevision(context.workspaceId, revisionId)
+      if (materialized === null) fail('CANDIDATE_REVISION_NOT_FOUND', 'candidate revision is not visible in this workspace')
+      return materialized
+    }
     const stored = this.visibleRevision(context, revisionId)
     return {
       revision: stored.public,
@@ -288,17 +309,32 @@ export class ToolWorkshop {
     }
   }
 
-  private candidateIdsForSpecification(specificationId: LaboratoryId<'proposal'>): readonly string[] {
+  private candidateIdsForSpecification(workspaceId: LaboratoryId<'workspace'>, specificationId: LaboratoryId<'proposal'>): readonly string[] {
+    if (this.repository !== undefined) {
+      return this.repository.listSpecificationRevisions(workspaceId, specificationId).map((revision) => revision.revisionId)
+    }
     return [...this.revisions.values()]
       .filter((revision) => revision.public.specificationId === specificationId)
       .map((revision) => revision.public.revisionId)
   }
 
   private visibleRevision(context: WorkshopContext, revisionId: LaboratoryId<'evidence'>): StoredRevision {
-    const revision = this.revisions.get(revisionId)
+    const revision = this.storedRevision(context.workspaceId, revisionId)
     if (revision === undefined || revision.public.workspaceId !== context.workspaceId) {
       fail('CANDIDATE_REVISION_NOT_FOUND', 'candidate revision is not visible in this workspace')
     }
     return revision
+  }
+
+  private storedRevision(workspaceId: LaboratoryId<'workspace'>, revisionId: LaboratoryId<'evidence'>): StoredRevision | undefined {
+    const memory = this.revisions.get(revisionId)
+    if (memory !== undefined) return memory
+    const materialized = this.repository?.materializeRevision(workspaceId, revisionId)
+    if (materialized === undefined || materialized === null) return undefined
+    return {
+      public: materialized.revision,
+      descriptor: materialized.descriptor,
+      files: captureCandidateFiles(materialized.sources, 'sources'),
+    }
   }
 }

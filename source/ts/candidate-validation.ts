@@ -151,6 +151,13 @@ export interface CandidateValidationRunnerOptions {
   readonly temporaryRoot?: string
   readonly now?: () => Date
   readonly idFactory?: () => string
+  readonly evidenceRepository?: ValidationEvidenceRepository
+  readonly validatorCredential?: string
+}
+
+export interface ValidationEvidenceRepository {
+  recordValidation(token: string, result: CandidateValidationResult, privatePayload: unknown): void
+  isPromotionEligible(snapshotHash: string, record: ValidationRecord): boolean
 }
 
 interface PreparedCandidate {
@@ -158,6 +165,7 @@ interface PreparedCandidate {
   readonly root: string
   readonly policy: CandidateValidationPolicy
   readonly suites: readonly ValidationSuite[]
+  readonly privatePayload: unknown
 }
 
 const suiteOrder: Readonly<Record<ValidationSuiteKind, number>> = {
@@ -270,6 +278,8 @@ export class CandidateValidationRunner {
   private readonly temporaryRoot: string
   private readonly now: () => Date
   private readonly idFactory: () => string
+  private readonly evidenceRepository?: ValidationEvidenceRepository
+  private readonly validatorCredential?: string
   private readonly issuedRecords = new WeakSet<ValidationRecord>()
 
   constructor(options: CandidateValidationRunnerOptions = {}) {
@@ -277,6 +287,11 @@ export class CandidateValidationRunner {
     this.temporaryRoot = options.temporaryRoot ?? tmpdir()
     this.now = options.now ?? (() => new Date())
     this.idFactory = options.idFactory ?? randomUUID
+    this.evidenceRepository = options.evidenceRepository
+    this.validatorCredential = options.validatorCredential
+    if ((this.evidenceRepository === undefined) !== (this.validatorCredential === undefined)) {
+      fail('INVALID_VALIDATION_REPOSITORY', 'evidenceRepository and validatorCredential must be configured together')
+    }
   }
 
   async validate(request: CandidateValidationRequest): Promise<CandidateValidationResult> {
@@ -317,14 +332,21 @@ export class CandidateValidationRunner {
         suites: suiteRuns,
       }
       const record = deepFreeze({ ...recordWithoutHash, recordHash: contentHash(recordWithoutHash) })
+      const result = deepFreeze({ snapshot: prepared.snapshot, record })
+      if (this.evidenceRepository !== undefined && this.validatorCredential !== undefined) {
+        this.evidenceRepository.recordValidation(this.validatorCredential, result, prepared.privatePayload)
+      }
       this.issuedRecords.add(record)
-      return deepFreeze({ snapshot: prepared.snapshot, record })
+      return result
     } finally {
       await rm(prepared.root, { recursive: true, force: true })
     }
   }
 
   isPromotionEligible(snapshotHash: string, record: ValidationRecord): boolean {
+    if (this.evidenceRepository !== undefined) {
+      return this.evidenceRepository.isPromotionEligible(snapshotHash, record)
+    }
     if (!this.issuedRecords.has(record)) return false
     const { recordHash, ...recordWithoutHash } = record
     return record.outcome === 'passed'
@@ -384,7 +406,15 @@ export class CandidateValidationRunner {
         await mkdir(dirname(path), { recursive: true })
         await writeFile(path, file.bytes, { flag: 'wx' })
       }
-      return { snapshot, root, policy: capturedPolicy, suites: capturedSuites }
+      const privatePayload = {
+        descriptor: request.descriptor,
+        sources: capturedSources.map((file) => ({ path: file.path, contentBase64: Buffer.from(file.bytes).toString('base64') })),
+        fixtures: capturedFixtures.map((file) => ({ path: file.path, contentBase64: Buffer.from(file.bytes).toString('base64') })),
+        toolchain: request.toolchain,
+        policy: capturedPolicy,
+        suites: capturedSuites,
+      }
+      return { snapshot, root, policy: capturedPolicy, suites: capturedSuites, privatePayload }
     } catch (error) {
       await rm(root, { recursive: true, force: true })
       throw error

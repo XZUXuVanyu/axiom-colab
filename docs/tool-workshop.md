@@ -41,11 +41,23 @@ validator still recaptures all mutable inputs and remains the sole authority for
 observed validation evidence. A source change necessarily produces a different
 candidate hash and a different validator snapshot hash.
 
+## Durable repository
+
+`LocalCandidateRepository` optionally backs the workshop with a transactional
+SQLite store. Specifications, descriptors, exact source bytes, revision state,
+and hash-chain metadata survive restart. Every materialization rechecks the
+stored public candidate binding and the captured descriptor/source hashes.
+Candidate revision insertion and parent supersession occur in one transaction,
+and direct repository calls cannot skip the root, sequence, parent, state, or
+specification bindings.
+
+The same repository accepts validator evidence only with a host-issued bearer
+credential whose digest is bound to the validator actor. Public inspection
+returns redacted snapshots and records, never private challenge definitions.
+
 ## Deliberate limits
 
-This slice is process-local. Restart-safe immutable candidate storage and
-authenticated validator-record storage are still required before a validation
-can be used for promotion. The OS confinement gaps documented in
-`candidate-validation.md` also remain open. Consequently this API exposes no
-approval, installation, registration, or rediscovery operation, and the Qt UI
-must not present any such control yet.
+The OS confinement gaps documented in `candidate-validation.md` remain open,
+and public challenge hashes still require a keyed or salted commitment review.
+Consequently the API exposes no approval, installation, registration, or
+rediscovery operation, and the Qt UI must not present any such control yet.

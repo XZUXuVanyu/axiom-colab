@@ -4,6 +4,40 @@ Entries are chronological. Each entry corresponds to one logical Git commit and
 records its exact subject, purpose, material changes, and validation actually
 performed.
 
+## 2026-08-28 - feat(validation): persist authenticated candidate evidence
+
+Purpose: close the restart-safety gap that prevented exact candidate and
+validator evidence from retaining authority across process restarts.
+
+Material changes:
+
+- Added a transactional SQLite candidate repository for immutable
+  specifications, descriptors, exact source bytes, revision chains, and
+  current/superseded state.
+- Made `ToolWorkshop` optionally repository-backed so inspection,
+  materialization, history, and further revision continue after restart while
+  preserving cross-workspace and stale-parent rejection.
+- Added host-issued validator bearer credentials stored only as actor-bound
+  digests, plus atomic storage of public snapshots/records and private captured
+  sources, fixtures, policy, toolchain, and hidden suite definitions.
+- Replaced process-only promotion checks with exact stored-evidence checks when
+  the repository is configured; copied exact records survive restart, while
+  altered, fabricated, unauthenticated, mismatched, or corrupt evidence fails
+  closed.
+- Kept private challenge material out of public inspection and retained the
+  process-local `WeakSet` behavior only for runners without a repository.
+
+Validation actually run:
+
+- `pnpm.cmd test`: passed all 52 TypeScript tests and regenerated `dist/`.
+- Repository tests passed restart, candidate history, byte corruption,
+  cross-workspace, wrong-credential, private-binding, validation tampering, and
+  restart promotion-eligibility cases.
+- An initial new persistence-test run failed because its staged source path did
+  not match the existing validation child fixture's expected `src/tool.cpp`;
+  the test request was corrected and the complete suite then passed.
+- `git diff --check`: passed with newline-conversion notices only.
+
 ## 2026-08-28 - feat(workshop): bind immutable candidate revisions
 
 Purpose: begin Stage 7 with the authority-preserving path from a structured
