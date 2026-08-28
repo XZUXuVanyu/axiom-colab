@@ -158,6 +158,9 @@ function parseDescriptor(value, index) {
         sideEffect: expectBoolean(object.sideEffect, `${path}.sideEffect`)
     };
 }
+export function assertToolDescriptor(value) {
+    return parseDescriptor(value, 0);
+}
 export function parseDescribeToolsResponse(text) {
     const object = expectRecord(parseJson(text, 'describe-tools stdout'), '$');
     expectExactKeys(object, '$', [

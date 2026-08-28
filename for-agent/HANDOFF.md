@@ -4,6 +4,17 @@ Last updated: 2026-08-28
 
 ## Current state
 
+- `LocalSupervisoryBackend` now composes resource status from
+  `LocalMemoryStore`, audit history from `MemoryWorkflows`, and candidate,
+  validation, proposal, approval, and installation projections through new
+  integrity-checking `LocalCandidateRepository` enumeration methods.
+- Built-ins remain host-supplied Adapter discovery results. Installed Tools are
+  projected only from host-supplied successful rediscovery registrations whose
+  public name, candidate hash, and installation-evidence hash match successful
+  stored evidence; descriptors are parsed again at the projection boundary.
+- Local supervisory tests prove restart persistence, cross-workspace isolation,
+  and rejection of a forged rediscovered registration. Goal lifecycle actions
+  remain behind the `LocalSupervisoryLifecycle` composition boundary.
 - Stage 8 has started with `source/ts/supervisory-application.ts`. The
   UI-independent model owns workspace/goal selection and immutable projections
   for approved plan, discovered Tools, resources, candidates, timeline, and
@@ -200,6 +211,9 @@ otherwise modified by the consolidation work.
 
 Passed in `D:\Dev\axiom-colab`:
 
+- Stage 8 local composition `pnpm.cmd test`: all 66 TypeScript tests passed,
+  including restart-safe projection, cross-workspace isolation, and rejection
+  of rediscovered Tools without matching successful installation evidence.
 - Stage 8 initial `pnpm.cmd test`: all 64 TypeScript tests passed, including
   immutable supervisory snapshots, claim/evidence distinction, delegated
   lifecycle actions, and rejection of misleading installed-state projections.
@@ -563,14 +577,12 @@ installation controls:
 
 ## Exact next work
 
-Continue Stage 8 by implementing a concrete local `SupervisoryBackend`
-composition. Obtain memory/resource and audit projections from
-`LocalMemoryStore` and `MemoryWorkflows`; candidate, validation, approval, and
-installation projections from `LocalCandidateRepository`; built-in descriptors
-from Adapter discovery; and installed Tools only from successful byte-verified
-`ToolInstallationService.rediscover` results. Add integration-style projection
-tests for restart, cross-workspace isolation, corrupt installed bytes, failed
-validation, rejection, and stale candidates before wiring Qt controls.
+Continue Stage 8 with a restart-safe local goal lifecycle coordinator behind
+`LocalSupervisoryLifecycle`. It must own goal selection/status and active
+capability revocation, delegate workspace recovery to authoritative services,
+and preserve stop/resume state across restart without inventing a second
+working-memory or approval authority. Add adversarial tests for cross-workspace
+actions, stale controls, replay, and restart before wiring Qt controls.
 
 Keep the WSL integration suite opt-in for portable CI, and run it explicitly on
 the supported Windows/Ubuntu composition before changing its confinement

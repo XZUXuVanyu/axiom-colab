@@ -4,6 +4,27 @@ Entries are chronological. Each entry corresponds to one logical Git commit and
 records its exact subject, purpose, material changes, and validation actually
 performed.
 
+## 2026-08-28 - feat(gui): compose local supervisory backend
+
+Purpose: project the existing authoritative local services through the Stage 8
+application model without letting the UI read storage internals or infer trust.
+
+Material changes:
+
+- Added workspace-scoped repository enumeration methods that retain existing
+  integrity checks for candidates, validations, proposals, and installation
+  evidence.
+- Added `LocalSupervisoryBackend` composition for memory resources, workflow
+  audit events, approved plans, candidate state, evidence, decisions, Tools,
+  and lifecycle controls.
+- Required installed Tool projections to match successful stored installation
+  evidence and re-validated their descriptors at the projection boundary.
+- Added restart, cross-workspace, and forged-rediscovery coverage.
+
+Validation actually run:
+
+- `pnpm.cmd test`: all 66 TypeScript tests passed.
+
 ## 2026-08-28 - feat(gui): begin supervisory application model
 
 Purpose: begin Stage 8 with a UI-independent projection that cannot blur or

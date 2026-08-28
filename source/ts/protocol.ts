@@ -244,6 +244,10 @@ function parseDescriptor(value: unknown, index: number): ToolDescriptor {
   }
 }
 
+export function assertToolDescriptor(value: unknown): ToolDescriptor {
+  return parseDescriptor(value, 0)
+}
+
 export function parseDescribeToolsResponse(text: string): DescribeToolsResponse {
   const object = expectRecord(parseJson(text, 'describe-tools stdout'), '$')
   expectExactKeys(object, '$', ['protocolVersion', 'capabilities', 'tools'])

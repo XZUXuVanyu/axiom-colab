@@ -28,9 +28,18 @@ model claims carrying authoritative evidence hashes. Timeline identifiers must
 be unique, and returned snapshots are cloned and frozen so widgets cannot
 mutate projected state.
 
-The next slice is a concrete local backend composition. It should obtain
-resource status from `LocalMemoryStore`, audit history from `MemoryWorkflows`,
-candidate/validation/approval/installation state from
-`LocalCandidateRepository`, built-in descriptors from the Adapter discovery
-path, and installed Tools only through successful byte-reverified rediscovery.
-Qt should consume this model after that composition is covered by tests.
+`LocalSupervisoryBackend` is the concrete local composition. It obtains resource
+status from `LocalMemoryStore`, audit history from `MemoryWorkflows`, and
+candidate, validation, approval, and installation state through integrity-
+checking `LocalCandidateRepository` inspection methods. Its host supplies
+Adapter-discovered built-in descriptors and the registrations returned by
+successful byte-reverified Tool rediscovery. A rediscovered registration is
+projected only when its public name, candidate hash, and installation-evidence
+hash match stored successful evidence; its descriptor is parsed again at this
+boundary.
+
+The composition retains workspace isolation and survives repository restart.
+Goal lifecycle and capability actions use the `LocalSupervisoryLifecycle`
+boundary until the next Stage 8 slice supplies a restart-safe coordinator.
+Qt should consume the application model only after that lifecycle composition
+is covered by adversarial tests.

@@ -188,5 +188,9 @@ export type {
   SupervisoryFactKind, SupervisoryPlanProjection, SupervisoryTimelineEntry,
   SupervisoryToolProjection, SupervisoryWorkspaceSnapshot,
 } from './supervisory-application.js'
+export { LocalSupervisoryBackend, LocalSupervisoryBackendError } from './local-supervisory-backend.js'
+export type {
+  LocalGoalProjection, LocalSupervisoryBackendOptions, LocalSupervisoryLifecycle,
+} from './local-supervisory-backend.js'
 export { InvocationLedger } from './invocation-ledger.js'
 export type { ExpectedCallPolicy, InvocationRecord, VerificationResult } from './invocation-ledger.js'

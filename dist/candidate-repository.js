@@ -345,6 +345,11 @@ export class LocalCandidateRepository {
         const rows = this.database.prepare('SELECT revision_id FROM candidate_revisions WHERE workspace_id=? AND specification_id=? ORDER BY revision').all(workspaceId, specificationId);
         return rows.map((row)=>this.inspectRevision(workspaceId, row.revision_id)).filter((item)=>item !== null);
     }
+    listWorkspaceCandidateRevisions(workspaceId) {
+        this.ensureOpen();
+        const rows = this.database.prepare('SELECT revision_id FROM candidate_revisions WHERE workspace_id=? ORDER BY candidate_id,revision').all(workspaceId);
+        return rows.map((row)=>this.inspectRevision(workspaceId, row.revision_id)).filter((item)=>item !== null);
+    }
     materializeRevision(workspaceId, revisionId) {
         const row = this.revisionRow(workspaceId, revisionId);
         if (row === null) return null;
@@ -404,6 +409,11 @@ export class LocalCandidateRepository {
             privatePayloadHash: row.private_payload_hash
         };
     }
+    listValidations(workspaceId) {
+        this.ensureOpen();
+        const rows = this.database.prepare('SELECT validation_id FROM validations WHERE workspace_id=? ORDER BY validation_id').all(workspaceId);
+        return rows.map((row)=>this.inspectValidation(workspaceId, row.validation_id)).filter((item)=>item !== null);
+    }
     isValidationAuthentic(snapshotHash, record) {
         try {
             const stored = this.inspectValidation(record.workspaceId, record.validationId);
@@ -427,6 +437,11 @@ export class LocalCandidateRepository {
             ...proposal,
             state: row.state
         };
+    }
+    listInstallationProposals(workspaceId) {
+        this.ensureOpen();
+        const rows = this.database.prepare('SELECT proposal_id FROM installation_proposals WHERE workspace_id=? ORDER BY proposal_id').all(workspaceId);
+        return rows.map((row)=>this.inspectInstallationProposal(workspaceId, row.proposal_id)).filter((item)=>item !== null);
     }
     approveInstallationProposal(proposal, approval) {
         this.ensureOpen();
@@ -502,6 +517,11 @@ export class LocalCandidateRepository {
         this.ensureOpen();
         const rows = this.database.prepare("SELECT installation_id FROM installation_evidence WHERE workspace_id=? AND outcome='installed' ORDER BY installation_id").all(workspaceId);
         return rows.map((row)=>this.inspectInstallationEvidence(workspaceId, row.installation_id)).filter((value)=>value !== null);
+    }
+    listInstallationEvidence(workspaceId) {
+        this.ensureOpen();
+        const rows = this.database.prepare('SELECT installation_id FROM installation_evidence WHERE workspace_id=? ORDER BY installation_id').all(workspaceId);
+        return rows.map((row)=>this.inspectInstallationEvidence(workspaceId, row.installation_id)).filter((item)=>item !== null);
     }
     revisionRow(workspaceId, revisionId) {
         this.ensureOpen();

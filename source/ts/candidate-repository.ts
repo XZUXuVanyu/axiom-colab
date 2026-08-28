@@ -387,6 +387,12 @@ export class LocalCandidateRepository {
     return rows.map((row) => this.inspectRevision(workspaceId, row.revision_id)).filter((item): item is CandidateRevision => item !== null)
   }
 
+  listWorkspaceCandidateRevisions(workspaceId: LaboratoryId<'workspace'>): readonly CandidateRevision[] {
+    this.ensureOpen()
+    const rows = this.database.prepare('SELECT revision_id FROM candidate_revisions WHERE workspace_id=? ORDER BY candidate_id,revision').all(workspaceId) as Array<{ revision_id: LaboratoryId<'evidence'> }>
+    return rows.map((row) => this.inspectRevision(workspaceId, row.revision_id)).filter((item): item is CandidateRevision => item !== null)
+  }
+
   materializeRevision(workspaceId: LaboratoryId<'workspace'>, revisionId: LaboratoryId<'evidence'>): MaterializedCandidateRevision | null {
     const row = this.revisionRow(workspaceId, revisionId)
     if (row === null) return null
@@ -454,6 +460,12 @@ export class LocalCandidateRepository {
     return { snapshot, record, privatePayloadHash: row.private_payload_hash as `sha256:${string}` }
   }
 
+  listValidations(workspaceId: LaboratoryId<'workspace'>): readonly StoredValidationInspection[] {
+    this.ensureOpen()
+    const rows = this.database.prepare('SELECT validation_id FROM validations WHERE workspace_id=? ORDER BY validation_id').all(workspaceId) as Array<{ validation_id: LaboratoryId<'validation'> }>
+    return rows.map((row) => this.inspectValidation(workspaceId, row.validation_id)).filter((item): item is StoredValidationInspection => item !== null)
+  }
+
   isValidationAuthentic(snapshotHash: string, record: ValidationRecord): boolean {
     try {
       const stored = this.inspectValidation(record.workspaceId, record.validationId)
@@ -477,6 +489,12 @@ export class LocalCandidateRepository {
     const proposal = parsed<ToolInstallationProposal>(row.public_json, 'CORRUPT_INSTALLATION_PROPOSAL')
     if (proposal.workspaceId !== workspaceId || proposal.proposalId !== proposalId || proposal.proposalHash !== contentHash(installationProposalBinding(proposal)) || proposal.permissionsHash !== contentHash(proposal.requestedPermissions)) fail('CORRUPT_INSTALLATION_PROPOSAL', 'stored installation proposal failed its binding')
     return { ...proposal, state: row.state as ToolInstallationProposal['state'] }
+  }
+
+  listInstallationProposals(workspaceId: LaboratoryId<'workspace'>): readonly ToolInstallationProposal[] {
+    this.ensureOpen()
+    const rows = this.database.prepare('SELECT proposal_id FROM installation_proposals WHERE workspace_id=? ORDER BY proposal_id').all(workspaceId) as Array<{ proposal_id: LaboratoryId<'proposal'> }>
+    return rows.map((row) => this.inspectInstallationProposal(workspaceId, row.proposal_id)).filter((item): item is ToolInstallationProposal => item !== null)
   }
 
   approveInstallationProposal(proposal: ToolInstallationProposal, approval: ToolInstallationApproval): void {
@@ -574,6 +592,12 @@ export class LocalCandidateRepository {
     this.ensureOpen()
     const rows = this.database.prepare("SELECT installation_id FROM installation_evidence WHERE workspace_id=? AND outcome='installed' ORDER BY installation_id").all(workspaceId) as Array<{ installation_id: LaboratoryId<'evidence'> }>
     return rows.map((row) => this.inspectInstallationEvidence(workspaceId, row.installation_id)).filter((value): value is ToolInstallationEvidence => value !== null)
+  }
+
+  listInstallationEvidence(workspaceId: LaboratoryId<'workspace'>): readonly ToolInstallationEvidence[] {
+    this.ensureOpen()
+    const rows = this.database.prepare('SELECT installation_id FROM installation_evidence WHERE workspace_id=? ORDER BY installation_id').all(workspaceId) as Array<{ installation_id: LaboratoryId<'evidence'> }>
+    return rows.map((row) => this.inspectInstallationEvidence(workspaceId, row.installation_id)).filter((item): item is ToolInstallationEvidence => item !== null)
   }
 
   private revisionRow(workspaceId: LaboratoryId<'workspace'>, revisionId: LaboratoryId<'evidence'>): RevisionRow | null {
