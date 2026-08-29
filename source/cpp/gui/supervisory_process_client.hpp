@@ -53,6 +53,10 @@ public:
         std::string_view workspace_id, std::string_view revision_id,
         std::string_view candidate_hash, cpp_adapter::Json fixtures,
         cpp_adapter::Json commands, ResponseHandler handler);
+    [[nodiscard]] std::string revise_candidate(
+        std::string_view workspace_id, std::string_view parent_revision_id,
+        std::string_view parent_candidate_hash, cpp_adapter::Json descriptor,
+        cpp_adapter::Json sources, ResponseHandler handler);
 
 private:
     struct PendingRequest final {

@@ -4,6 +4,32 @@ Entries are chronological. Each entry corresponds to one logical Git commit and
 records its exact subject, purpose, material changes, and validation actually
 performed.
 
+## 2026-08-30 - feat(gui): revise candidates through the workshop
+
+Purpose: complete the Qt side of exact-parent candidate revision authoring.
+
+Material changes:
+
+- Added the C++ `revise-candidate` client operation and strict result decoder
+  that correlates workspace, parent revision/hash, new candidate identity/hash,
+  revision number, state, and content hashes.
+- Added a selected-current-candidate Qt editor for descriptor and canonical-
+  base64 sources, with immediate submitted-source clearing.
+- Refreshes authoritative inspection after revision and explicitly states that
+  prior validation and proposal bindings are stale.
+- Extended the real-process fixture and offscreen Widgets test through source
+  submission, immutable revision creation, redacted local state, and refresh.
+
+Validation actually run:
+
+- `pnpm.cmd test`: passed all 86 TypeScript tests.
+- Qt 6.12.0/MSVC 19.51 Release built with warnings as errors and all 3 CTest
+  targets passed.
+- The first Widgets run had 2 passes and 1 failure because the test submitted
+  during the post-execution busy refresh; waiting for the action to re-enable
+  produced the passing run.
+- `git diff --check`: passed with newline-conversion notices only.
+
 ## 2026-08-30 - feat(gui): expose immutable candidate revision authoring
 
 Purpose: begin the Stage 8 candidate-authoring path without allowing Qt or the

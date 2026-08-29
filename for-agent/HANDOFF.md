@@ -4,6 +4,15 @@ Last updated: 2026-08-30
 
 ## Current state
 
+- Qt now exposes exact-parent candidate revision authoring for the selected
+  current candidate. The editor accepts a descriptor and canonical-base64
+  sources, clears submitted bytes immediately, and delegates through the host
+  to the repository-backed workshop.
+- The C++ decoder binds the result to the exact displayed workspace and parent
+  revision/hash. Qt displays the immutable child revision/hash, explains that
+  prior validation/proposal bindings are stale, and refreshes authoritative
+  candidate history rather than mutating its projection locally.
+
 - Production supervisory protocol `1.1` now exposes exact-parent candidate
   revision authoring. Requests bind the current revision/hash, strict descriptor,
   and canonical-base64 source set, then delegate to the repository-backed
@@ -881,12 +890,11 @@ installation controls:
 
 ## Exact next work
 
-Add the Qt candidate revision form and strict C++ decoder over the new
-`revise-candidate` operation, clear submitted source bytes from completed widget
-state, refresh authoritative inspection, and visibly explain that the prior
-validation/proposal no longer applies. Then add new specification/initial
-candidate creation through the same workshop boundary; Qt must not write
-repository rows or candidate files directly.
+Add new specification and initial candidate creation through the same narrow
+repository-backed workshop boundary, with a Qt form that clears submitted source
+bytes and refreshes authoritative inspection. Qt must not write repository rows
+or candidate files directly. Then expose lifecycle controls through existing
+host-owned stop/revoke/resume/recovery services.
 Keep installed-candidate execution absent until the executable loading strategy
 preserves its exact candidate and installation evidence hashes.
 

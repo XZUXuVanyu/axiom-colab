@@ -202,6 +202,28 @@ std::string SupervisoryProcessClient::submit_hidden_challenge(
     }), std::move(handler));
 }
 
+std::string SupervisoryProcessClient::revise_candidate(
+    std::string_view workspace_id, std::string_view parent_revision_id,
+    std::string_view parent_candidate_hash, Json descriptor, Json sources,
+    ResponseHandler handler) {
+    if (!valid_identity(workspace_id, "workspace:")
+        || !valid_identity(parent_revision_id, "evidence:")) {
+        throw std::invalid_argument("candidate revision identity is malformed");
+    }
+    if (!parent_candidate_hash.starts_with("sha256:")
+        || parent_candidate_hash.size() != 71 || !descriptor.is_object()
+        || !sources.is_array() || sources.as_array().empty()) {
+        throw std::invalid_argument("candidate revision binding is malformed");
+    }
+    return send_request(Json::object({
+        {"protocolVersion", "1.1"}, {"operation", "revise-candidate"},
+        {"workspaceId", std::string(workspace_id)},
+        {"parentRevisionId", std::string(parent_revision_id)},
+        {"parentCandidateHash", std::string(parent_candidate_hash)},
+        {"descriptor", std::move(descriptor)}, {"sources", std::move(sources)},
+    }), std::move(handler));
+}
+
 std::string SupervisoryProcessClient::send_request(Json request,
                                                    ResponseHandler handler) {
     if (!is_running()) {

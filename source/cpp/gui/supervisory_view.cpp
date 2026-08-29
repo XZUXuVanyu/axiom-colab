@@ -230,6 +230,24 @@ void SupervisoryView::build_ui() {
     hidden_challenge_result_->setWordWrap(true);
     hidden_challenge_result_->setTextInteractionFlags(Qt::TextSelectableByMouse);
     candidate_evidence_layout->addWidget(hidden_challenge_result_);
+    candidate_revision_input_ = new QPlainTextEdit(candidate_evidence);
+    candidate_revision_input_->setObjectName("candidateRevisionInput");
+    candidate_revision_input_->setPlaceholderText(
+        R"({"descriptor":{"name":"candidate_tool"},"sources":[{"path":"src/tool.cpp","contentBase64":"..."}]})");
+    candidate_revision_input_->setMaximumHeight(110);
+    candidate_evidence_layout->addWidget(new QLabel(
+        "Exact-parent candidate revision JSON (source bytes are cleared after submission)", candidate_evidence));
+    candidate_evidence_layout->addWidget(candidate_revision_input_);
+    revise_candidate_ = new QPushButton("Create immutable revision", candidate_evidence);
+    revise_candidate_->setObjectName("reviseCandidate");
+    revise_candidate_->setEnabled(false);
+    candidate_evidence_layout->addWidget(revise_candidate_);
+    candidate_revision_result_ = new QLabel(
+        "Select a current candidate to create a hash-chained revision.", candidate_evidence);
+    candidate_revision_result_->setObjectName("candidateRevisionResult");
+    candidate_revision_result_->setWordWrap(true);
+    candidate_revision_result_->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    candidate_evidence_layout->addWidget(candidate_revision_result_);
     summaries->addWidget(candidate_evidence, 4, 0, 1, 2);
     compute_memory_->setObjectName("computeMemory");
     working_memory_->setObjectName("workingMemory");
@@ -262,6 +280,7 @@ void SupervisoryView::build_ui() {
                 const bool current = item != nullptr
                     && !item->data(Qt::UserRole + 3).toString().isEmpty();
                 submit_hidden_challenge_->setEnabled(current && !busy_);
+                revise_candidate_->setEnabled(current && !busy_);
             });
     connect(approve_candidate_, &QPushButton::clicked, this,
             [this] { decide_selected_installation(true); });
@@ -269,6 +288,8 @@ void SupervisoryView::build_ui() {
             [this] { decide_selected_installation(false); });
     connect(submit_hidden_challenge_, &QPushButton::clicked, this,
             &SupervisoryView::submit_selected_hidden_challenge);
+    connect(revise_candidate_, &QPushButton::clicked, this,
+            &SupervisoryView::revise_selected_candidate);
 }
 
 void SupervisoryView::start_process() {
@@ -560,6 +581,61 @@ void SupervisoryView::submit_selected_hidden_challenge() {
     }
 }
 
+void SupervisoryView::revise_selected_candidate() {
+    auto* item = candidates_->currentItem();
+    if (item == nullptr || workspace_selector_->currentText().isEmpty()
+        || item->data(Qt::UserRole + 3).toString().isEmpty()) {
+        show_error("Select a current candidate revision first"); return;
+    }
+    Json payload;
+    try {
+        payload = Json::parse(candidate_revision_input_->toPlainText().toStdString());
+        const auto& object = require_object(payload, "candidate revision input");
+        exact_fields(object, {"descriptor", "sources"}, "candidate revision input");
+        if (!payload.at("descriptor").is_object() || !payload.at("sources").is_array()
+            || payload.at("sources").as_array().empty()) {
+            throw SupervisoryResponseError("descriptor must be an object and sources must be a non-empty array");
+        }
+    } catch (const std::exception& error) {
+        show_error(QString("Invalid candidate revision: ") + QString::fromUtf8(error.what())); return;
+    }
+    const std::string workspace = workspace_selector_->currentText().toStdString();
+    const std::string parent_revision = item->data(Qt::UserRole + 3).toString().toStdString();
+    const std::string parent_hash = item->data(Qt::UserRole + 4).toString().toStdString();
+    Json descriptor = payload.at("descriptor");
+    Json sources = payload.at("sources");
+    candidate_revision_input_->clear();
+    candidate_revision_input_->setPlaceholderText("Submitted source bytes cleared.");
+    candidate_revision_result_->setText("Creating immutable revision through the host workshop...");
+    candidate_revision_result_->setToolTip({});
+    set_busy(true);
+    try {
+        (void)client_.revise_candidate(workspace, parent_revision, parent_hash,
+            std::move(descriptor), std::move(sources),
+            [this, workspace, parent_revision, parent_hash](
+                const SupervisoryResponse* response, const std::string* error) {
+                candidate_revision_input_->clear();
+                if (error != nullptr) { show_error(text(*error)); set_busy(false); return; }
+                try {
+                    if (!response->ok) throw SupervisoryResponseError(response->error_code + ": " + response->error_message);
+                    const auto revised = parse_candidate_revision_result(
+                        *response, workspace, parent_revision, parent_hash);
+                    candidate_revision_result_->setText(QString(
+                        "Created revision %1. Prior validation and proposal bindings are now stale.")
+                        .arg(revised.revision));
+                    candidate_revision_result_->setToolTip(
+                        "Revision: " + text(revised.revision_id) + "\nCandidate: "
+                        + text(revised.candidate_id) + "\nCandidate hash: " + text(revised.candidate_hash));
+                    set_busy(false); inspect_selected_workspace();
+                } catch (const std::exception& decode_error) {
+                    show_error(QString::fromUtf8(decode_error.what())); set_busy(false);
+                }
+            });
+    } catch (const std::exception& error) {
+        candidate_revision_input_->clear(); show_error(QString::fromUtf8(error.what())); set_busy(false);
+    }
+}
+
 void SupervisoryView::render(const SupervisoryWorkspaceInspection& inspection) {
     if (inspection.current_plan.is_null()) {
         if (inspection.goal_id.has_value()) {
@@ -846,6 +922,7 @@ void SupervisoryView::set_busy(bool busy) {
         && !candidates_->currentItem()->data(Qt::UserRole + 3).toString().isEmpty();
     submit_hidden_challenge_->setEnabled(
         !busy && current_candidate && client_.is_running());
+    revise_candidate_->setEnabled(!busy && current_candidate && client_.is_running());
 }
 
 } // namespace axiom_colab::gui

@@ -290,4 +290,42 @@ SupervisoryHiddenChallengeResult parse_hidden_challenge_result(
         .suites = response.result.at("suites")};
 }
 
+SupervisoryCandidateRevisionResult parse_candidate_revision_result(
+    const SupervisoryResponse& response, std::string_view expected_workspace_id,
+    std::string_view expected_parent_revision_id,
+    std::string_view expected_parent_candidate_hash) {
+    if (!response.ok) fail("cannot decode candidate revision from an error response");
+    const auto& result = require_object(response.result, "candidate revision result");
+    require_exact_fields(result, {"protocolVersion", "revisionId", "candidateId", "workspaceId",
+        "specificationId", "specificationHash", "revision", "parentRevisionId",
+        "parentCandidateHash", "descriptorHash", "sourceHash", "sources", "candidateHash",
+        "state", "createdAt", "createdBy"});
+    const auto& workspace_id = require_string(response.result.at("workspaceId"), "workspaceId");
+    const auto& revision_id = require_string(response.result.at("revisionId"), "revisionId");
+    const auto& candidate_id = require_string(response.result.at("candidateId"), "candidateId");
+    const auto& parent_revision_id = require_string(response.result.at("parentRevisionId"), "parentRevisionId");
+    const auto& parent_candidate_hash = require_string(response.result.at("parentCandidateHash"), "parentCandidateHash");
+    const auto& candidate_hash = require_string(response.result.at("candidateHash"), "candidateHash");
+    const Json& revision = response.result.at("revision");
+    const auto valid_hash = [](std::string_view value) { return value.starts_with("sha256:") && value.size() == 71; };
+    if (require_string(response.result.at("protocolVersion"), "protocolVersion") != "1.0"
+        || workspace_id != expected_workspace_id || !valid_identity(workspace_id, "workspace:")
+        || !valid_identity(revision_id, "evidence:") || !valid_identity(candidate_id, "tool:")
+        || parent_revision_id != expected_parent_revision_id
+        || parent_candidate_hash != expected_parent_candidate_hash
+        || !valid_hash(parent_candidate_hash) || !valid_hash(candidate_hash)
+        || !revision.is_integer() || revision.as_integer() < 2
+        || require_string(response.result.at("state"), "state") != "current"
+        || !response.result.at("sources").is_array()) {
+        fail("candidate revision result does not match the exact current parent");
+    }
+    for (const std::string_view field : {"specificationHash", "descriptorHash", "sourceHash"}) {
+        if (!valid_hash(require_string(response.result.at(field), field))) fail("candidate revision result contains a malformed content hash");
+    }
+    return {.workspace_id = workspace_id, .revision_id = revision_id,
+        .candidate_id = candidate_id, .parent_revision_id = parent_revision_id,
+        .parent_candidate_hash = parent_candidate_hash, .candidate_hash = candidate_hash,
+        .revision = revision.as_integer()};
+}
+
 } // namespace axiom_colab::gui

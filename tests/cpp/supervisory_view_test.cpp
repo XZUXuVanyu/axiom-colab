@@ -39,6 +39,9 @@ int main(int argc, char* argv[]) {
     auto* challenge_input = view.findChild<QPlainTextEdit*>("hiddenChallengeInput");
     auto* submit_challenge = view.findChild<QPushButton*>("submitHiddenChallenge");
     auto* challenge_result = view.findChild<QLabel*>("hiddenChallengeResult");
+    auto* revision_input = view.findChild<QPlainTextEdit*>("candidateRevisionInput");
+    auto* revise_candidate = view.findChild<QPushButton*>("reviseCandidate");
+    auto* revision_result = view.findChild<QLabel*>("candidateRevisionResult");
     if (workspaces == nullptr || goals == nullptr || resources == nullptr
         || plan == nullptr || status == nullptr || compute == nullptr
         || working == nullptr || artifacts == nullptr) {
@@ -48,7 +51,8 @@ int main(int argc, char* argv[]) {
     if (execute == nullptr || arguments == nullptr || execution_result == nullptr
         || candidate_details == nullptr || reject_candidate == nullptr
         || challenge_input == nullptr || submit_challenge == nullptr
-        || challenge_result == nullptr) {
+        || challenge_result == nullptr || revision_input == nullptr
+        || revise_candidate == nullptr || revision_result == nullptr) {
         std::cerr << "[FAIL] Tool execution widgets are not inspectable\n";
         return 1;
     }
@@ -150,6 +154,27 @@ int main(int argc, char* argv[]) {
     if (!execution_result->text().contains("\"sum\":5")
         || !execution_result->toolTip().contains("object:report")) {
         std::cerr << "[FAIL] observed Tool execution did not render\n";
+        return 1;
+    }
+    timer.restart();
+    while (timer.elapsed() < 5000 && !revise_candidate->isEnabled()) {
+        application.processEvents(); QThread::msleep(10);
+    }
+    revision_input->setPlainText(R"({"descriptor":{"name":"candidate_tool"},"sources":[{"path":"src/tool.cpp","contentBase64":"cmV2aXNlZCBzb3VyY2U="}]})");
+    revise_candidate->click();
+    if (!revision_input->toPlainText().isEmpty()) {
+        std::cerr << "[FAIL] submitted candidate source remained in widget state\n";
+        return 1;
+    }
+    timer.restart();
+    while (timer.elapsed() < 5000
+           && !revision_result->text().contains("Created revision 2")) {
+        application.processEvents(); QThread::msleep(10);
+    }
+    if (!revision_result->text().contains("Prior validation and proposal bindings are now stale")
+        || !revision_result->toolTip().contains("evidence:revised")
+        || !revision_input->toPlainText().isEmpty()) {
+        std::cerr << "[FAIL] immutable candidate revision did not render or clear source input\n";
         return 1;
     }
     std::cout << "[PASS] supervisory view renders workspace resources\n";

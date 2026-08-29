@@ -2,6 +2,7 @@
 
 #include "cpp_adapter/json.hpp"
 
+#include <cstdint>
 #include <stdexcept>
 #include <optional>
 #include <string>
@@ -70,6 +71,16 @@ struct SupervisoryHiddenChallengeResult final {
     cpp_adapter::Json suites;
 };
 
+struct SupervisoryCandidateRevisionResult final {
+    std::string workspace_id;
+    std::string revision_id;
+    std::string candidate_id;
+    std::string parent_revision_id;
+    std::string parent_candidate_hash;
+    std::string candidate_hash;
+    std::int64_t revision{};
+};
+
 [[nodiscard]] SupervisoryResponse parse_supervisory_response(
     std::string_view text, std::string_view expected_request_id);
 [[nodiscard]] std::vector<std::string> parse_workspace_list_result(
@@ -90,5 +101,9 @@ struct SupervisoryHiddenChallengeResult final {
 [[nodiscard]] SupervisoryHiddenChallengeResult parse_hidden_challenge_result(
     const SupervisoryResponse& response, std::string_view expected_workspace_id,
     std::string_view expected_revision_id, std::string_view expected_candidate_hash);
+[[nodiscard]] SupervisoryCandidateRevisionResult parse_candidate_revision_result(
+    const SupervisoryResponse& response, std::string_view expected_workspace_id,
+    std::string_view expected_parent_revision_id,
+    std::string_view expected_parent_candidate_hash);
 
 } // namespace axiom_colab::gui

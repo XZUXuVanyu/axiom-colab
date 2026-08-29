@@ -47,6 +47,23 @@ const host = {
       suites: candidate.validation.suites.map(({ kind, outcome, definitionHash, commandCount, hidden }) => ({ kind, outcome, definitionHash, commandCount, hidden })),
     }
   },
+  reviseCandidate(workspaceId, parentRevisionId, parentCandidateHash, descriptor, sources) {
+    if (parentRevisionId !== candidate.revisionId || parentCandidateHash !== candidate.candidateHash) throw Object.assign(new Error('stale candidate'), { code: 'STALE_CANDIDATE_REVISION' })
+    if (descriptor.name !== 'candidate_tool' || sources[0]?.path !== 'src/tool.cpp') throw Object.assign(new Error('invalid revision'), { code: 'INVALID_CANDIDATE_SOURCE' })
+    const parentHash = candidate.candidateHash
+    candidate.revisionId = 'evidence:revised'
+    candidate.revision = 2
+    candidate.candidateHash = hash('0')
+    candidate.validation = null
+    candidate.proposal = null
+    return {
+      protocolVersion: '1.0', revisionId: candidate.revisionId, candidateId: candidate.candidateId,
+      workspaceId, specificationId: 'proposal:spec', specificationHash: hash('1'), revision: 2,
+      parentRevisionId, parentCandidateHash: parentHash, descriptorHash: hash('2'), sourceHash: hash('3'),
+      sources: [{ path: 'src/tool.cpp', size: 14, hash: hash('4') }], candidateHash: candidate.candidateHash,
+      state: 'current', createdAt: '2026-08-30T08:00:00.000Z', createdBy: 'actor:host',
+    }
+  },
   async inspect(workspaceId, goalId) {
     if (workspaceId === 'workspace:missing') throw Object.assign(new Error('workspace is not visible'), { code: 'WORKSPACE_NOT_FOUND' })
     return {
