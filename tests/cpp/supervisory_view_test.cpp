@@ -5,6 +5,7 @@
 #include <QDir>
 #include <QElapsedTimer>
 #include <QLabel>
+#include <QListWidget>
 #include <QThread>
 
 #include <iostream>
@@ -25,8 +26,12 @@ int main(int argc, char* argv[]) {
     auto* resources = view.findChild<QLabel*>("resourceSummary");
     auto* plan = view.findChild<QLabel*>("approvedPlan");
     auto* status = view.findChild<QLabel*>("connectionStatus");
+    auto* compute = view.findChild<QListWidget*>("computeMemory");
+    auto* working = view.findChild<QListWidget*>("workingMemory");
+    auto* artifacts = view.findChild<QListWidget*>("artifactLineage");
     if (workspaces == nullptr || goals == nullptr || resources == nullptr
-        || plan == nullptr || status == nullptr) {
+        || plan == nullptr || status == nullptr || compute == nullptr
+        || working == nullptr || artifacts == nullptr) {
         std::cerr << "[FAIL] supervisory widgets are not inspectable\n";
         return 1;
     }
@@ -69,6 +74,12 @@ int main(int argc, char* argv[]) {
     }
     if (status->text() != "Connected (read-only)") {
         std::cerr << "[FAIL] supervisory view did not remain connected\n";
+        return 1;
+    }
+    if (compute->count() != 1 || working->count() != 1 || artifacts->count() != 1
+        || !artifacts->item(0)->text().contains("object:artifact")
+        || !artifacts->item(0)->toolTip().contains("Schema hash")) {
+        std::cerr << "[FAIL] memory and artifact lineage did not render\n";
         return 1;
     }
     std::cout << "[PASS] supervisory view renders workspace resources\n";

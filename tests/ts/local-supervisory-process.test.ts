@@ -6,7 +6,8 @@ import { spawn } from 'node:child_process'
 import test from 'node:test'
 
 import {
-  createLocalApprovedPlanReader, createLocalGoalProgressReader, LocalMemoryStore, MemoryWorkflows,
+  createLocalApprovedPlanReader, createLocalGoalProgressReader, createLocalMemoryProjectionReader,
+  contentHash, LocalMemoryStore, MemoryWorkflows,
   parseLocalSupervisoryProcessConfig,
 } from '../../dist/index.js'
 
@@ -146,5 +147,40 @@ test('local progress reader binds checkpoints and observed Tool results to the a
   assert.equal(projected.progress?.status, 'completed')
   assert.equal(projected.observations[0]?.reportArtifactId, artifact.id)
   assert.deepEqual(projected.observations[0]?.result, { result: 5 })
+  workflows.close(); store.close()
+})
+
+test('local memory projection exposes metadata and complete immutable artifact lineage', () => {
+  const root = join(tmpdir(), `axiom-supervisory-memory-${crypto.randomUUID()}`)
+  mkdirSync(root); roots.push(root)
+  const at = new Date('2026-08-29T03:00:00.000Z')
+  const store = new LocalMemoryStore(join(root, 'memory'), { now: () => at })
+  store.createWorkspace('workspace:alpha'); store.createWorkspace('workspace:beta')
+  const workflows = new MemoryWorkflows(store, { now: () => at })
+  const invocation = (authority: 'model' | 'user' | 'trusted-host', operations: string[]) => ({
+    authority,
+    context: { workspaceId: 'workspace:alpha', actorId: `actor:${authority}`, callId: `call:${authority}:${operations[0]}`, toolId: 'tool:test' },
+    capability: {
+      protocolVersion: '1.0', capabilityId: `capability:${authority}:${operations[0]}`,
+      workspaceId: 'workspace:alpha', actorId: `actor:${authority}`,
+      toolId: 'tool:test', callId: `call:${authority}:${operations[0]}`, operations,
+      issuedAt: at.toISOString(), expiresAt: new Date(at.getTime() + 60_000).toISOString(), nonce: `${authority}:${operations[0]}`,
+    },
+  }) as any
+  const compute = workflows.createCompute(invocation('model', ['compute.create']), new Uint8Array([1, 2]))
+  const proposal = workflows.proposeWorking(invocation('model', ['working.propose']), 'decision', { selected: true })
+  const revision = workflows.approveWorking(invocation('user', ['working.approve']), proposal.id, {
+    workspaceId: 'workspace:alpha', proposalId: proposal.id, proposalHash: proposal.hash, decision: 'approved',
+  })
+  const provenance = { operation: 'seed', parametersHash: contentHash({ seed: true }), softwareVersion: '1.0.0', validationId: null }
+  const parent = workflows.createArtifact(invocation('trusted-host', ['artifact.create']), new Uint8Array([3]), { type: 'bytes' }, provenance)
+  const child = workflows.deriveArtifact(invocation('trusted-host', ['artifact.derive']), [parent.id], new Uint8Array([4]), { type: 'bytes' }, { ...provenance, operation: 'derive' })
+  const reader = createLocalMemoryProjectionReader(workflows, 'actor:host', () => at)
+  const projected = reader('workspace:alpha')
+  assert.equal(projected.compute[0]?.objectId, compute.id)
+  assert.equal(projected.working[0]?.revisionId, revision.id)
+  assert.deepEqual(projected.artifacts.find((item) => item.artifactId === parent.id)?.childIds, [child.id])
+  assert.deepEqual(projected.artifacts.find((item) => item.artifactId === child.id)?.parentIds, [parent.id])
+  assert.deepEqual(reader('workspace:beta'), { compute: [], working: [], artifacts: [] })
   workflows.close(); store.close()
 })

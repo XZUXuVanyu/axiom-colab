@@ -102,6 +102,11 @@ export class LocalSupervisoryBackend {
             progress: null,
             observations: []
         } : this.options.goalProgress(workspaceId, goalId);
+        const memory = this.options.memory?.(workspaceId) ?? {
+            compute: [],
+            working: [],
+            artifacts: []
+        };
         const timeline = this.timeline(workspaceId, revisions, validations, proposals, installations);
         for (const observation of goalState.observations)timeline.push({
             id: `observation:${observation.reportArtifactId}:${observation.callId}`,
@@ -121,6 +126,7 @@ export class LocalSupervisoryBackend {
             observations: [
                 ...goalState.observations
             ],
+            memory,
             tools,
             resources,
             candidates: projectedCandidates,

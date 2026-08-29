@@ -185,9 +185,10 @@ export type { ToolDescriptor } from './protocol.js'
 export { SupervisoryApplicationError, SupervisoryApplicationModel } from './supervisory-application.js'
 export type {
   SupervisoryBackend, SupervisoryCandidateProjection, SupervisoryControls,
-  SupervisoryFactKind, SupervisoryPlanProjection, SupervisoryProgressProjection,
+  SupervisoryArtifactProjection, SupervisoryComputeProjection, SupervisoryFactKind,
+  SupervisoryMemoryProjection, SupervisoryPlanProjection, SupervisoryProgressProjection,
   SupervisoryTimelineEntry, SupervisoryToolObservation,
-  SupervisoryToolProjection, SupervisoryWorkspaceSnapshot,
+  SupervisoryToolProjection, SupervisoryWorkingProjection, SupervisoryWorkspaceSnapshot,
 } from './supervisory-application.js'
 export { LocalSupervisoryBackend, LocalSupervisoryBackendError } from './local-supervisory-backend.js'
 export type {
@@ -205,6 +206,7 @@ export { runSupervisoryTransportServer } from './supervisory-transport-server.js
 export type { SupervisoryTransportServerOptions } from './supervisory-transport-server.js'
 export {
   createLocalApprovedPlanReader, createLocalGoalProgressReader,
+  createLocalMemoryProjectionReader,
   parseLocalSupervisoryProcessConfig, readLocalSupervisoryProcessConfig,
   runLocalSupervisoryProcess,
 } from './local-supervisory-process.js'

@@ -17,7 +17,9 @@ import { ProcessRunner } from './process-runner.js'
 import { SupervisoryTransport } from './supervisory-transport.js'
 import { runSupervisoryTransportServer } from './supervisory-transport-server.js'
 import { ToolInstallationService } from './tool-installation.js'
-import type { SupervisoryProgressProjection, SupervisoryToolObservation } from './supervisory-application.js'
+import type {
+  SupervisoryMemoryProjection, SupervisoryProgressProjection, SupervisoryToolObservation,
+} from './supervisory-application.js'
 
 export interface LocalSupervisoryProcessConfig {
   readonly stateRoot: string
@@ -157,6 +159,65 @@ export function createLocalGoalProgressReader(
   }
 }
 
+export function createLocalMemoryProjectionReader(
+  workflows: MemoryWorkflows,
+  hostActorId: LaboratoryId<'actor'>,
+  now: () => Date = () => new Date(),
+): (workspaceId: LaboratoryId<'workspace'>) => SupervisoryMemoryProjection {
+  return (workspaceId) => {
+    const issued = now()
+    const callId = `call:${randomUUID()}` as LaboratoryId<'call'>
+    const toolId = 'tool:supervisory-host' as LaboratoryId<'tool'>
+    const invocation = {
+      authority: 'trusted-host' as const,
+      context: { workspaceId, actorId: hostActorId, callId, toolId },
+      capability: {
+        protocolVersion: '1.0' as const, capabilityId: 'capability:supervisory-memory-read' as const,
+        workspaceId, actorId: hostActorId, toolId, callId,
+        operations: ['compute.read', 'working.read', 'artifact.read'] as const,
+        issuedAt: issued.toISOString(), expiresAt: new Date(issued.getTime() + 60_000).toISOString(),
+        nonce: randomUUID(),
+      },
+    }
+    const artifacts = workflows.listArtifacts(invocation)
+    const artifactIds = new Set(artifacts.map((artifact) => artifact.id))
+    if (artifactIds.size !== artifacts.length) {
+      throw Object.assign(new Error('artifact projection contains duplicate identities'), { code: 'INVALID_ARTIFACT_LINEAGE' })
+    }
+    const children = new Map<LaboratoryId<'object'>, LaboratoryId<'object'>[]>()
+    for (const artifact of artifacts) {
+      for (const parentId of artifact.parentIds) {
+        if (parentId === artifact.id || !artifactIds.has(parentId)) {
+          throw Object.assign(new Error('artifact lineage contains an invalid parent edge'), { code: 'INVALID_ARTIFACT_LINEAGE' })
+        }
+        const current = children.get(parentId) ?? []
+        if (current.includes(artifact.id)) {
+          throw Object.assign(new Error('artifact lineage contains a duplicate edge'), { code: 'INVALID_ARTIFACT_LINEAGE' })
+        }
+        current.push(artifact.id)
+        children.set(parentId, current)
+      }
+    }
+    return {
+      compute: workflows.listComputeObjects(invocation).map((item) => ({
+        objectId: item.id, revision: item.revision, hash: item.hash, size: item.size,
+        state: item.state, expiresAt: item.expiresAt,
+      })),
+      working: workflows.listWorkingRevisions(invocation).map((item) => ({
+        revisionId: item.id, key: item.key, revision: item.revision, hash: item.hash,
+        proposalId: item.proposalId, committedAt: item.committedAt,
+      })),
+      artifacts: artifacts.map((item) => ({
+        artifactId: item.id, hash: item.hash, size: item.size, schemaHash: item.schemaHash,
+        parentIds: [...item.parentIds], childIds: [...(children.get(item.id) ?? [])].sort(),
+        operation: item.provenance.operation, parametersHash: item.provenance.parametersHash,
+        softwareVersion: item.provenance.softwareVersion,
+        validationId: item.provenance.validationId, createdAt: item.createdAt,
+      })),
+    }
+  }
+}
+
 export function parseLocalSupervisoryProcessConfig(value: unknown): LocalSupervisoryProcessConfig {
   if (!record(value)) throw new TypeError('supervisory process config must be an object')
   const allowed = new Set(['stateRoot', 'bridgePath', 'bridgeArgs', 'bridgeWorkingDirectory', 'hostActorId', 'maxLineBytes'])
@@ -217,6 +278,7 @@ export async function runLocalSupervisoryProcess(configValue: unknown): Promise<
     store, workflows, candidates, lifecycle, adapter, validator,
     hostActorId: config.hostActorId,
     goalProgress: createLocalGoalProgressReader(workflows, config.hostActorId, approvedPlan),
+    memory: createLocalMemoryProjectionReader(workflows, config.hostActorId),
     createInstallation: (registry) => new ToolInstallationService(candidates, validator, {
       installationRoot: join(config.stateRoot, 'installed'), registry,
     }),

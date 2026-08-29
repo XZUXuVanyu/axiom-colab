@@ -159,6 +159,98 @@ export function createLocalGoalProgressReader(workflows, hostActorId, approvedPl
         };
     };
 }
+export function createLocalMemoryProjectionReader(workflows, hostActorId, now = ()=>new Date()) {
+    return (workspaceId)=>{
+        const issued = now();
+        const callId = `call:${randomUUID()}`;
+        const toolId = 'tool:supervisory-host';
+        const invocation = {
+            authority: 'trusted-host',
+            context: {
+                workspaceId,
+                actorId: hostActorId,
+                callId,
+                toolId
+            },
+            capability: {
+                protocolVersion: '1.0',
+                capabilityId: 'capability:supervisory-memory-read',
+                workspaceId,
+                actorId: hostActorId,
+                toolId,
+                callId,
+                operations: [
+                    'compute.read',
+                    'working.read',
+                    'artifact.read'
+                ],
+                issuedAt: issued.toISOString(),
+                expiresAt: new Date(issued.getTime() + 60_000).toISOString(),
+                nonce: randomUUID()
+            }
+        };
+        const artifacts = workflows.listArtifacts(invocation);
+        const artifactIds = new Set(artifacts.map((artifact)=>artifact.id));
+        if (artifactIds.size !== artifacts.length) {
+            throw Object.assign(new Error('artifact projection contains duplicate identities'), {
+                code: 'INVALID_ARTIFACT_LINEAGE'
+            });
+        }
+        const children = new Map();
+        for (const artifact of artifacts){
+            for (const parentId of artifact.parentIds){
+                if (parentId === artifact.id || !artifactIds.has(parentId)) {
+                    throw Object.assign(new Error('artifact lineage contains an invalid parent edge'), {
+                        code: 'INVALID_ARTIFACT_LINEAGE'
+                    });
+                }
+                const current = children.get(parentId) ?? [];
+                if (current.includes(artifact.id)) {
+                    throw Object.assign(new Error('artifact lineage contains a duplicate edge'), {
+                        code: 'INVALID_ARTIFACT_LINEAGE'
+                    });
+                }
+                current.push(artifact.id);
+                children.set(parentId, current);
+            }
+        }
+        return {
+            compute: workflows.listComputeObjects(invocation).map((item)=>({
+                    objectId: item.id,
+                    revision: item.revision,
+                    hash: item.hash,
+                    size: item.size,
+                    state: item.state,
+                    expiresAt: item.expiresAt
+                })),
+            working: workflows.listWorkingRevisions(invocation).map((item)=>({
+                    revisionId: item.id,
+                    key: item.key,
+                    revision: item.revision,
+                    hash: item.hash,
+                    proposalId: item.proposalId,
+                    committedAt: item.committedAt
+                })),
+            artifacts: artifacts.map((item)=>({
+                    artifactId: item.id,
+                    hash: item.hash,
+                    size: item.size,
+                    schemaHash: item.schemaHash,
+                    parentIds: [
+                        ...item.parentIds
+                    ],
+                    childIds: [
+                        ...children.get(item.id) ?? []
+                    ].sort(),
+                    operation: item.provenance.operation,
+                    parametersHash: item.provenance.parametersHash,
+                    softwareVersion: item.provenance.softwareVersion,
+                    validationId: item.provenance.validationId,
+                    createdAt: item.createdAt
+                }))
+        };
+    };
+}
 export function parseLocalSupervisoryProcessConfig(value) {
     if (!record(value)) throw new TypeError('supervisory process config must be an object');
     const allowed = new Set([
@@ -248,6 +340,7 @@ export async function runLocalSupervisoryProcess(configValue) {
         validator,
         hostActorId: config.hostActorId,
         goalProgress: createLocalGoalProgressReader(workflows, config.hostActorId, approvedPlan),
+        memory: createLocalMemoryProjectionReader(workflows, config.hostActorId),
         createInstallation: (registry)=>new ToolInstallationService(candidates, validator, {
                 installationRoot: join(config.stateRoot, 'installed'),
                 registry

@@ -158,6 +158,12 @@ void SupervisoryView::build_ui() {
     summaries->addWidget(list_group("Tool candidates", &candidates_, this), 0, 1);
     summaries->addWidget(list_group("Observed Tool results", &observations_, this), 1, 0);
     summaries->addWidget(list_group("Immutable activity timeline", &timeline_, this), 1, 1);
+    summaries->addWidget(list_group("Compute memory", &compute_memory_, this), 2, 0);
+    summaries->addWidget(list_group("Approved working revisions", &working_memory_, this), 2, 1);
+    summaries->addWidget(list_group("Artifact lineage and provenance", &artifacts_, this), 3, 0, 1, 2);
+    compute_memory_->setObjectName("computeMemory");
+    working_memory_->setObjectName("workingMemory");
+    artifacts_->setObjectName("artifactLineage");
     summaries->setRowStretch(0, 1);
     summaries->setRowStretch(1, 1);
     page->addLayout(summaries, 1);
@@ -218,6 +224,9 @@ void SupervisoryView::load_workspaces() {
                         tools_->clear();
                         candidates_->clear();
                         observations_->clear();
+                        compute_memory_->clear();
+                        working_memory_->clear();
+                        artifacts_->clear();
                         timeline_->clear();
                     } else {
                         load_goals();
@@ -425,6 +434,56 @@ void SupervisoryView::render(const SupervisoryWorkspaceInspection& inspection) {
         item->setToolTip(
             "Hash-verified session report: " + text(string_field(observation, "reportHash"))
             + "\nArtifact: " + text(string_field(observation, "reportArtifactId")));
+    }
+
+    const Json& memory = inspection.memory;
+    require_object(memory, "memory");
+    compute_memory_->clear();
+    for (const Json& object : memory.at("compute").as_array()) {
+        require_object(object, "compute memory object");
+        auto* item = new QListWidgetItem(
+            QString("%1  [%2] | rev %3 | %4 bytes")
+                .arg(text(string_field(object, "objectId")), text(string_field(object, "state")))
+                .arg(integer_field(object, "revision")).arg(integer_field(object, "size")),
+            compute_memory_);
+        item->setToolTip("Content hash: " + text(string_field(object, "hash")));
+    }
+
+    working_memory_->clear();
+    for (const Json& revision : memory.at("working").as_array()) {
+        require_object(revision, "working-memory revision");
+        auto* item = new QListWidgetItem(
+            QString("%1  [rev %2] | %3")
+                .arg(text(string_field(revision, "key")))
+                .arg(integer_field(revision, "revision"))
+                .arg(text(string_field(revision, "committedAt"))),
+            working_memory_);
+        item->setToolTip(
+            "Revision: " + text(string_field(revision, "revisionId"))
+            + "\nProposal: " + text(string_field(revision, "proposalId"))
+            + "\nHash: " + text(string_field(revision, "hash")));
+    }
+
+    artifacts_->clear();
+    for (const Json& artifact : memory.at("artifacts").as_array()) {
+        require_object(artifact, "artifact projection");
+        const Json& parents = artifact.at("parentIds");
+        const Json& children = artifact.at("childIds");
+        if (!parents.is_array() || !children.is_array()) {
+            throw SupervisoryResponseError("artifact lineage edges must be arrays");
+        }
+        auto* item = new QListWidgetItem(
+            QString("%1  [%2] | %3 bytes | %4 parent(s), %5 child(ren)")
+                .arg(text(string_field(artifact, "artifactId")),
+                     text(string_field(artifact, "operation")))
+                .arg(integer_field(artifact, "size"))
+                .arg(parents.as_array().size()).arg(children.as_array().size()),
+            artifacts_);
+        item->setToolTip(
+            "Content hash: " + text(string_field(artifact, "hash"))
+            + "\nSchema hash: " + text(string_field(artifact, "schemaHash"))
+            + "\nParameters hash: " + text(string_field(artifact, "parametersHash"))
+            + "\nSoftware: " + text(string_field(artifact, "softwareVersion")));
     }
 
     timeline_->clear();

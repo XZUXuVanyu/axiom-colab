@@ -48,6 +48,9 @@ export class LocalApplicationHost {
             lifecycle: options.lifecycle,
             ...options.goalProgress === undefined ? {} : {
                 goalProgress: options.goalProgress
+            },
+            ...options.memory === undefined ? {} : {
+                memory: options.memory
             }
         });
         this.model = new SupervisoryApplicationModel(this.backend);

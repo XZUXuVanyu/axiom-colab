@@ -5,7 +5,8 @@ import { SupervisoryTransport } from '../../dist/index.js'
 
 function snapshot(workspaceId: 'workspace:alpha' | 'workspace:beta') {
   return {
-    workspaceId, goalId: null, currentPlan: null, progress: null, observations: [], tools: [], candidates: [], timeline: [],
+    workspaceId, goalId: null, currentPlan: null, progress: null, observations: [],
+    memory: { compute: [], working: [], artifacts: [] }, tools: [], candidates: [], timeline: [],
     resources: { workspaceId, usedBytes: 0, objectCount: 0, quota: { maxBytes: 10, maxObjects: 1 }, expiredObjects: 0, corruptObjects: 0 },
     controls: { canStopGoal: false, revocableCapabilityIds: [], canResumeGoal: false, recoveryRequired: false },
   } as const

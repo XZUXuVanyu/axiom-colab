@@ -128,7 +128,7 @@ void test_supervisory_response_parser() {
     });
 
     const auto inspection_response = parse_supervisory_response(
-        R"({"protocolVersion":"1.0","id":"request:3","ok":true,"result":{"workspaceId":"workspace:one","goalId":null,"currentPlan":null,"progress":null,"observations":[],"tools":[],"resources":{},"candidates":[],"timeline":[],"controls":{}}})",
+        R"({"protocolVersion":"1.0","id":"request:3","ok":true,"result":{"workspaceId":"workspace:one","goalId":null,"currentPlan":null,"progress":null,"observations":[],"memory":{"compute":[],"working":[],"artifacts":[]},"tools":[],"resources":{},"candidates":[],"timeline":[],"controls":{}}})",
         "request:3");
     const auto inspection = parse_workspace_inspection_result(
         inspection_response, "workspace:one", std::nullopt);

@@ -140,6 +140,15 @@ export class MemoryWorkflows {
             return this.store.readPayload(invocation.context.workspaceId, row.hash);
         });
     }
+    listComputeObjects(invocation) {
+        return this.perform(invocation, 'compute.read', null, {
+            list: true
+        }, ()=>{
+            const workspaceId = this.workspace(invocation);
+            const rows = this.database.prepare('SELECT id,revision,hash,size,state,expires_at FROM compute_objects WHERE workspace_id=? ORDER BY id').all(workspaceId);
+            return rows.map((row)=>this.computeResult(row));
+        });
+    }
     updateCompute(invocation, id, bytes) {
         return this.perform(invocation, 'compute.update', id, {
             id,
@@ -239,6 +248,15 @@ export class MemoryWorkflows {
         }, ()=>{
             const workspaceId = this.workspace(invocation);
             const rows = this.database.prepare('SELECT id,key,revision,value_json,hash,proposal_id,committed_at FROM working_revisions WHERE workspace_id=? AND key=? ORDER BY revision').all(workspaceId, key);
+            return rows.map((row)=>this.revisionResult(row));
+        });
+    }
+    listWorkingRevisions(invocation) {
+        return this.perform(invocation, 'working.read', null, {
+            list: true
+        }, ()=>{
+            const workspaceId = this.workspace(invocation);
+            const rows = this.database.prepare('SELECT id,key,revision,value_json,hash,proposal_id,committed_at FROM working_revisions WHERE workspace_id=? ORDER BY key,revision').all(workspaceId);
             return rows.map((row)=>this.revisionResult(row));
         });
     }

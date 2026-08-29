@@ -9,6 +9,7 @@ import {
 function state(): SupervisoryWorkspaceSnapshot {
   return {
     workspaceId: 'workspace:alpha', goalId: null, currentPlan: null, progress: null, observations: [],
+    memory: { compute: [], working: [], artifacts: [] },
     tools: [{
       name: 'add_numbers', source: 'built-in', installationEvidenceHash: null,
       descriptor: {
@@ -87,5 +88,26 @@ test('supervisory projection rejects authority laundering', async () => {
   await assert.rejects(
     model.selectWorkspace('workspace:alpha'),
     (error: unknown) => error instanceof SupervisoryApplicationError && error.code === 'MISLEADING_AUTHORITY',
+  )
+})
+
+test('supervisory projection rejects incomplete artifact lineage', async () => {
+  const backend = new Backend()
+  backend.value = {
+    ...backend.value,
+    memory: {
+      ...backend.value.memory,
+      artifacts: [{
+        artifactId: 'object:child', hash: `sha256:${'3'.repeat(64)}`, size: 1,
+        schemaHash: `sha256:${'4'.repeat(64)}`, parentIds: ['object:missing'], childIds: [],
+        operation: 'derive', parametersHash: `sha256:${'5'.repeat(64)}`,
+        softwareVersion: '1.0.0', validationId: null, createdAt: '2026-08-28T00:00:00.000Z',
+      }],
+    },
+  }
+  const model = new SupervisoryApplicationModel(backend as unknown as SupervisoryBackend)
+  await assert.rejects(
+    model.selectWorkspace('workspace:alpha'),
+    (error: unknown) => error instanceof SupervisoryApplicationError && error.code === 'INVALID_ARTIFACT_LINEAGE',
   )
 })

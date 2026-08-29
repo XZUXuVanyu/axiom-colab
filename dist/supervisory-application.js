@@ -17,6 +17,17 @@ function freezeSnapshot(snapshot) {
     Object.freeze(copy.progress);
     for (const observation of copy.observations)Object.freeze(observation);
     Object.freeze(copy.observations);
+    for (const item of copy.memory.compute)Object.freeze(item);
+    Object.freeze(copy.memory.compute);
+    for (const item of copy.memory.working)Object.freeze(item);
+    Object.freeze(copy.memory.working);
+    for (const item of copy.memory.artifacts){
+        Object.freeze(item.parentIds);
+        Object.freeze(item.childIds);
+        Object.freeze(item);
+    }
+    Object.freeze(copy.memory.artifacts);
+    Object.freeze(copy.memory);
     for (const tool of copy.tools)Object.freeze(tool);
     Object.freeze(copy.tools);
     for (const candidate of copy.candidates){
@@ -122,6 +133,29 @@ export class SupervisoryApplicationModel {
             const id = `${observation.reportArtifactId}\0${observation.callId}`;
             if (observationIds.has(id)) fail('INVALID_OBSERVATIONS', 'duplicate Tool observation identity');
             observationIds.add(id);
+        }
+        const artifactIds = new Set(snapshot.memory.artifacts.map((item)=>item.artifactId));
+        if (artifactIds.size !== snapshot.memory.artifacts.length) {
+            fail('INVALID_ARTIFACT_LINEAGE', 'artifact projection contains duplicate identities');
+        }
+        const artifactsById = new Map(snapshot.memory.artifacts.map((item)=>[
+                item.artifactId,
+                item
+            ]));
+        for (const artifact of snapshot.memory.artifacts){
+            if (artifact.parentIds.includes(artifact.artifactId) || artifact.childIds.includes(artifact.artifactId)) {
+                fail('INVALID_ARTIFACT_LINEAGE', 'artifact lineage cannot contain a self edge');
+            }
+            for (const parentId of artifact.parentIds)if (!artifactIds.has(parentId)) {
+                fail('INVALID_ARTIFACT_LINEAGE', `artifact parent ${parentId} is not projected`);
+            } else if (!artifactsById.get(parentId)?.childIds.includes(artifact.artifactId)) {
+                fail('INVALID_ARTIFACT_LINEAGE', 'artifact parent and child edges disagree');
+            }
+            for (const childId of artifact.childIds)if (!artifactIds.has(childId)) {
+                fail('INVALID_ARTIFACT_LINEAGE', `artifact child ${childId} is not projected`);
+            } else if (!artifactsById.get(childId)?.parentIds.includes(artifact.artifactId)) {
+                fail('INVALID_ARTIFACT_LINEAGE', 'artifact child and parent edges disagree');
+            }
         }
         const timelineIds = new Set();
         for (const entry of snapshot.timeline){

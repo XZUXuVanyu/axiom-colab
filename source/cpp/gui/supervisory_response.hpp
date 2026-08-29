@@ -28,6 +28,7 @@ struct SupervisoryWorkspaceInspection final {
     cpp_adapter::Json current_plan;
     cpp_adapter::Json progress;
     cpp_adapter::Json observations;
+    cpp_adapter::Json memory;
     cpp_adapter::Json tools;
     cpp_adapter::Json resources;
     cpp_adapter::Json candidates;

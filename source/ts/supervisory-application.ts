@@ -46,6 +46,44 @@ export interface SupervisoryToolObservation {
   readonly observedAt: string
 }
 
+export interface SupervisoryComputeProjection {
+  readonly objectId: LaboratoryId<'object'>
+  readonly revision: number
+  readonly hash: `sha256:${string}`
+  readonly size: number
+  readonly state: 'active' | 'released'
+  readonly expiresAt: string | null
+}
+
+export interface SupervisoryWorkingProjection {
+  readonly revisionId: LaboratoryId<'object'>
+  readonly key: string
+  readonly revision: number
+  readonly hash: `sha256:${string}`
+  readonly proposalId: LaboratoryId<'proposal'>
+  readonly committedAt: string
+}
+
+export interface SupervisoryArtifactProjection {
+  readonly artifactId: LaboratoryId<'object'>
+  readonly hash: `sha256:${string}`
+  readonly size: number
+  readonly schemaHash: `sha256:${string}`
+  readonly parentIds: readonly LaboratoryId<'object'>[]
+  readonly childIds: readonly LaboratoryId<'object'>[]
+  readonly operation: string
+  readonly parametersHash: `sha256:${string}`
+  readonly softwareVersion: string
+  readonly validationId: LaboratoryId<'validation'> | null
+  readonly createdAt: string
+}
+
+export interface SupervisoryMemoryProjection {
+  readonly compute: readonly SupervisoryComputeProjection[]
+  readonly working: readonly SupervisoryWorkingProjection[]
+  readonly artifacts: readonly SupervisoryArtifactProjection[]
+}
+
 export interface SupervisoryToolProjection {
   readonly name: string
   readonly descriptor: ToolDescriptor
@@ -90,6 +128,7 @@ export interface SupervisoryWorkspaceSnapshot {
   readonly currentPlan: SupervisoryPlanProjection | null
   readonly progress: SupervisoryProgressProjection | null
   readonly observations: readonly SupervisoryToolObservation[]
+  readonly memory: SupervisoryMemoryProjection
   readonly tools: readonly SupervisoryToolProjection[]
   readonly resources: WorkspaceResources
   readonly candidates: readonly SupervisoryCandidateProjection[]
@@ -122,6 +161,17 @@ function freezeSnapshot(snapshot: SupervisoryWorkspaceSnapshot): SupervisoryWork
   Object.freeze(copy.progress)
   for (const observation of copy.observations) Object.freeze(observation)
   Object.freeze(copy.observations)
+  for (const item of copy.memory.compute) Object.freeze(item)
+  Object.freeze(copy.memory.compute)
+  for (const item of copy.memory.working) Object.freeze(item)
+  Object.freeze(copy.memory.working)
+  for (const item of copy.memory.artifacts) {
+    Object.freeze(item.parentIds)
+    Object.freeze(item.childIds)
+    Object.freeze(item)
+  }
+  Object.freeze(copy.memory.artifacts)
+  Object.freeze(copy.memory)
   for (const tool of copy.tools) Object.freeze(tool)
   Object.freeze(copy.tools)
   for (const candidate of copy.candidates) {
@@ -240,6 +290,26 @@ export class SupervisoryApplicationModel {
       const id = `${observation.reportArtifactId}\0${observation.callId}`
       if (observationIds.has(id)) fail('INVALID_OBSERVATIONS', 'duplicate Tool observation identity')
       observationIds.add(id)
+    }
+    const artifactIds = new Set(snapshot.memory.artifacts.map((item) => item.artifactId))
+    if (artifactIds.size !== snapshot.memory.artifacts.length) {
+      fail('INVALID_ARTIFACT_LINEAGE', 'artifact projection contains duplicate identities')
+    }
+    const artifactsById = new Map(snapshot.memory.artifacts.map((item) => [item.artifactId, item]))
+    for (const artifact of snapshot.memory.artifacts) {
+      if (artifact.parentIds.includes(artifact.artifactId) || artifact.childIds.includes(artifact.artifactId)) {
+        fail('INVALID_ARTIFACT_LINEAGE', 'artifact lineage cannot contain a self edge')
+      }
+      for (const parentId of artifact.parentIds) if (!artifactIds.has(parentId)) {
+        fail('INVALID_ARTIFACT_LINEAGE', `artifact parent ${parentId} is not projected`)
+      } else if (!artifactsById.get(parentId)?.childIds.includes(artifact.artifactId)) {
+        fail('INVALID_ARTIFACT_LINEAGE', 'artifact parent and child edges disagree')
+      }
+      for (const childId of artifact.childIds) if (!artifactIds.has(childId)) {
+        fail('INVALID_ARTIFACT_LINEAGE', `artifact child ${childId} is not projected`)
+      } else if (!artifactsById.get(childId)?.parentIds.includes(artifact.artifactId)) {
+        fail('INVALID_ARTIFACT_LINEAGE', 'artifact child and parent edges disagree')
+      }
     }
     const timelineIds = new Set<string>()
     for (const entry of snapshot.timeline) {

@@ -65,6 +65,16 @@ goal-session reports bound to the selected goal and exact approved plan, and
 then projects their call IDs, Tool names, results, report artifact identities,
 and hashes. Stale or malformed bindings fail closed.
 
+Memory inspection is likewise host-owned. A fresh scoped read capability
+enumerates compute-object metadata, approved working revisions, and immutable
+artifact metadata without returning payload bytes, working values, database
+paths, or storage credentials to Qt. Artifact projections include content,
+schema, and parameter hashes; software and validation provenance; and complete
+parent/child edges. Missing, duplicate, self-referential, or inconsistent
+lineage fails closed before the application model accepts a snapshot. The Qt
+view renders the three semantic memory classes separately and retains exact
+revision, proposal, artifact, and provenance identities in inspectable details.
+
 `LocalApplicationHost` now owns that composition boundary. Startup discovers
 built-ins through the Adapter, enumerates memory-service workspaces, performs
 trusted installed-Tool rediscovery for each workspace, and exposes one

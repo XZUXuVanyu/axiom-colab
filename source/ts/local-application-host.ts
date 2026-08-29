@@ -8,7 +8,8 @@ import type { MemoryWorkflows } from './memory-workflows.js'
 import type { ToolDescriptor } from './protocol.js'
 import { SupervisoryApplicationModel } from './supervisory-application.js'
 import type {
-  SupervisoryProgressProjection, SupervisoryToolObservation, SupervisoryWorkspaceSnapshot,
+  SupervisoryMemoryProjection, SupervisoryProgressProjection, SupervisoryToolObservation,
+  SupervisoryWorkspaceSnapshot,
 } from './supervisory-application.js'
 import type {
   InstalledToolRegistration, InstalledToolRegistry, ToolInstallationEvidence,
@@ -36,6 +37,7 @@ export interface LocalApplicationHostOptions {
     readonly progress: SupervisoryProgressProjection | null
     readonly observations: readonly SupervisoryToolObservation[]
   }
+  readonly memory?: (workspaceId: LaboratoryId<'workspace'>) => SupervisoryMemoryProjection
 }
 
 export class LocalApplicationHostError extends Error {
@@ -83,6 +85,7 @@ export class LocalApplicationHost {
         rediscoveredTools: (workspaceId) => this.registry.list(workspaceId),
         lifecycle: options.lifecycle,
         ...(options.goalProgress === undefined ? {} : { goalProgress: options.goalProgress }),
+        ...(options.memory === undefined ? {} : { memory: options.memory }),
       },
     )
     this.model = new SupervisoryApplicationModel(this.backend)

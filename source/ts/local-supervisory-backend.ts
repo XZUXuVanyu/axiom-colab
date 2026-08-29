@@ -10,7 +10,7 @@ import type { CandidateRevision } from './tool-workshop.js'
 import type {
   SupervisoryBackend, SupervisoryCandidateProjection, SupervisoryPlanProjection,
   SupervisoryProgressProjection, SupervisoryTimelineEntry, SupervisoryToolObservation,
-  SupervisoryToolProjection, SupervisoryWorkspaceSnapshot,
+  SupervisoryMemoryProjection, SupervisoryToolProjection, SupervisoryWorkspaceSnapshot,
 } from './supervisory-application.js'
 
 export interface LocalGoalProjection {
@@ -40,6 +40,7 @@ export interface LocalSupervisoryBackendOptions {
     readonly progress: SupervisoryProgressProjection | null
     readonly observations: readonly SupervisoryToolObservation[]
   }
+  readonly memory?: (workspaceId: LaboratoryId<'workspace'>) => SupervisoryMemoryProjection
 }
 
 export class LocalSupervisoryBackendError extends Error {
@@ -134,6 +135,7 @@ export class LocalSupervisoryBackend implements SupervisoryBackend {
     const goalState = goalId === null || this.options.goalProgress === undefined
       ? { progress: null, observations: [] }
       : this.options.goalProgress(workspaceId, goalId)
+    const memory = this.options.memory?.(workspaceId) ?? { compute: [], working: [], artifacts: [] }
     const timeline = this.timeline(workspaceId, revisions, validations, proposals, installations)
     for (const observation of goalState.observations) timeline.push({
       id: `observation:${observation.reportArtifactId}:${observation.callId}`,
@@ -144,7 +146,7 @@ export class LocalSupervisoryBackend implements SupervisoryBackend {
     timeline.sort((left, right) => left.occurredAt.localeCompare(right.occurredAt) || left.id.localeCompare(right.id))
     return {
       workspaceId, goalId, currentPlan: planProjection(goal), progress: goalState.progress,
-      observations: [...goalState.observations], tools, resources,
+      observations: [...goalState.observations], memory, tools, resources,
       candidates: projectedCandidates, timeline,
       controls: {
         canStopGoal: goal?.canStop ?? false,

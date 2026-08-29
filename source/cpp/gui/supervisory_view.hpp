@@ -52,6 +52,9 @@ private:
     QListWidget* candidates_{};
     QListWidget* timeline_{};
     QListWidget* observations_{};
+    QListWidget* compute_memory_{};
+    QListWidget* working_memory_{};
+    QListWidget* artifacts_{};
     bool busy_{};
 };
 

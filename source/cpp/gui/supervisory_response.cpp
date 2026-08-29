@@ -151,7 +151,7 @@ SupervisoryWorkspaceInspection parse_workspace_inspection_result(
     std::optional<std::string_view> expected_goal_id) {
     if (!response.ok) fail("cannot decode inspection from an error response");
     const auto& result = require_object(response.result, "inspection result");
-    require_exact_fields(result, {"workspaceId", "goalId", "currentPlan", "progress", "observations", "tools",
+    require_exact_fields(result, {"workspaceId", "goalId", "currentPlan", "progress", "observations", "memory", "tools",
                                   "resources", "candidates", "timeline", "controls"});
     const std::string& workspace_id = require_string(
         response.result.at("workspaceId"), "workspaceId");
@@ -178,11 +178,19 @@ SupervisoryWorkspaceInspection parse_workspace_inspection_result(
         if (!response.result.at(field).is_array()) fail(std::string(field) + " must be an array");
     }
     require_object(response.result.at("resources"), "resources");
+    const auto& memory = require_object(response.result.at("memory"), "memory");
+    require_exact_fields(memory, {"compute", "working", "artifacts"});
+    for (const std::string_view field : {"compute", "working", "artifacts"}) {
+        if (!response.result.at("memory").at(field).is_array()) {
+            fail(std::string("memory.") + std::string(field) + " must be an array");
+        }
+    }
     require_object(response.result.at("controls"), "controls");
     return {
         .workspace_id = workspace_id, .goal_id = std::move(goal_id),
         .current_plan = plan, .progress = progress,
-        .observations = response.result.at("observations"), .tools = response.result.at("tools"),
+        .observations = response.result.at("observations"),
+        .memory = response.result.at("memory"), .tools = response.result.at("tools"),
         .resources = response.result.at("resources"),
         .candidates = response.result.at("candidates"),
         .timeline = response.result.at("timeline"),

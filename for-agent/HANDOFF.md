@@ -4,6 +4,18 @@ Last updated: 2026-08-29
 
 ## Current state
 
+- Supervisory inspection now includes host-owned metadata projections for all
+  three semantic memory classes: bounded compute objects, approved working
+  revisions, and immutable artifacts with complete parent/child lineage and
+  provenance hashes. Payload bytes, working values, paths, and credentials are
+  not exposed to Qt.
+- Fresh scoped trusted-host capabilities enumerate each memory class through
+  its existing read operation. Projection rejects missing, duplicate,
+  self-referential, or inconsistent artifact edges, and workspace scoping is
+  enforced by the memory workflows before metadata is returned.
+- The strict C++ decoder requires the three-part memory projection. The
+  Laboratory view separately renders compute state, approved working revision
+  identities, and artifact lineage/provenance details.
 - Goal-specific supervisory inspection now projects an exact committed
   `goal:<id>:progress` checkpoint and hash-verified Tool observations from
   immutable goal-session-report artifacts. Both sources must bind the selected
@@ -306,6 +318,12 @@ otherwise modified by the consolidation work.
 
 Passed in `D:\Dev\axiom-colab`:
 
+- Memory/lineage slice `pnpm.cmd test`: all 81 TypeScript tests passed,
+  including scoped enumeration of compute, working, and artifact metadata,
+  parent/child derivation, cross-workspace isolation, and rejection of
+  incomplete lineage.
+- Qt 6.12.0/MSVC 19.51 Release rebuilt every affected strict-decoder and
+  Widgets target with warnings as errors; all three CTest targets passed.
 - Goal progress/observation slice `pnpm.cmd test`: all 79 TypeScript tests
   passed, including exact checkpoint/plan binding and projection of a Tool
   result from a hash-verified immutable session-report artifact.
@@ -756,9 +774,7 @@ installation controls:
 
 ## Exact next work
 
-Build detailed memory/artifact lineage views without giving Qt direct storage
-access, then expose the
-existing-Tool execution workflow through host-owned commands before beginning
+Expose the existing-Tool execution workflow through host-owned commands before beginning
 candidate-authoring and approval controls. Keep mutations absent from the
 current read-only transport until their exact authority and refresh behavior
 are implemented and tested independently.
