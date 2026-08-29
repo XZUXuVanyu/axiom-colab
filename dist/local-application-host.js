@@ -45,7 +45,10 @@ export class LocalApplicationHost {
         this.backend = new LocalSupervisoryBackend(options.store, options.workflows, options.candidates, options.validator, {
             builtInTools: ()=>this.descriptors,
             rediscoveredTools: (workspaceId)=>this.registry.list(workspaceId),
-            lifecycle: options.lifecycle
+            lifecycle: options.lifecycle,
+            ...options.goalProgress === undefined ? {} : {
+                goalProgress: options.goalProgress
+            }
         });
         this.model = new SupervisoryApplicationModel(this.backend);
     }

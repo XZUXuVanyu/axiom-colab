@@ -9,7 +9,8 @@ import type { ToolInstallationProposal, ValidationPromotionAuthority } from './t
 import type { CandidateRevision } from './tool-workshop.js'
 import type {
   SupervisoryBackend, SupervisoryCandidateProjection, SupervisoryPlanProjection,
-  SupervisoryTimelineEntry, SupervisoryToolProjection, SupervisoryWorkspaceSnapshot,
+  SupervisoryProgressProjection, SupervisoryTimelineEntry, SupervisoryToolObservation,
+  SupervisoryToolProjection, SupervisoryWorkspaceSnapshot,
 } from './supervisory-application.js'
 
 export interface LocalGoalProjection {
@@ -35,6 +36,10 @@ export interface LocalSupervisoryBackendOptions {
   /** Registrations returned by successful ToolInstallationService rediscovery. */
   readonly rediscoveredTools: (workspaceId: LaboratoryId<'workspace'>) => readonly InstalledToolRegistration[]
   readonly lifecycle: LocalSupervisoryLifecycle
+  readonly goalProgress?: (workspaceId: LaboratoryId<'workspace'>, goalId: LaboratoryId<'goal'>) => {
+    readonly progress: SupervisoryProgressProjection | null
+    readonly observations: readonly SupervisoryToolObservation[]
+  }
 }
 
 export class LocalSupervisoryBackendError extends Error {
@@ -126,9 +131,20 @@ export class LocalSupervisoryBackend implements SupervisoryBackend {
       })
     }
 
+    const goalState = goalId === null || this.options.goalProgress === undefined
+      ? { progress: null, observations: [] }
+      : this.options.goalProgress(workspaceId, goalId)
     const timeline = this.timeline(workspaceId, revisions, validations, proposals, installations)
+    for (const observation of goalState.observations) timeline.push({
+      id: `observation:${observation.reportArtifactId}:${observation.callId}`,
+      occurredAt: observation.observedAt, kind: 'tool-observation',
+      summary: `${observation.tool} returned an observed result`, subjectId: observation.callId,
+      authoritativeHash: observation.reportHash, detail: observation.result,
+    })
+    timeline.sort((left, right) => left.occurredAt.localeCompare(right.occurredAt) || left.id.localeCompare(right.id))
     return {
-      workspaceId, goalId, currentPlan: planProjection(goal), tools, resources,
+      workspaceId, goalId, currentPlan: planProjection(goal), progress: goalState.progress,
+      observations: [...goalState.observations], tools, resources,
       candidates: projectedCandidates, timeline,
       controls: {
         canStopGoal: goal?.canStop ?? false,

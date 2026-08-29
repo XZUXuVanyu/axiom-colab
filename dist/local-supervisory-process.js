@@ -59,6 +59,106 @@ export function createLocalApprovedPlanReader(workflows, hostActorId, now = ()=>
         return revision;
     };
 }
+function goalProgressValue(value, goalId) {
+    if (!record(value)) return false;
+    const allowed = new Set([
+        'goalId',
+        'planRevisionId',
+        'planHash',
+        'status',
+        'summary',
+        'completedCalls',
+        'totalCalls'
+    ]);
+    if (Object.keys(value).some((key)=>!allowed.has(key))) return false;
+    return value.goalId === goalId && typeof value.planRevisionId === 'string' && value.planRevisionId.startsWith('object:') && typeof value.planHash === 'string' && /^sha256:[0-9a-f]{64}$/.test(value.planHash) && (value.status === 'pending' || value.status === 'running' || value.status === 'blocked' || value.status === 'completed') && typeof value.summary === 'string' && value.summary.length > 0 && Number.isSafeInteger(value.completedCalls) && value.completedCalls >= 0 && Number.isSafeInteger(value.totalCalls) && value.totalCalls >= value.completedCalls;
+}
+function sessionReport(value, goalId) {
+    if (!record(value) || value.goalId !== goalId || !Array.isArray(value.observations) || typeof value.completedAt !== 'string' || typeof value.planRevisionId !== 'string' || typeof value.planHash !== 'string') return false;
+    return value.observations.every((item)=>record(item) && typeof item.callId === 'string' && item.callId.startsWith('call:') && typeof item.tool === 'string' && item.tool.length > 0 && 'result' in item);
+}
+export function createLocalGoalProgressReader(workflows, hostActorId, approvedPlan, now = ()=>new Date()) {
+    return (workspaceId, goalId)=>{
+        const issued = now();
+        const callId = `call:${randomUUID()}`;
+        const toolId = 'tool:supervisory-host';
+        const invocation = {
+            authority: 'trusted-host',
+            context: {
+                workspaceId,
+                actorId: hostActorId,
+                callId,
+                toolId
+            },
+            capability: {
+                protocolVersion: '1.0',
+                capabilityId: 'capability:supervisory-progress-read',
+                workspaceId,
+                actorId: hostActorId,
+                toolId,
+                callId,
+                operations: [
+                    'working.read',
+                    'artifact.read'
+                ],
+                issuedAt: issued.toISOString(),
+                expiresAt: new Date(issued.getTime() + 60_000).toISOString(),
+                nonce: randomUUID()
+            }
+        };
+        const plan = approvedPlan(workspaceId, goalId);
+        if (plan === null) throw Object.assign(new Error('goal progress has no authoritative approved plan'), {
+            code: 'INVALID_GOAL_PROGRESS'
+        });
+        const revision = workflows.readWorking(invocation, `${goalId}:progress`);
+        let progress = null;
+        if (revision !== null) {
+            if (revision.key !== `${goalId}:progress` || !goalProgressValue(revision.value, goalId) || revision.value.planRevisionId !== plan.id || revision.value.planHash !== plan.hash) {
+                throw Object.assign(new Error('goal progress is malformed or bound to another approved plan'), {
+                    code: 'INVALID_GOAL_PROGRESS'
+                });
+            }
+            progress = {
+                revisionId: revision.id,
+                hash: revision.hash,
+                status: revision.value.status,
+                summary: revision.value.summary,
+                completedCalls: revision.value.completedCalls,
+                totalCalls: revision.value.totalCalls
+            };
+        }
+        const observations = [];
+        for (const artifact of workflows.listArtifacts(invocation)){
+            if (!record(artifact.schema) || artifact.schema.title !== 'Axiom goal session report') continue;
+            let parsed;
+            try {
+                parsed = JSON.parse(Buffer.from(workflows.readArtifact(invocation, artifact.id)).toString('utf8'));
+            } catch  {
+                throw Object.assign(new Error('goal session report artifact is malformed'), {
+                    code: 'INVALID_GOAL_REPORT'
+                });
+            }
+            if (!sessionReport(parsed, goalId)) continue;
+            if (parsed.planRevisionId !== plan.id || parsed.planHash !== plan.hash) {
+                throw Object.assign(new Error('goal session report is bound to another approved plan'), {
+                    code: 'INVALID_GOAL_REPORT'
+                });
+            }
+            for (const observation of parsed.observations)observations.push({
+                reportArtifactId: artifact.id,
+                reportHash: artifact.hash,
+                callId: observation.callId,
+                tool: observation.tool,
+                result: observation.result,
+                observedAt: parsed.completedAt
+            });
+        }
+        return {
+            progress,
+            observations
+        };
+    };
+}
 export function parseLocalSupervisoryProcessConfig(value) {
     if (!record(value)) throw new TypeError('supervisory process config must be an object');
     const allowed = new Set([
@@ -104,8 +204,9 @@ export async function runLocalSupervisoryProcess(configValue) {
             code: 'OPERATION_NOT_AVAILABLE'
         });
     };
+    const approvedPlan = createLocalApprovedPlanReader(workflows, config.hostActorId);
     const lifecycle = new LocalGoalLifecycle(join(config.stateRoot, 'lifecycle.sqlite3'), {
-        approvedPlan: createLocalApprovedPlanReader(workflows, config.hostActorId),
+        approvedPlan,
         revokeCapability: unavailable,
         stopGoal: unavailable,
         resumeGoal: unavailable,
@@ -146,6 +247,7 @@ export async function runLocalSupervisoryProcess(configValue) {
         adapter,
         validator,
         hostActorId: config.hostActorId,
+        goalProgress: createLocalGoalProgressReader(workflows, config.hostActorId, approvedPlan),
         createInstallation: (registry)=>new ToolInstallationService(candidates, validator, {
                 installationRoot: join(config.stateRoot, 'installed'),
                 registry

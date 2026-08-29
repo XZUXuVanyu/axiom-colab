@@ -11,6 +11,7 @@ const host = {
         revisionId: 'object:plan', hash: `sha256:${'1'.repeat(64)}`,
         objective: 'Inspect authoritative state.', approved: true,
       },
+      progress: null, observations: [],
       tools: [], candidates: [], timeline: [],
       resources: { workspaceId, usedBytes: 0, objectCount: 0, quota: { maxBytes: 10, maxObjects: 1 }, expiredObjects: 0, corruptObjects: 0 },
       controls: { canStopGoal: false, revocableCapabilityIds: [], canResumeGoal: false, recoveryRequired: false },

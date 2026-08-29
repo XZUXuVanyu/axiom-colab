@@ -4,6 +4,19 @@ Last updated: 2026-08-29
 
 ## Current state
 
+- Goal-specific supervisory inspection now projects an exact committed
+  `goal:<id>:progress` checkpoint and hash-verified Tool observations from
+  immutable goal-session-report artifacts. Both sources must bind the selected
+  goal and current approved-plan revision/hash; malformed or stale bindings
+  fail closed.
+- `MemoryWorkflows.listArtifacts` provides scoped metadata enumeration under
+  `artifact.read`; payload reads still pass through content-hash verification.
+  The production host uses fresh call-scoped trusted-host capabilities and Qt
+  receives projections only, never storage paths or database authority.
+- The strict C++ inspection decoder now requires the progress and observation
+  fields. The Laboratory view renders checkpoint status/call counts and a
+  separate observed-Tool-results list whose tooltips retain report artifact
+  identities and authoritative hashes.
 - Production supervisory composition now supplies `LocalGoalLifecycle` with a
   scoped trusted-host reader for the exact committed `goal:<id>:plan` working
   revision. The reader rejects malformed values and goal mismatches rather
@@ -293,6 +306,15 @@ otherwise modified by the consolidation work.
 
 Passed in `D:\Dev\axiom-colab`:
 
+- Goal progress/observation slice `pnpm.cmd test`: all 79 TypeScript tests
+  passed, including exact checkpoint/plan binding and projection of a Tool
+  result from a hash-verified immutable session-report artifact.
+- Qt 6.12.0/MSVC 19.51 Release rebuild after initializing the Visual Studio
+  2026 Developer Command Prompt completed all targets with warnings as errors;
+  CTest passed all three C++/real-process/offscreen-Widgets targets.
+- The first direct Qt rebuild attempt lacked the Developer Command Prompt
+  standard-library include environment and failed on `<cstdint>`; rerunning
+  from `VsDevCmd.bat` produced the passing build above.
 - Goal/plan read slice `pnpm.cmd test`: all 78 TypeScript tests passed,
   including exact committed-plan reading, malformed goal binding rejection,
   stale lifecycle enumeration, and strict workspace-bound `list-goals`.
@@ -734,9 +756,8 @@ installation controls:
 
 ## Exact next work
 
-Add authoritative goal progress projection from checkpointed working state and
-Tool-call observations, then build detailed memory/artifact lineage and Tool
-call views without giving Qt direct storage access. After that, expose the
+Build detailed memory/artifact lineage views without giving Qt direct storage
+access, then expose the
 existing-Tool execution workflow through host-owned commands before beginning
 candidate-authoring and approval controls. Keep mutations absent from the
 current read-only transport until their exact authority and refresh behavior

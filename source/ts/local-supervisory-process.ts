@@ -5,6 +5,8 @@ import { isAbsolute, join, resolve } from 'node:path'
 import { AdapterService } from './adapter-service.js'
 import type { ValidationRecord } from './candidate-validation.js'
 import { LocalCandidateRepository } from './candidate-repository.js'
+import type { GoalSessionReport } from './goal-coordinator.js'
+import type { JsonValue } from './harness-types.js'
 import type { LaboratoryId } from './laboratory-contract.js'
 import { LocalApplicationHost } from './local-application-host.js'
 import { LocalGoalLifecycle } from './local-goal-lifecycle.js'
@@ -15,6 +17,7 @@ import { ProcessRunner } from './process-runner.js'
 import { SupervisoryTransport } from './supervisory-transport.js'
 import { runSupervisoryTransportServer } from './supervisory-transport-server.js'
 import { ToolInstallationService } from './tool-installation.js'
+import type { SupervisoryProgressProjection, SupervisoryToolObservation } from './supervisory-application.js'
 
 export interface LocalSupervisoryProcessConfig {
   readonly stateRoot: string
@@ -71,6 +74,89 @@ export function createLocalApprovedPlanReader(
   }
 }
 
+function goalProgressValue(value: unknown, goalId: LaboratoryId<'goal'>): value is {
+  readonly goalId: LaboratoryId<'goal'>; readonly planRevisionId: LaboratoryId<'object'>
+  readonly planHash: `sha256:${string}`; readonly status: 'pending' | 'running' | 'blocked' | 'completed'
+  readonly summary: string; readonly completedCalls: number; readonly totalCalls: number
+} {
+  if (!record(value)) return false
+  const allowed = new Set(['goalId', 'planRevisionId', 'planHash', 'status', 'summary', 'completedCalls', 'totalCalls'])
+  if (Object.keys(value).some((key) => !allowed.has(key))) return false
+  return value.goalId === goalId
+    && typeof value.planRevisionId === 'string' && value.planRevisionId.startsWith('object:')
+    && typeof value.planHash === 'string' && /^sha256:[0-9a-f]{64}$/.test(value.planHash)
+    && (value.status === 'pending' || value.status === 'running' || value.status === 'blocked' || value.status === 'completed')
+    && typeof value.summary === 'string' && value.summary.length > 0
+    && Number.isSafeInteger(value.completedCalls) && (value.completedCalls as number) >= 0
+    && Number.isSafeInteger(value.totalCalls) && (value.totalCalls as number) >= (value.completedCalls as number)
+}
+
+function sessionReport(value: unknown, goalId: LaboratoryId<'goal'>): value is GoalSessionReport {
+  if (!record(value) || value.goalId !== goalId || !Array.isArray(value.observations)
+      || typeof value.completedAt !== 'string' || typeof value.planRevisionId !== 'string'
+      || typeof value.planHash !== 'string') return false
+  return value.observations.every((item) => record(item)
+    && typeof item.callId === 'string' && item.callId.startsWith('call:')
+    && typeof item.tool === 'string' && item.tool.length > 0 && 'result' in item)
+}
+
+export function createLocalGoalProgressReader(
+  workflows: MemoryWorkflows,
+  hostActorId: LaboratoryId<'actor'>,
+  approvedPlan: ReturnType<typeof createLocalApprovedPlanReader>,
+  now: () => Date = () => new Date(),
+): (workspaceId: LaboratoryId<'workspace'>, goalId: LaboratoryId<'goal'>) => {
+  readonly progress: SupervisoryProgressProjection | null
+  readonly observations: readonly SupervisoryToolObservation[]
+} {
+  return (workspaceId, goalId) => {
+    const issued = now()
+    const callId = `call:${randomUUID()}` as LaboratoryId<'call'>
+    const toolId = 'tool:supervisory-host' as LaboratoryId<'tool'>
+    const invocation = {
+      authority: 'trusted-host' as const,
+      context: { workspaceId, actorId: hostActorId, callId, toolId },
+      capability: {
+        protocolVersion: '1.0' as const, capabilityId: 'capability:supervisory-progress-read' as const,
+        workspaceId, actorId: hostActorId, toolId, callId,
+        operations: ['working.read', 'artifact.read'] as const, issuedAt: issued.toISOString(),
+        expiresAt: new Date(issued.getTime() + 60_000).toISOString(), nonce: randomUUID(),
+      },
+    }
+    const plan = approvedPlan(workspaceId, goalId)
+    if (plan === null) throw Object.assign(new Error('goal progress has no authoritative approved plan'), { code: 'INVALID_GOAL_PROGRESS' })
+    const revision = workflows.readWorking<unknown>(invocation, `${goalId}:progress`)
+    let progress: SupervisoryProgressProjection | null = null
+    if (revision !== null) {
+      if (revision.key !== `${goalId}:progress` || !goalProgressValue(revision.value, goalId)
+          || revision.value.planRevisionId !== plan.id || revision.value.planHash !== plan.hash) {
+        throw Object.assign(new Error('goal progress is malformed or bound to another approved plan'), { code: 'INVALID_GOAL_PROGRESS' })
+      }
+      progress = {
+        revisionId: revision.id, hash: revision.hash, status: revision.value.status,
+        summary: revision.value.summary, completedCalls: revision.value.completedCalls,
+        totalCalls: revision.value.totalCalls,
+      }
+    }
+    const observations: SupervisoryToolObservation[] = []
+    for (const artifact of workflows.listArtifacts(invocation)) {
+      if (!record(artifact.schema) || artifact.schema.title !== 'Axiom goal session report') continue
+      let parsed: unknown
+      try { parsed = JSON.parse(Buffer.from(workflows.readArtifact(invocation, artifact.id)).toString('utf8')) }
+      catch { throw Object.assign(new Error('goal session report artifact is malformed'), { code: 'INVALID_GOAL_REPORT' }) }
+      if (!sessionReport(parsed, goalId)) continue
+      if (parsed.planRevisionId !== plan.id || parsed.planHash !== plan.hash) {
+        throw Object.assign(new Error('goal session report is bound to another approved plan'), { code: 'INVALID_GOAL_REPORT' })
+      }
+      for (const observation of parsed.observations) observations.push({
+        reportArtifactId: artifact.id, reportHash: artifact.hash, callId: observation.callId,
+        tool: observation.tool, result: observation.result as JsonValue, observedAt: parsed.completedAt,
+      })
+    }
+    return { progress, observations }
+  }
+}
+
 export function parseLocalSupervisoryProcessConfig(value: unknown): LocalSupervisoryProcessConfig {
   if (!record(value)) throw new TypeError('supervisory process config must be an object')
   const allowed = new Set(['stateRoot', 'bridgePath', 'bridgeArgs', 'bridgeWorkingDirectory', 'hostActorId', 'maxLineBytes'])
@@ -108,8 +194,9 @@ export async function runLocalSupervisoryProcess(configValue: unknown): Promise<
     },
   }
   const unavailable = async (): Promise<never> => { throw Object.assign(new Error('lifecycle mutation is not exposed by the read-only process'), { code: 'OPERATION_NOT_AVAILABLE' }) }
+  const approvedPlan = createLocalApprovedPlanReader(workflows, config.hostActorId)
   const lifecycle = new LocalGoalLifecycle(join(config.stateRoot, 'lifecycle.sqlite3'), {
-    approvedPlan: createLocalApprovedPlanReader(workflows, config.hostActorId),
+    approvedPlan,
     revokeCapability: unavailable,
     stopGoal: unavailable,
     resumeGoal: unavailable,
@@ -129,6 +216,7 @@ export async function runLocalSupervisoryProcess(configValue: unknown): Promise<
   const host = new LocalApplicationHost({
     store, workflows, candidates, lifecycle, adapter, validator,
     hostActorId: config.hostActorId,
+    goalProgress: createLocalGoalProgressReader(workflows, config.hostActorId, approvedPlan),
     createInstallation: (registry) => new ToolInstallationService(candidates, validator, {
       installationRoot: join(config.stateRoot, 'installed'), registry,
     }),

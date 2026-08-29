@@ -143,7 +143,7 @@ export { LocalGoalLifecycle, LocalGoalLifecycleError } from './local-goal-lifecy
 export { LocalApplicationHost, LocalApplicationHostError } from './local-application-host.js';
 export { SUPERVISORY_TRANSPORT_VERSION, SupervisoryTransport, SupervisoryTransportError } from './supervisory-transport.js';
 export { runSupervisoryTransportServer } from './supervisory-transport-server.js';
-export { createLocalApprovedPlanReader, parseLocalSupervisoryProcessConfig, readLocalSupervisoryProcessConfig, runLocalSupervisoryProcess } from './local-supervisory-process.js';
+export { createLocalApprovedPlanReader, createLocalGoalProgressReader, parseLocalSupervisoryProcessConfig, readLocalSupervisoryProcessConfig, runLocalSupervisoryProcess } from './local-supervisory-process.js';
 export { InvocationLedger } from './invocation-ledger.js';
 
 

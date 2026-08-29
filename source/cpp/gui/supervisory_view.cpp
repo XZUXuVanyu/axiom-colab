@@ -146,12 +146,18 @@ void SupervisoryView::build_ui() {
     approved_plan_->setWordWrap(true);
     approved_plan_->setTextInteractionFlags(Qt::TextSelectableByMouse);
     plan_layout->addWidget(approved_plan_);
+    goal_progress_ = new QLabel("No checkpointed progress.", plan_group);
+    goal_progress_->setObjectName("goalProgress");
+    goal_progress_->setWordWrap(true);
+    goal_progress_->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    plan_layout->addWidget(goal_progress_);
     page->addWidget(plan_group);
 
     auto* summaries = new QGridLayout();
     summaries->addWidget(list_group("Discovered Tools", &tools_, this), 0, 0);
     summaries->addWidget(list_group("Tool candidates", &candidates_, this), 0, 1);
-    summaries->addWidget(list_group("Immutable activity timeline", &timeline_, this), 1, 0, 1, 2);
+    summaries->addWidget(list_group("Observed Tool results", &observations_, this), 1, 0);
+    summaries->addWidget(list_group("Immutable activity timeline", &timeline_, this), 1, 1);
     summaries->setRowStretch(0, 1);
     summaries->setRowStretch(1, 1);
     page->addLayout(summaries, 1);
@@ -211,6 +217,7 @@ void SupervisoryView::load_workspaces() {
                         resources_->setText("No visible workspaces");
                         tools_->clear();
                         candidates_->clear();
+                        observations_->clear();
                         timeline_->clear();
                     } else {
                         load_goals();
@@ -224,6 +231,7 @@ void SupervisoryView::load_workspaces() {
         show_error(QString::fromUtf8(error.what()));
         set_busy(false);
     }
+
 }
 
 void SupervisoryView::load_goals() {
@@ -335,6 +343,27 @@ void SupervisoryView::render(const SupervisoryWorkspaceInspection& inspection) {
             + "\nHash: " + text(string_field(inspection.current_plan, "hash")));
     }
 
+    if (inspection.progress.is_null()) {
+        goal_progress_->setText("No checkpointed progress.");
+        goal_progress_->setToolTip({});
+    } else {
+        const auto& progress = require_object(inspection.progress, "progress");
+        if (progress.size() != 6 || !progress.contains("revisionId")
+            || !progress.contains("hash") || !progress.contains("status")
+            || !progress.contains("summary") || !progress.contains("completedCalls")
+            || !progress.contains("totalCalls")) {
+            throw SupervisoryResponseError("progress has missing or unknown fields");
+        }
+        goal_progress_->setText(QString("%1 — %2 (%3/%4 calls)")
+            .arg(text(string_field(inspection.progress, "status")),
+                 text(string_field(inspection.progress, "summary")))
+            .arg(integer_field(inspection.progress, "completedCalls"))
+            .arg(integer_field(inspection.progress, "totalCalls")));
+        goal_progress_->setToolTip(
+            "Checkpoint revision: " + text(string_field(inspection.progress, "revisionId"))
+            + "\nHash: " + text(string_field(inspection.progress, "hash")));
+    }
+
     require_object(inspection.resources, "resources");
     const Json& quota = inspection.resources.at("quota");
     require_object(quota, "resources.quota");
@@ -384,6 +413,18 @@ void SupervisoryView::render(const SupervisoryWorkspaceInspection& inspection) {
             item->setText(item->text() + QString(" | promotable: %1")
                 .arg(boolean_field(validation_value, "promotable") ? "yes" : "no"));
         }
+    }
+
+
+    observations_->clear();
+    for (const Json& observation : inspection.observations.as_array()) {
+        require_object(observation, "Tool observation");
+        const QString tool = text(string_field(observation, "tool"));
+        const QString call_id = text(string_field(observation, "callId"));
+        auto* item = new QListWidgetItem(QString("%1  [%2]").arg(tool, call_id), observations_);
+        item->setToolTip(
+            "Hash-verified session report: " + text(string_field(observation, "reportHash"))
+            + "\nArtifact: " + text(string_field(observation, "reportArtifactId")));
     }
 
     timeline_->clear();

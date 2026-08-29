@@ -47,9 +47,11 @@ private:
     QPushButton* refresh_button_{};
     QLabel* resources_{};
     QLabel* approved_plan_{};
+    QLabel* goal_progress_{};
     QListWidget* tools_{};
     QListWidget* candidates_{};
     QListWidget* timeline_{};
+    QListWidget* observations_{};
     bool busy_{};
 };
 

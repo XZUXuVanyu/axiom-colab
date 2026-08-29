@@ -14,6 +14,9 @@ function clone(value) {
 function freezeSnapshot(snapshot) {
     const copy = clone(snapshot);
     Object.freeze(copy.currentPlan);
+    Object.freeze(copy.progress);
+    for (const observation of copy.observations)Object.freeze(observation);
+    Object.freeze(copy.observations);
     for (const tool of copy.tools)Object.freeze(tool);
     Object.freeze(copy.tools);
     for (const candidate of copy.candidates){
@@ -105,6 +108,21 @@ export class SupervisoryApplicationModel {
         ];
     }
     assertProjection(snapshot) {
+        if (snapshot.goalId === null && (snapshot.progress !== null || snapshot.observations.length > 0)) {
+            fail('BACKEND_SELECTION_MISMATCH', 'workspace overview cannot contain goal progress or observations');
+        }
+        if (snapshot.progress !== null && snapshot.currentPlan === null) {
+            fail('MISLEADING_AUTHORITY', 'goal progress requires its approved plan projection');
+        }
+        if (snapshot.progress !== null && snapshot.progress.completedCalls > snapshot.progress.totalCalls) {
+            fail('INVALID_PROGRESS', 'completed calls cannot exceed total calls');
+        }
+        const observationIds = new Set();
+        for (const observation of snapshot.observations){
+            const id = `${observation.reportArtifactId}\0${observation.callId}`;
+            if (observationIds.has(id)) fail('INVALID_OBSERVATIONS', 'duplicate Tool observation identity');
+            observationIds.add(id);
+        }
         const timelineIds = new Set();
         for (const entry of snapshot.timeline){
             if (timelineIds.has(entry.id)) fail('INVALID_TIMELINE', `duplicate timeline entry ${entry.id}`);

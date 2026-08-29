@@ -151,7 +151,7 @@ SupervisoryWorkspaceInspection parse_workspace_inspection_result(
     std::optional<std::string_view> expected_goal_id) {
     if (!response.ok) fail("cannot decode inspection from an error response");
     const auto& result = require_object(response.result, "inspection result");
-    require_exact_fields(result, {"workspaceId", "goalId", "currentPlan", "tools",
+    require_exact_fields(result, {"workspaceId", "goalId", "currentPlan", "progress", "observations", "tools",
                                   "resources", "candidates", "timeline", "controls"});
     const std::string& workspace_id = require_string(
         response.result.at("workspaceId"), "workspaceId");
@@ -172,14 +172,17 @@ SupervisoryWorkspaceInspection parse_workspace_inspection_result(
     }
     const Json& plan = response.result.at("currentPlan");
     if (!plan.is_null() && !plan.is_object()) fail("currentPlan must be null or an object");
-    for (const std::string_view field : {"tools", "candidates", "timeline"}) {
+    const Json& progress = response.result.at("progress");
+    if (!progress.is_null() && !progress.is_object()) fail("progress must be null or an object");
+    for (const std::string_view field : {"observations", "tools", "candidates", "timeline"}) {
         if (!response.result.at(field).is_array()) fail(std::string(field) + " must be an array");
     }
     require_object(response.result.at("resources"), "resources");
     require_object(response.result.at("controls"), "controls");
     return {
         .workspace_id = workspace_id, .goal_id = std::move(goal_id),
-        .current_plan = plan, .tools = response.result.at("tools"),
+        .current_plan = plan, .progress = progress,
+        .observations = response.result.at("observations"), .tools = response.result.at("tools"),
         .resources = response.result.at("resources"),
         .candidates = response.result.at("candidates"),
         .timeline = response.result.at("timeline"),

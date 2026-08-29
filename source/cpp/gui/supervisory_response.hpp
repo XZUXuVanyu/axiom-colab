@@ -26,6 +26,8 @@ struct SupervisoryWorkspaceInspection final {
     std::string workspace_id;
     std::optional<std::string> goal_id;
     cpp_adapter::Json current_plan;
+    cpp_adapter::Json progress;
+    cpp_adapter::Json observations;
     cpp_adapter::Json tools;
     cpp_adapter::Json resources;
     cpp_adapter::Json candidates;

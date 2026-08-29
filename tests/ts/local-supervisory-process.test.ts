@@ -6,7 +6,7 @@ import { spawn } from 'node:child_process'
 import test from 'node:test'
 
 import {
-  createLocalApprovedPlanReader, LocalMemoryStore, MemoryWorkflows,
+  createLocalApprovedPlanReader, createLocalGoalProgressReader, LocalMemoryStore, MemoryWorkflows,
   parseLocalSupervisoryProcessConfig,
 } from '../../dist/index.js'
 
@@ -99,5 +99,52 @@ test('local approved-plan reader binds committed working state to the exact goal
     () => reader('workspace:alpha', 'goal:bad'),
     (error: unknown) => (error as { code?: string }).code === 'INVALID_APPROVED_PLAN',
   )
+  workflows.close(); store.close()
+})
+
+test('local progress reader binds checkpoints and observed Tool results to the approved plan', () => {
+  const root = join(tmpdir(), `axiom-supervisory-progress-${crypto.randomUUID()}`)
+  mkdirSync(root); roots.push(root)
+  const at = new Date('2026-08-29T02:00:00.000Z')
+  const store = new LocalMemoryStore(join(root, 'memory'), { now: () => at })
+  store.createWorkspace('workspace:alpha')
+  const workflows = new MemoryWorkflows(store, { now: () => at })
+  const invocation = (authority: 'model' | 'user' | 'trusted-host', operations: string[]) => ({
+    authority,
+    context: { workspaceId: 'workspace:alpha', actorId: `actor:${authority}`, callId: `call:${authority}:${operations[0]}`, toolId: 'tool:test' },
+    capability: {
+      protocolVersion: '1.0', capabilityId: `capability:${authority}:${operations[0]}`,
+      workspaceId: 'workspace:alpha', actorId: `actor:${authority}`,
+      toolId: 'tool:test', callId: `call:${authority}:${operations[0]}`, operations,
+      issuedAt: at.toISOString(), expiresAt: new Date(at.getTime() + 60_000).toISOString(), nonce: `${authority}:${operations[0]}`,
+    },
+  }) as any
+  const commit = (key: string, value: unknown) => {
+    const proposal = workflows.proposeWorking(invocation('model', ['working.propose']), key, value)
+    return workflows.approveWorking(invocation('user', ['working.approve']), proposal.id, {
+      workspaceId: 'workspace:alpha', proposalId: proposal.id, proposalHash: proposal.hash, decision: 'approved',
+    })
+  }
+  const plan = commit('goal:one:plan', { goalId: 'goal:one', objective: 'Observe a Tool.', calls: [{ tool: 'add_numbers', arguments: {} }] })
+  const progress = commit('goal:one:progress', {
+    goalId: 'goal:one', planRevisionId: plan.id, planHash: plan.hash,
+    status: 'completed', summary: 'The planned Tool call completed.', completedCalls: 1, totalCalls: 1,
+  })
+  const report = {
+    goalId: 'goal:one', planRevisionId: plan.id, planHash: plan.hash,
+    startedAt: at.toISOString(), completedAt: at.toISOString(), calls: [],
+    observations: [{ callId: 'call:observed', tool: 'add_numbers', result: { result: 5 } }], resultingArtifactIds: [],
+  }
+  const artifact = workflows.createArtifact(
+    invocation('trusted-host', ['artifact.create']), Buffer.from(JSON.stringify(report)),
+    { type: 'object', title: 'Axiom goal session report', protocolVersion: '1.0' },
+    { operation: 'goal.session.report', parametersHash: plan.hash, softwareVersion: '1.0.0', validationId: null },
+  )
+  const approvedPlan = createLocalApprovedPlanReader(workflows, 'actor:host', () => at)
+  const projected = createLocalGoalProgressReader(workflows, 'actor:host', approvedPlan, () => at)('workspace:alpha', 'goal:one')
+  assert.equal(projected.progress?.revisionId, progress.id)
+  assert.equal(projected.progress?.status, 'completed')
+  assert.equal(projected.observations[0]?.reportArtifactId, artifact.id)
+  assert.deepEqual(projected.observations[0]?.result, { result: 5 })
   workflows.close(); store.close()
 })

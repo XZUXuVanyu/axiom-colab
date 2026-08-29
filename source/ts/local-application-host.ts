@@ -7,7 +7,9 @@ import type { LocalMemoryStore } from './local-memory-store.js'
 import type { MemoryWorkflows } from './memory-workflows.js'
 import type { ToolDescriptor } from './protocol.js'
 import { SupervisoryApplicationModel } from './supervisory-application.js'
-import type { SupervisoryWorkspaceSnapshot } from './supervisory-application.js'
+import type {
+  SupervisoryProgressProjection, SupervisoryToolObservation, SupervisoryWorkspaceSnapshot,
+} from './supervisory-application.js'
 import type {
   InstalledToolRegistration, InstalledToolRegistry, ToolInstallationEvidence,
 } from './tool-installation.js'
@@ -30,6 +32,10 @@ export interface LocalApplicationHostOptions {
   readonly validator: ValidationPromotionAuthority
   readonly createInstallation: (registry: InstalledToolRegistry) => InstalledToolRediscovery
   readonly hostActorId: LaboratoryId<'actor'>
+  readonly goalProgress?: (workspaceId: LaboratoryId<'workspace'>, goalId: LaboratoryId<'goal'>) => {
+    readonly progress: SupervisoryProgressProjection | null
+    readonly observations: readonly SupervisoryToolObservation[]
+  }
 }
 
 export class LocalApplicationHostError extends Error {
@@ -76,6 +82,7 @@ export class LocalApplicationHost {
         builtInTools: () => this.descriptors,
         rediscoveredTools: (workspaceId) => this.registry.list(workspaceId),
         lifecycle: options.lifecycle,
+        ...(options.goalProgress === undefined ? {} : { goalProgress: options.goalProgress }),
       },
     )
     this.model = new SupervisoryApplicationModel(this.backend)

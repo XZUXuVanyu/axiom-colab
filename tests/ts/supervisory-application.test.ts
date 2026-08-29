@@ -8,7 +8,7 @@ import {
 
 function state(): SupervisoryWorkspaceSnapshot {
   return {
-    workspaceId: 'workspace:alpha', goalId: null, currentPlan: null,
+    workspaceId: 'workspace:alpha', goalId: null, currentPlan: null, progress: null, observations: [],
     tools: [{
       name: 'add_numbers', source: 'built-in', installationEvidenceHash: null,
       descriptor: {

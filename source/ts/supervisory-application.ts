@@ -28,6 +28,24 @@ export interface SupervisoryPlanProjection {
   readonly approved: true
 }
 
+export interface SupervisoryProgressProjection {
+  readonly revisionId: LaboratoryId<'object'>
+  readonly hash: `sha256:${string}`
+  readonly status: 'pending' | 'running' | 'blocked' | 'completed'
+  readonly summary: string
+  readonly completedCalls: number
+  readonly totalCalls: number
+}
+
+export interface SupervisoryToolObservation {
+  readonly reportArtifactId: LaboratoryId<'object'>
+  readonly reportHash: `sha256:${string}`
+  readonly callId: LaboratoryId<'call'>
+  readonly tool: string
+  readonly result: JsonValue
+  readonly observedAt: string
+}
+
 export interface SupervisoryToolProjection {
   readonly name: string
   readonly descriptor: ToolDescriptor
@@ -70,6 +88,8 @@ export interface SupervisoryWorkspaceSnapshot {
   readonly workspaceId: LaboratoryId<'workspace'>
   readonly goalId: LaboratoryId<'goal'> | null
   readonly currentPlan: SupervisoryPlanProjection | null
+  readonly progress: SupervisoryProgressProjection | null
+  readonly observations: readonly SupervisoryToolObservation[]
   readonly tools: readonly SupervisoryToolProjection[]
   readonly resources: WorkspaceResources
   readonly candidates: readonly SupervisoryCandidateProjection[]
@@ -99,6 +119,9 @@ function clone<T>(value: T): T { return structuredClone(value) }
 function freezeSnapshot(snapshot: SupervisoryWorkspaceSnapshot): SupervisoryWorkspaceSnapshot {
   const copy = clone(snapshot)
   Object.freeze(copy.currentPlan)
+  Object.freeze(copy.progress)
+  for (const observation of copy.observations) Object.freeze(observation)
+  Object.freeze(copy.observations)
   for (const tool of copy.tools) Object.freeze(tool)
   Object.freeze(copy.tools)
   for (const candidate of copy.candidates) {
@@ -203,6 +226,21 @@ export class SupervisoryApplicationModel {
   }
 
   private assertProjection(snapshot: SupervisoryWorkspaceSnapshot): void {
+    if (snapshot.goalId === null && (snapshot.progress !== null || snapshot.observations.length > 0)) {
+      fail('BACKEND_SELECTION_MISMATCH', 'workspace overview cannot contain goal progress or observations')
+    }
+    if (snapshot.progress !== null && snapshot.currentPlan === null) {
+      fail('MISLEADING_AUTHORITY', 'goal progress requires its approved plan projection')
+    }
+    if (snapshot.progress !== null && snapshot.progress.completedCalls > snapshot.progress.totalCalls) {
+      fail('INVALID_PROGRESS', 'completed calls cannot exceed total calls')
+    }
+    const observationIds = new Set<string>()
+    for (const observation of snapshot.observations) {
+      const id = `${observation.reportArtifactId}\0${observation.callId}`
+      if (observationIds.has(id)) fail('INVALID_OBSERVATIONS', 'duplicate Tool observation identity')
+      observationIds.add(id)
+    }
     const timelineIds = new Set<string>()
     for (const entry of snapshot.timeline) {
       if (timelineIds.has(entry.id)) fail('INVALID_TIMELINE', `duplicate timeline entry ${entry.id}`)

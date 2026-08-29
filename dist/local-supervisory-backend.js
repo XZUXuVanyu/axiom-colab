@@ -98,11 +98,29 @@ export class LocalSupervisoryBackend {
                 installationEvidenceHash: registration.installationEvidenceHash
             });
         }
+        const goalState = goalId === null || this.options.goalProgress === undefined ? {
+            progress: null,
+            observations: []
+        } : this.options.goalProgress(workspaceId, goalId);
         const timeline = this.timeline(workspaceId, revisions, validations, proposals, installations);
+        for (const observation of goalState.observations)timeline.push({
+            id: `observation:${observation.reportArtifactId}:${observation.callId}`,
+            occurredAt: observation.observedAt,
+            kind: 'tool-observation',
+            summary: `${observation.tool} returned an observed result`,
+            subjectId: observation.callId,
+            authoritativeHash: observation.reportHash,
+            detail: observation.result
+        });
+        timeline.sort((left, right)=>left.occurredAt.localeCompare(right.occurredAt) || left.id.localeCompare(right.id));
         return {
             workspaceId,
             goalId,
             currentPlan: planProjection(goal),
+            progress: goalState.progress,
+            observations: [
+                ...goalState.observations
+            ],
             tools,
             resources,
             candidates: projectedCandidates,

@@ -368,6 +368,15 @@ export class MemoryWorkflows {
             metadataOnly: true
         }, ()=>this.artifactResult(this.artifactRow(this.workspace(invocation), id)));
     }
+    listArtifacts(invocation) {
+        return this.perform(invocation, 'artifact.read', null, {
+            list: true
+        }, ()=>{
+            const workspaceId = this.workspace(invocation);
+            const rows = this.database.prepare('SELECT id,hash,size,schema_json,schema_hash,parents_json,provenance_json,created_at FROM artifacts WHERE workspace_id=? ORDER BY created_at,id').all(workspaceId);
+            return rows.map((row)=>this.artifactResult(row));
+        });
+    }
     artifactRow(workspaceId, id) {
         const row = this.database.prepare('SELECT id,hash,size,schema_json,schema_hash,parents_json,provenance_json,created_at FROM artifacts WHERE workspace_id=? AND id=?').get(workspaceId, id);
         if (!row) fail('ARTIFACT_NOT_FOUND', 'artifact is not visible in this workspace');

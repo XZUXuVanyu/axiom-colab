@@ -47,12 +47,23 @@ operations and only then commit their supervisory state. Cross-workspace use,
 replay, changed plan bindings, and unavailable actions fail closed.
 
 The Qt read slice now exposes workspace and goal selection plus approved-plan,
-resource, Tool, candidate, and timeline summaries. The production host reads
+checkpointed progress, hash-verified Tool observations, resource, Tool,
+candidate, and timeline summaries. The production host reads
 the exact `goal:<id>:plan` committed working revision with a call-scoped
 trusted-host read capability, and lifecycle enumeration rechecks its stored
 revision/hash binding before exposing a goal. The UI labels model claims
 separately from validator evidence, user decisions, and verified installed
 state. Authority-changing controls remain deferred.
+
+Goal progress is read only from the exact committed `goal:<id>:progress`
+working revision. Its goal, approved-plan revision/hash, status, summary, and
+call counts are validated before projection. Tool observations are not trusted
+because a progress string mentions them: production enumerates artifact
+metadata through a scoped `artifact.read` capability, reads payloads through
+the memory service (which rechecks their content hashes), accepts only strict
+goal-session reports bound to the selected goal and exact approved plan, and
+then projects their call IDs, Tool names, results, report artifact identities,
+and hashes. Stale or malformed bindings fail closed.
 
 `LocalApplicationHost` now owns that composition boundary. Startup discovers
 built-ins through the Adapter, enumerates memory-service workspaces, performs
