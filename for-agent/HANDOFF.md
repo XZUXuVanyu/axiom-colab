@@ -4,6 +4,15 @@ Last updated: 2026-08-30
 
 ## Current state
 
+- Production supervisory protocol `1.1` now exposes exact-parent candidate
+  revision authoring. Requests bind the current revision/hash, strict descriptor,
+  and canonical-base64 source set, then delegate to the repository-backed
+  `ToolWorkshop`; transport and Qt never receive storage paths or write rows.
+- A successful revision atomically preserves the former revision as superseded,
+  creates the immutable hash-chained child, and makes prior validation and
+  proposal bindings stale. The Qt form and strict C++ result decoder remain the
+  immediate continuation.
+
 - The Qt selected-candidate panel now submits private hidden-challenge fixture
   and command JSON through the existing host-owned operation, binding the
   displayed current revision and candidate hash.
@@ -872,10 +881,12 @@ installation controls:
 
 ## Exact next work
 
-Add candidate source/specification authoring through a narrow host operation
-that delegates to the existing workshop; Qt must not write repository rows or
-candidate files directly. Preserve immutable revision history and make a source
-change visibly invalidate prior validation and pending approval state.
+Add the Qt candidate revision form and strict C++ decoder over the new
+`revise-candidate` operation, clear submitted source bytes from completed widget
+state, refresh authoritative inspection, and visibly explain that the prior
+validation/proposal no longer applies. Then add new specification/initial
+candidate creation through the same workshop boundary; Qt must not write
+repository rows or candidate files directly.
 Keep installed-candidate execution absent until the executable loading strategy
 preserves its exact candidate and installation evidence hashes.
 

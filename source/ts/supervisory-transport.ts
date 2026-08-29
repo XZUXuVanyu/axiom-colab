@@ -3,6 +3,7 @@ import type { CandidateFile, ValidationCommand } from './candidate-validation.js
 import type { LaboratoryId } from './laboratory-contract.js'
 import type { SupervisoryToolExecution, SupervisoryWorkspaceSnapshot } from './supervisory-application.js'
 import type { HiddenChallengeValidationResult } from './local-application-host.js'
+import type { CandidateRevision } from './tool-workshop.js'
 
 export const SUPERVISORY_TRANSPORT_VERSION = '1.1' as const
 
@@ -13,6 +14,7 @@ export interface SupervisoryTransportHost {
   executeTool(workspaceId: LaboratoryId<'workspace'>, goalId: LaboratoryId<'goal'>, tool: string, args: Record<string, JsonValue>): Promise<SupervisoryToolExecution>
   decideInstallation(workspaceId: LaboratoryId<'workspace'>, proposalId: LaboratoryId<'proposal'>, proposalHash: `sha256:${string}`, decision: 'approved' | 'rejected'): Promise<JsonValue>
   submitHiddenChallenge(workspaceId: LaboratoryId<'workspace'>, revisionId: LaboratoryId<'evidence'>, candidateHash: `sha256:${string}`, fixtures: readonly CandidateFile[], commands: readonly ValidationCommand[]): Promise<HiddenChallengeValidationResult>
+  reviseCandidate(workspaceId: LaboratoryId<'workspace'>, parentRevisionId: LaboratoryId<'evidence'>, parentCandidateHash: `sha256:${string}`, descriptor: unknown, sources: readonly CandidateFile[]): CandidateRevision
 }
 
 type Request =
@@ -22,6 +24,7 @@ type Request =
   | { readonly protocolVersion: typeof SUPERVISORY_TRANSPORT_VERSION; readonly id: string; readonly operation: 'execute-tool'; readonly workspaceId: LaboratoryId<'workspace'>; readonly goalId: LaboratoryId<'goal'>; readonly tool: string; readonly arguments: Record<string, JsonValue> }
   | { readonly protocolVersion: typeof SUPERVISORY_TRANSPORT_VERSION; readonly id: string; readonly operation: 'decide-installation'; readonly workspaceId: LaboratoryId<'workspace'>; readonly proposalId: LaboratoryId<'proposal'>; readonly proposalHash: `sha256:${string}`; readonly decision: 'approved' | 'rejected' }
   | { readonly protocolVersion: typeof SUPERVISORY_TRANSPORT_VERSION; readonly id: string; readonly operation: 'submit-hidden-challenge'; readonly workspaceId: LaboratoryId<'workspace'>; readonly revisionId: LaboratoryId<'evidence'>; readonly candidateHash: `sha256:${string}`; readonly fixtures: readonly CandidateFile[]; readonly commands: readonly ValidationCommand[] }
+  | { readonly protocolVersion: typeof SUPERVISORY_TRANSPORT_VERSION; readonly id: string; readonly operation: 'revise-candidate'; readonly workspaceId: LaboratoryId<'workspace'>; readonly parentRevisionId: LaboratoryId<'evidence'>; readonly parentCandidateHash: `sha256:${string}`; readonly descriptor: unknown; readonly sources: readonly CandidateFile[] }
 
 interface ErrorPayload { readonly code: string; readonly message: string }
 type Response =
@@ -55,6 +58,19 @@ function parseHiddenFixtures(value: unknown): readonly CandidateFile[] {
     }
     const content = Buffer.from(item.contentBase64, 'base64')
     if (content.toString('base64') !== item.contentBase64) fail('INVALID_HIDDEN_CHALLENGE', `fixture ${index} is not canonical base64`)
+    return { path: item.path, content }
+  })
+}
+
+function parseCandidateSources(value: unknown): readonly CandidateFile[] {
+  if (!Array.isArray(value) || value.length === 0) fail('INVALID_CANDIDATE_SOURCE', 'candidate sources must not be empty')
+  return value.map((item, index) => {
+    if (!record(item)) fail('INVALID_CANDIDATE_SOURCE', `source ${index} must be an object`)
+    exact(item, ['path', 'contentBase64'])
+    if (typeof item.path !== 'string' || typeof item.contentBase64 !== 'string'
+        || !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(item.contentBase64)) fail('INVALID_CANDIDATE_SOURCE', `source ${index} is malformed`)
+    const content = Buffer.from(item.contentBase64, 'base64')
+    if (content.toString('base64') !== item.contentBase64) fail('INVALID_CANDIDATE_SOURCE', `source ${index} is not canonical base64`)
     return { path: item.path, content }
   })
 }
@@ -116,6 +132,14 @@ function parseRequest(text: string, maxBytes: number): Request {
     if (typeof value.candidateHash !== 'string' || !/^sha256:[0-9a-f]{64}$/.test(value.candidateHash)) fail('INVALID_CANDIDATE_HASH', 'candidate hash is malformed')
     return { ...value, fixtures: parseHiddenFixtures(value.fixtures), commands: parseHiddenCommands(value.commands) } as unknown as Request
   }
+  if (value.operation === 'revise-candidate') {
+    exact(value, ['protocolVersion', 'id', 'operation', 'workspaceId', 'parentRevisionId', 'parentCandidateHash', 'descriptor', 'sources'])
+    if (typeof value.workspaceId !== 'string' || !/^workspace:[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(value.workspaceId)) fail('INVALID_WORKSPACE_ID', 'workspace identity is malformed')
+    if (typeof value.parentRevisionId !== 'string' || !/^evidence:[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(value.parentRevisionId)) fail('INVALID_REVISION_ID', 'parent revision identity is malformed')
+    if (typeof value.parentCandidateHash !== 'string' || !/^sha256:[0-9a-f]{64}$/.test(value.parentCandidateHash)) fail('INVALID_CANDIDATE_HASH', 'parent candidate hash is malformed')
+    if (!record(value.descriptor)) fail('INVALID_CANDIDATE_DESCRIPTOR', 'candidate descriptor must be an object')
+    return { ...value, sources: parseCandidateSources(value.sources) } as unknown as Request
+  }
   fail('UNKNOWN_OPERATION', 'supervisory operation is unknown')
 }
 
@@ -152,7 +176,9 @@ export class SupervisoryTransport {
               ? await this.host.executeTool(request.workspaceId, request.goalId, request.tool, request.arguments)
               : request.operation === 'decide-installation'
                 ? await this.host.decideInstallation(request.workspaceId, request.proposalId, request.proposalHash, request.decision)
-                : await this.host.submitHiddenChallenge(request.workspaceId, request.revisionId, request.candidateHash, request.fixtures, request.commands)
+                : request.operation === 'submit-hidden-challenge'
+                  ? await this.host.submitHiddenChallenge(request.workspaceId, request.revisionId, request.candidateHash, request.fixtures, request.commands)
+                  : this.host.reviseCandidate(request.workspaceId, request.parentRevisionId, request.parentCandidateHash, request.descriptor, request.sources)
       const response: Response = { protocolVersion: SUPERVISORY_TRANSPORT_VERSION, id: request.id, ok: true, result: result as JsonValue }
       return JSON.stringify(response)
     } catch (error) {

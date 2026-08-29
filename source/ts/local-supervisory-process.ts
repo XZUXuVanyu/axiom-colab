@@ -22,6 +22,7 @@ import { SupervisoryTransport } from './supervisory-transport.js'
 import { runSupervisoryTransportServer } from './supervisory-transport-server.js'
 import { ToolInstallationService } from './tool-installation.js'
 import { ToolInstallationProposalService } from './tool-installation-proposal.js'
+import { ToolWorkshop } from './tool-workshop.js'
 import { WslValidationBackend } from './wsl-validation-backend.js'
 import type {
   SupervisoryMemoryProjection, SupervisoryProgressProjection, SupervisoryToolObservation,
@@ -339,6 +340,8 @@ export async function runLocalSupervisoryProcess(configValue: unknown): Promise<
     challengeValidator: validator,
     validationProfile: config.validationProfile,
     validatorActorId,
+    workshop: new ToolWorkshop({ repository: candidates }),
+    workshopActorId: config.hostActorId,
     createInstallation: (registry) => new ToolInstallationService(candidates, validator, {
       installationRoot: join(config.stateRoot, 'installed'), registry,
     }),

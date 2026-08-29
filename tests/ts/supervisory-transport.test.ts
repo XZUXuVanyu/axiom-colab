@@ -33,6 +33,10 @@ test('supervisory transport lists workspaces and correlates immutable inspection
         suites: [{ kind: 'challenge', outcome: 'passed', definitionHash: `sha256:${'5'.repeat(64)}`, commandCount: 1, hidden: true }],
       }
     },
+    reviseCandidate(workspaceId: string, parentRevisionId: string, parentCandidateHash: string, descriptor: any, sources: any[]) {
+      assert.equal(Buffer.from(sources[0].content).toString(), 'revised source')
+      return { protocolVersion: '1.0', workspaceId, revisionId: 'evidence:revised', candidateId: 'tool:one', specificationId: 'proposal:spec', specificationHash: `sha256:${'1'.repeat(64)}`, revision: 2, parentRevisionId, parentCandidateHash, descriptorHash: `sha256:${'2'.repeat(64)}`, sourceHash: `sha256:${'3'.repeat(64)}`, sources: [], candidateHash: `sha256:${'4'.repeat(64)}`, state: 'current', createdAt: '2026-08-30T00:00:00.000Z', createdBy: 'actor:host' }
+    },
   }
   const transport = new SupervisoryTransport(host as any)
   const listed = JSON.parse(await transport.handle(JSON.stringify({ protocolVersion: '1.1', id: 'one', operation: 'list-workspaces' })))
@@ -55,6 +59,13 @@ test('supervisory transport lists workspaces and correlates immutable inspection
   })))
   assert.equal(challenged.result.validationId, 'validation:one')
   assert.doesNotMatch(JSON.stringify(challenged.result), /private fixture|contentBase64|stdout|stderr/)
+  const revised = JSON.parse(await transport.handle(JSON.stringify({
+    protocolVersion: '1.1', id: 'six', operation: 'revise-candidate', workspaceId: 'workspace:alpha',
+    parentRevisionId: 'evidence:revision', parentCandidateHash: `sha256:${'2'.repeat(64)}`,
+    descriptor: { name: 'candidate_tool' },
+    sources: [{ path: 'src/tool.cpp', contentBase64: Buffer.from('revised source').toString('base64') }],
+  })))
+  assert.equal(revised.result.revision, 2)
 })
 
 test('supervisory transport rejects malformed, oversized, and authority-changing requests', async () => {

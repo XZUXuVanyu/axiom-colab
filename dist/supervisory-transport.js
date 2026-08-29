@@ -36,6 +36,23 @@ function parseHiddenFixtures(value) {
         };
     });
 }
+function parseCandidateSources(value) {
+    if (!Array.isArray(value) || value.length === 0) fail('INVALID_CANDIDATE_SOURCE', 'candidate sources must not be empty');
+    return value.map((item, index)=>{
+        if (!record(item)) fail('INVALID_CANDIDATE_SOURCE', `source ${index} must be an object`);
+        exact(item, [
+            'path',
+            'contentBase64'
+        ]);
+        if (typeof item.path !== 'string' || typeof item.contentBase64 !== 'string' || !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(item.contentBase64)) fail('INVALID_CANDIDATE_SOURCE', `source ${index} is malformed`);
+        const content = Buffer.from(item.contentBase64, 'base64');
+        if (content.toString('base64') !== item.contentBase64) fail('INVALID_CANDIDATE_SOURCE', `source ${index} is not canonical base64`);
+        return {
+            path: item.path,
+            content
+        };
+    });
+}
 function parseHiddenCommands(value) {
     if (!Array.isArray(value) || value.length === 0) fail('INVALID_HIDDEN_CHALLENGE', 'hidden challenge commands must not be empty');
     return value.map((item, index)=>{
@@ -150,6 +167,26 @@ function parseRequest(text, maxBytes) {
             commands: parseHiddenCommands(value.commands)
         };
     }
+    if (value.operation === 'revise-candidate') {
+        exact(value, [
+            'protocolVersion',
+            'id',
+            'operation',
+            'workspaceId',
+            'parentRevisionId',
+            'parentCandidateHash',
+            'descriptor',
+            'sources'
+        ]);
+        if (typeof value.workspaceId !== 'string' || !/^workspace:[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(value.workspaceId)) fail('INVALID_WORKSPACE_ID', 'workspace identity is malformed');
+        if (typeof value.parentRevisionId !== 'string' || !/^evidence:[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(value.parentRevisionId)) fail('INVALID_REVISION_ID', 'parent revision identity is malformed');
+        if (typeof value.parentCandidateHash !== 'string' || !/^sha256:[0-9a-f]{64}$/.test(value.parentCandidateHash)) fail('INVALID_CANDIDATE_HASH', 'parent candidate hash is malformed');
+        if (!record(value.descriptor)) fail('INVALID_CANDIDATE_DESCRIPTOR', 'candidate descriptor must be an object');
+        return {
+            ...value,
+            sources: parseCandidateSources(value.sources)
+        };
+    }
     fail('UNKNOWN_OPERATION', 'supervisory operation is unknown');
 }
 function code(error) {
@@ -188,7 +225,7 @@ export class SupervisoryTransport {
                 goals: [
                     ...this.host.goals(request.workspaceId)
                 ]
-            } : request.operation === 'inspect' ? await this.host.inspect(request.workspaceId, request.goalId) : request.operation === 'execute-tool' ? await this.host.executeTool(request.workspaceId, request.goalId, request.tool, request.arguments) : request.operation === 'decide-installation' ? await this.host.decideInstallation(request.workspaceId, request.proposalId, request.proposalHash, request.decision) : await this.host.submitHiddenChallenge(request.workspaceId, request.revisionId, request.candidateHash, request.fixtures, request.commands);
+            } : request.operation === 'inspect' ? await this.host.inspect(request.workspaceId, request.goalId) : request.operation === 'execute-tool' ? await this.host.executeTool(request.workspaceId, request.goalId, request.tool, request.arguments) : request.operation === 'decide-installation' ? await this.host.decideInstallation(request.workspaceId, request.proposalId, request.proposalHash, request.decision) : request.operation === 'submit-hidden-challenge' ? await this.host.submitHiddenChallenge(request.workspaceId, request.revisionId, request.candidateHash, request.fixtures, request.commands) : this.host.reviseCandidate(request.workspaceId, request.parentRevisionId, request.parentCandidateHash, request.descriptor, request.sources);
             const response = {
                 protocolVersion: SUPERVISORY_TRANSPORT_VERSION,
                 id: request.id,

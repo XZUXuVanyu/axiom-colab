@@ -146,6 +146,26 @@ export class LocalApplicationHost {
                 }))
         };
     }
+    reviseCandidate(workspaceId, parentRevisionId, parentCandidateHash, descriptor, sources) {
+        this.ensureReady();
+        const workshop = this.options.workshop;
+        const actorId = this.options.workshopActorId;
+        if (workshop === undefined || actorId === undefined) fail('OPERATION_NOT_AVAILABLE', 'candidate authoring is not composed');
+        const parent = this.options.candidates.inspectRevision(workspaceId, parentRevisionId);
+        if (parent === null || parent.state !== 'current' || parent.candidateHash !== parentCandidateHash) {
+            fail('STALE_CANDIDATE_REVISION', 'candidate revision must bind the exact current parent');
+        }
+        return workshop.createCandidateRevision({
+            workspaceId,
+            actorId,
+            authority: 'trusted-host'
+        }, {
+            specificationId: parent.specificationId,
+            parentRevisionId,
+            descriptor,
+            sources
+        });
+    }
     async executeTool(workspaceId, goalId, toolName, args, signal = new AbortController().signal) {
         this.ensureReady();
         this.options.store.reopenWorkspace(workspaceId);

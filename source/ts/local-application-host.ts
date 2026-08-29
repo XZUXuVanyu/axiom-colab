@@ -25,6 +25,7 @@ import type {
 import type { ValidationPromotionAuthority } from './tool-installation-proposal.js'
 import type { ToolInstallationProposalService } from './tool-installation-proposal.js'
 import type { ProductionValidationProfile } from './production-validation-profile.js'
+import type { CandidateRevision, ToolWorkshop } from './tool-workshop.js'
 
 export interface HiddenChallengeValidationResult {
   readonly workspaceId: LaboratoryId<'workspace'>
@@ -77,6 +78,8 @@ export interface LocalApplicationHostOptions {
   readonly challengeValidator?: Pick<{ validate(request: CandidateValidationRequest): Promise<CandidateValidationResult> }, 'validate'>
   readonly validationProfile?: ProductionValidationProfile
   readonly validatorActorId?: LaboratoryId<'actor'>
+  readonly workshop?: ToolWorkshop
+  readonly workshopActorId?: LaboratoryId<'actor'>
 }
 
 export class LocalApplicationHostError extends Error {
@@ -215,6 +218,27 @@ export class LocalApplicationHost {
         commandCount: suite.commandCount, hidden: suite.hidden,
       })),
     }
+  }
+
+  reviseCandidate(
+    workspaceId: LaboratoryId<'workspace'>,
+    parentRevisionId: LaboratoryId<'evidence'>,
+    parentCandidateHash: `sha256:${string}`,
+    descriptor: unknown,
+    sources: readonly CandidateFile[],
+  ): CandidateRevision {
+    this.ensureReady()
+    const workshop = this.options.workshop
+    const actorId = this.options.workshopActorId
+    if (workshop === undefined || actorId === undefined) fail('OPERATION_NOT_AVAILABLE', 'candidate authoring is not composed')
+    const parent = this.options.candidates.inspectRevision(workspaceId, parentRevisionId)
+    if (parent === null || parent.state !== 'current' || parent.candidateHash !== parentCandidateHash) {
+      fail('STALE_CANDIDATE_REVISION', 'candidate revision must bind the exact current parent')
+    }
+    return workshop.createCandidateRevision(
+      { workspaceId, actorId, authority: 'trusted-host' },
+      { specificationId: parent.specificationId, parentRevisionId, descriptor, sources },
+    )
   }
 
   async executeTool(

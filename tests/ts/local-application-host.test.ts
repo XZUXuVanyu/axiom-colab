@@ -258,7 +258,8 @@ test('application host binds hidden challenges to the exact current candidate an
   const host = new LocalApplicationHost({
     ...value, validator: { isPromotionEligible: () => true }, hostActorId: 'actor:host',
     createInstallation: () => ({ rediscover: () => [] }), challengeValidator,
-    validationProfile, validatorActorId: 'actor:validator',
+    validationProfile, validatorActorId: 'actor:validator', workshop,
+    workshopActorId: 'actor:host',
   } as any)
   await host.initialize()
   await assert.rejects(
@@ -276,5 +277,16 @@ test('application host binds hidden challenges to the exact current candidate an
   assert.equal(result.promotable, true)
   assert.deepEqual(result.suites.map((suite) => suite.hidden), [false, false, true])
   assert.doesNotMatch(JSON.stringify(result), /secret|stdout|stderr|fixtures|commands/)
+  const revised = host.reviseCandidate(
+    'workspace:alpha', revision.revisionId, revision.candidateHash,
+    { name: 'candidate_tool' }, [{ path: 'src/tool.cpp', content: 'revised source' }],
+  )
+  assert.equal(revised.revision, 2)
+  assert.equal(revised.parentCandidateHash, revision.candidateHash)
+  assert.equal(value.candidates.inspectRevision('workspace:alpha', revision.revisionId)?.state, 'superseded')
+  await assert.rejects(
+    host.submitHiddenChallenge('workspace:alpha', revision.revisionId, revision.candidateHash, [{ path: 'private/input.txt', content: 'secret' }], [{ commandId: 'hidden', executable: '/usr/bin/ctest', args: [], cwd: 'candidate' }]),
+    (error: unknown) => (error as any).code === 'STALE_CANDIDATE_REVISION',
+  )
   host.close()
 })

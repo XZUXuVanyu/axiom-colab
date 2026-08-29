@@ -31,6 +31,12 @@ revokes it when the Adapter call ends. The host seals the actual result in an
 immutable session-report artifact and the view refreshes inspection.
 Rediscovered installed Tools remain non-executable.
 
+The production supervisory boundary also supports exact-parent candidate
+revision authoring. It accepts a displayed current revision/hash, descriptor,
+and canonical-base64 source set, then delegates immutable revision creation to
+the repository-backed Tool workshop. This operation does not expose repository
+paths or direct storage mutation. Its Qt form is not yet present.
+
 Create the explicit process config outside the authoritative state directory:
 
 ```powershell

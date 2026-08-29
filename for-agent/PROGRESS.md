@@ -4,6 +4,28 @@ Entries are chronological. Each entry corresponds to one logical Git commit and
 records its exact subject, purpose, material changes, and validation actually
 performed.
 
+## 2026-08-30 - feat(gui): expose immutable candidate revision authoring
+
+Purpose: begin the Stage 8 candidate-authoring path without allowing Qt or the
+transport to mutate repository storage directly.
+
+Material changes:
+
+- Added a narrow `revise-candidate` supervisory operation bound to the exact
+  current parent revision and candidate hash.
+- Delegated revision creation to the existing repository-backed `ToolWorkshop`
+  under configured trusted-host identity; the old revision becomes superseded
+  atomically and its earlier validation/approval bindings become stale.
+- Required strict descriptor objects and non-empty canonical-base64 source
+  payloads at the transport boundary.
+- Composed the workshop in the production local process and added host and
+  transport regression coverage for revision chaining and stale validation.
+
+Validation actually run:
+
+- `pnpm.cmd test`: passed all 86 TypeScript tests.
+- `git diff --check`: passed with newline-conversion notices only.
+
 ## 2026-08-30 - feat(gui): submit private hidden challenges
 
 Purpose: continue Stage 8 with the user-controlled hidden challenge path in Qt
