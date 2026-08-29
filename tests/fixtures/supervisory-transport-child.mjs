@@ -37,6 +37,16 @@ const host = {
     candidate.proposal.state = decision
     return { workspaceId, proposalId, proposalHash, decision }
   },
+  async submitHiddenChallenge(workspaceId, revisionId, candidateHash, fixtures, commands) {
+    if (revisionId !== candidate.revisionId || candidateHash !== candidate.candidateHash) throw Object.assign(new Error('stale candidate'), { code: 'STALE_CANDIDATE_REVISION' })
+    if (fixtures[0]?.path !== 'tests/private.txt' || commands[0]?.commandId !== 'hidden-test') throw Object.assign(new Error('unexpected private challenge'), { code: 'INVALID_HIDDEN_CHALLENGE' })
+    candidate.validation = { ...candidate.validation, validationId: 'validation:hidden', outcome: 'passed', promotable: true, snapshotHash: hash('0'), recordHash: hash('1'), suites: candidate.validation.suites.map((suite) => ({ ...suite, outcome: 'passed' })) }
+    return {
+      workspaceId, revisionId, candidateHash, validationId: 'validation:hidden',
+      snapshotHash: hash('0'), recordHash: hash('1'), outcome: 'passed', promotable: true,
+      suites: candidate.validation.suites.map(({ kind, outcome, definitionHash, commandCount, hidden }) => ({ kind, outcome, definitionHash, commandCount, hidden })),
+    }
+  },
   async inspect(workspaceId, goalId) {
     if (workspaceId === 'workspace:missing') throw Object.assign(new Error('workspace is not visible'), { code: 'WORKSPACE_NOT_FOUND' })
     return {

@@ -36,6 +36,9 @@ int main(int argc, char* argv[]) {
     auto* execution_result = view.findChild<QLabel*>("executionResult");
     auto* candidate_details = view.findChild<QPlainTextEdit*>("candidateDetails");
     auto* reject_candidate = view.findChild<QPushButton*>("rejectCandidate");
+    auto* challenge_input = view.findChild<QPlainTextEdit*>("hiddenChallengeInput");
+    auto* submit_challenge = view.findChild<QPushButton*>("submitHiddenChallenge");
+    auto* challenge_result = view.findChild<QLabel*>("hiddenChallengeResult");
     if (workspaces == nullptr || goals == nullptr || resources == nullptr
         || plan == nullptr || status == nullptr || compute == nullptr
         || working == nullptr || artifacts == nullptr) {
@@ -43,7 +46,9 @@ int main(int argc, char* argv[]) {
         return 1;
     }
     if (execute == nullptr || arguments == nullptr || execution_result == nullptr
-        || candidate_details == nullptr || reject_candidate == nullptr) {
+        || candidate_details == nullptr || reject_candidate == nullptr
+        || challenge_input == nullptr || submit_challenge == nullptr
+        || challenge_result == nullptr) {
         std::cerr << "[FAIL] Tool execution widgets are not inspectable\n";
         return 1;
     }
@@ -103,6 +108,25 @@ int main(int argc, char* argv[]) {
     if (!reject_candidate->isEnabled()
         || !candidate_details->toPlainText().contains("proposal:fixture [proposed]")) {
         std::cerr << "[FAIL] exact pending installation proposal was not actionable\n";
+        return 1;
+    }
+    challenge_input->setPlainText(R"({"fixtures":[{"path":"tests/private.txt","contentBase64":"cHJpdmF0ZQ=="}],"commands":[{"commandId":"hidden-test","executable":"/usr/bin/ctest","args":[],"cwd":"candidate"}]})");
+    submit_challenge->click();
+    if (!challenge_input->toPlainText().isEmpty()) {
+        std::cerr << "[FAIL] private hidden challenge remained in widget state after submission\n";
+        return 1;
+    }
+    timer.restart();
+    while (timer.elapsed() < 5000
+           && (!challenge_result->text().contains("Observed validation: passed")
+               || !reject_candidate->isEnabled())) {
+        application.processEvents(); QThread::msleep(10);
+    }
+    if (!challenge_result->text().contains("promotable: yes")
+        || !challenge_result->toolTip().contains("validation:hidden")
+        || challenge_result->toolTip().contains("private")
+        || !challenge_input->toPlainText().isEmpty()) {
+        std::cerr << "[FAIL] hidden challenge did not render redacted evidence\n";
         return 1;
     }
     reject_candidate->click();

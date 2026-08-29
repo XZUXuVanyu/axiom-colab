@@ -4,6 +4,33 @@ Entries are chronological. Each entry corresponds to one logical Git commit and
 records its exact subject, purpose, material changes, and validation actually
 performed.
 
+## 2026-08-30 - feat(gui): submit private hidden challenges
+
+Purpose: continue Stage 8 with the user-controlled hidden challenge path in Qt
+without moving validation authority or completed private material into widgets.
+
+Material changes:
+
+- Added an exact revision/hash-bound C++ client request and strict redacted
+  result decoder for the existing host-owned hidden-challenge operation.
+- Added a selected-candidate private JSON editor and submission control that
+  clears fixture and command definitions immediately after submission.
+- Rendered only observed outcome, promotability, validation/snapshot/record
+  hashes, and salted suite commitments; private fixtures and process output
+  remain absent from completed widget state.
+- Extended the real-process/offscreen Widgets fixture and documentation for the
+  private-input lifecycle and authoritative refresh.
+
+Validation actually run:
+
+- `pnpm.cmd test`: passed all 86 TypeScript tests.
+- Qt 6.12.0/MSVC 19.51 Release built with warnings as errors and all 3 CTest
+  targets passed.
+- The first Widgets CTest run had 2 passes and 1 test failure because the test
+  clicked rejection during the deliberate post-challenge busy refresh; waiting
+  for the action to re-enable produced the passing run.
+- `git diff --check`: passed with newline-conversion notices only.
+
 ## 2026-08-30 - feat(validation): add supervised hidden challenge validation
 
 Purpose: complete the Stage 8 production validation boundary and expose hidden

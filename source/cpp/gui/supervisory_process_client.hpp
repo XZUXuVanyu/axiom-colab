@@ -49,6 +49,10 @@ public:
         std::string_view workspace_id, std::string_view proposal_id,
         std::string_view proposal_hash, std::string_view decision,
         ResponseHandler handler);
+    [[nodiscard]] std::string submit_hidden_challenge(
+        std::string_view workspace_id, std::string_view revision_id,
+        std::string_view candidate_hash, cpp_adapter::Json fixtures,
+        cpp_adapter::Json commands, ResponseHandler handler);
 
 private:
     struct PendingRequest final {

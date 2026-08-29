@@ -245,4 +245,49 @@ SupervisoryInstallationDecision parse_installation_decision_result(
             .proposal_hash = proposal_hash, .decision = decision};
 }
 
+SupervisoryHiddenChallengeResult parse_hidden_challenge_result(
+    const SupervisoryResponse& response, std::string_view expected_workspace_id,
+    std::string_view expected_revision_id, std::string_view expected_candidate_hash) {
+    if (!response.ok) fail("cannot decode hidden challenge from an error response");
+    const auto& result = require_object(response.result, "hidden challenge result");
+    require_exact_fields(result, {"workspaceId", "revisionId", "candidateHash",
+        "validationId", "snapshotHash", "recordHash", "outcome", "promotable", "suites"});
+    const auto& workspace_id = require_string(response.result.at("workspaceId"), "workspaceId");
+    const auto& revision_id = require_string(response.result.at("revisionId"), "revisionId");
+    const auto& candidate_hash = require_string(response.result.at("candidateHash"), "candidateHash");
+    const auto& validation_id = require_string(response.result.at("validationId"), "validationId");
+    const auto& snapshot_hash = require_string(response.result.at("snapshotHash"), "snapshotHash");
+    const auto& record_hash = require_string(response.result.at("recordHash"), "recordHash");
+    const auto& outcome = require_string(response.result.at("outcome"), "outcome");
+    if (workspace_id != expected_workspace_id || !valid_identity(workspace_id, "workspace:")
+        || revision_id != expected_revision_id || !valid_identity(revision_id, "evidence:")
+        || candidate_hash != expected_candidate_hash || candidate_hash.size() != 71
+        || validation_id.empty() || !valid_identity(validation_id, "validation:")
+        || snapshot_hash.size() != 71 || !snapshot_hash.starts_with("sha256:")
+        || record_hash.size() != 71 || !record_hash.starts_with("sha256:")
+        || (outcome != "passed" && outcome != "failed" && outcome != "limited")
+        || !response.result.at("promotable").is_bool()
+        || !response.result.at("suites").is_array()) {
+        fail("hidden challenge result does not match the exact selected candidate");
+    }
+    for (const Json& suite : response.result.at("suites").as_array()) {
+        const auto& object = require_object(suite, "hidden challenge suite");
+        require_exact_fields(object, {"kind", "outcome", "definitionHash", "commandCount", "hidden"});
+        const auto& kind = require_string(suite.at("kind"), "suite kind");
+        const auto& suite_outcome = require_string(suite.at("outcome"), "suite outcome");
+        const auto& definition_hash = require_string(suite.at("definitionHash"), "definitionHash");
+        if ((kind != "candidate" && kind != "standard" && kind != "challenge")
+            || (suite_outcome != "passed" && suite_outcome != "failed" && suite_outcome != "limited")
+            || definition_hash.size() != 71 || !definition_hash.starts_with("sha256:")
+            || !suite.at("commandCount").is_integer() || !suite.at("hidden").is_bool()) {
+            fail("hidden challenge suite is malformed");
+        }
+    }
+    return {.workspace_id = workspace_id, .revision_id = revision_id,
+        .candidate_hash = candidate_hash, .validation_id = validation_id,
+        .snapshot_hash = snapshot_hash, .record_hash = record_hash,
+        .outcome = outcome, .promotable = response.result.at("promotable").as_bool(),
+        .suites = response.result.at("suites")};
+}
+
 } // namespace axiom_colab::gui

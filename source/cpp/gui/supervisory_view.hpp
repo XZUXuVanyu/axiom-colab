@@ -37,6 +37,7 @@ private:
     void inspect_selected_workspace();
     void execute_selected_tool();
     void decide_selected_installation(bool approve);
+    void submit_selected_hidden_challenge();
     void render(const SupervisoryWorkspaceInspection& inspection);
     void show_error(const QString& message);
     void set_busy(bool busy);
@@ -56,6 +57,9 @@ private:
     QPlainTextEdit* candidate_details_{};
     QPushButton* approve_candidate_{};
     QPushButton* reject_candidate_{};
+    QPlainTextEdit* hidden_challenge_input_{};
+    QPushButton* submit_hidden_challenge_{};
+    QLabel* hidden_challenge_result_{};
     QListWidget* timeline_{};
     QListWidget* observations_{};
     QListWidget* compute_memory_{};

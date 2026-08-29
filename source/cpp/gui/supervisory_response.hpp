@@ -58,6 +58,18 @@ struct SupervisoryInstallationDecision final {
     std::string decision;
 };
 
+struct SupervisoryHiddenChallengeResult final {
+    std::string workspace_id;
+    std::string revision_id;
+    std::string candidate_hash;
+    std::string validation_id;
+    std::string snapshot_hash;
+    std::string record_hash;
+    std::string outcome;
+    bool promotable{};
+    cpp_adapter::Json suites;
+};
+
 [[nodiscard]] SupervisoryResponse parse_supervisory_response(
     std::string_view text, std::string_view expected_request_id);
 [[nodiscard]] std::vector<std::string> parse_workspace_list_result(
@@ -75,5 +87,8 @@ struct SupervisoryInstallationDecision final {
     const SupervisoryResponse& response, std::string_view expected_workspace_id,
     std::string_view expected_proposal_id, std::string_view expected_proposal_hash,
     std::string_view expected_decision);
+[[nodiscard]] SupervisoryHiddenChallengeResult parse_hidden_challenge_result(
+    const SupervisoryResponse& response, std::string_view expected_workspace_id,
+    std::string_view expected_revision_id, std::string_view expected_candidate_hash);
 
 } // namespace axiom_colab::gui

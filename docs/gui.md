@@ -16,7 +16,13 @@ exact proposal/candidate/validation hashes and requested permissions before
 enabling explicit approve/reject buttons. The host supplies the configured
 local user identity and delegates to the existing proposal service; Qt cannot
 author an approval record. No installation or lifecycle mutation operation is
-present. A selected goal may execute an
+present. The selected current candidate accepts private hidden-challenge JSON
+containing base64 fixture bytes and allowlisted command definitions. Qt binds
+the request to the displayed revision and candidate hash, clears the private
+editor immediately after submission, and displays only validation hashes,
+outcome, promotability, and salted suite commitments. It does not retain or
+display fixture bytes, definitions, salts, or command output after completion.
+A selected goal may execute an
 Adapter-discovered pure built-in or a built-in covered by an explicit
 `memoryToolPolicies` entry, using JSON object arguments. For a memory-dependent
 call, the host starts a numeric-loopback-only memory service, issues a fresh

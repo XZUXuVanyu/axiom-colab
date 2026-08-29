@@ -205,6 +205,10 @@ void SupervisoryView::build_ui() {
     reject_candidate_->setEnabled(false);
     candidate_actions->addWidget(approve_candidate_);
     candidate_actions->addWidget(reject_candidate_);
+    submit_hidden_challenge_ = new QPushButton("Run hidden challenge", candidate_evidence);
+    submit_hidden_challenge_->setObjectName("submitHiddenChallenge");
+    submit_hidden_challenge_->setEnabled(false);
+    candidate_actions->addWidget(submit_hidden_challenge_);
     candidate_actions->addStretch();
     candidate_evidence_layout->addLayout(candidate_actions);
     candidate_details_ = new QPlainTextEdit(candidate_evidence);
@@ -213,6 +217,19 @@ void SupervisoryView::build_ui() {
     candidate_details_->setPlaceholderText("Select a Tool candidate to inspect its exact source and observed validation bindings.");
     candidate_details_->setMaximumHeight(220);
     candidate_evidence_layout->addWidget(candidate_details_);
+    hidden_challenge_input_ = new QPlainTextEdit(candidate_evidence);
+    hidden_challenge_input_->setObjectName("hiddenChallengeInput");
+    hidden_challenge_input_->setPlaceholderText(
+        R"({"fixtures":[{"path":"tests/private.txt","contentBase64":"..."}],"commands":[{"commandId":"hidden-test","executable":"/usr/bin/ctest","args":[],"cwd":"candidate"}]})");
+    hidden_challenge_input_->setMaximumHeight(110);
+    candidate_evidence_layout->addWidget(new QLabel(
+        "Private challenge JSON (cleared immediately after submission; output is never displayed)", candidate_evidence));
+    candidate_evidence_layout->addWidget(hidden_challenge_input_);
+    hidden_challenge_result_ = new QLabel("Select a current candidate to submit a hidden challenge.", candidate_evidence);
+    hidden_challenge_result_->setObjectName("hiddenChallengeResult");
+    hidden_challenge_result_->setWordWrap(true);
+    hidden_challenge_result_->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    candidate_evidence_layout->addWidget(hidden_challenge_result_);
     summaries->addWidget(candidate_evidence, 4, 0, 1, 2);
     compute_memory_->setObjectName("computeMemory");
     working_memory_->setObjectName("workingMemory");
@@ -242,11 +259,16 @@ void SupervisoryView::build_ui() {
                     && !item->data(Qt::UserRole + 1).toString().isEmpty();
                 approve_candidate_->setEnabled(pending && !busy_);
                 reject_candidate_->setEnabled(pending && !busy_);
+                const bool current = item != nullptr
+                    && !item->data(Qt::UserRole + 3).toString().isEmpty();
+                submit_hidden_challenge_->setEnabled(current && !busy_);
             });
     connect(approve_candidate_, &QPushButton::clicked, this,
             [this] { decide_selected_installation(true); });
     connect(reject_candidate_, &QPushButton::clicked, this,
             [this] { decide_selected_installation(false); });
+    connect(submit_hidden_challenge_, &QPushButton::clicked, this,
+            &SupervisoryView::submit_selected_hidden_challenge);
 }
 
 void SupervisoryView::start_process() {
@@ -475,6 +497,69 @@ void SupervisoryView::decide_selected_installation(bool approve) {
     }
 }
 
+void SupervisoryView::submit_selected_hidden_challenge() {
+    auto* item = candidates_->currentItem();
+    if (item == nullptr || workspace_selector_->currentText().isEmpty()
+        || item->data(Qt::UserRole + 3).toString().isEmpty()) {
+        show_error("Select a current candidate revision first");
+        return;
+    }
+    Json payload;
+    try {
+        payload = Json::parse(hidden_challenge_input_->toPlainText().toStdString());
+        const auto& object = require_object(payload, "private challenge input");
+        exact_fields(object, {"fixtures", "commands"}, "private challenge input");
+        if (!payload.at("fixtures").is_array() || !payload.at("commands").is_array()
+            || payload.at("commands").as_array().empty()) {
+            throw SupervisoryResponseError("fixtures and non-empty commands must be arrays");
+        }
+    } catch (const std::exception& error) {
+        show_error(QString("Invalid hidden challenge: ") + QString::fromUtf8(error.what()));
+        return;
+    }
+    const std::string workspace = workspace_selector_->currentText().toStdString();
+    const std::string revision = item->data(Qt::UserRole + 3).toString().toStdString();
+    const std::string candidate_hash = item->data(Qt::UserRole + 4).toString().toStdString();
+    Json fixtures = payload.at("fixtures");
+    Json commands = payload.at("commands");
+    hidden_challenge_input_->clear();
+    hidden_challenge_input_->setPlaceholderText("Private challenge cleared after submission.");
+    hidden_challenge_result_->setText("Hidden challenge running; private inputs and output remain undisclosed.");
+    hidden_challenge_result_->setToolTip({});
+    set_busy(true);
+    try {
+        (void)client_.submit_hidden_challenge(
+            workspace, revision, candidate_hash, std::move(fixtures), std::move(commands),
+            [this, workspace, revision, candidate_hash](
+                const SupervisoryResponse* response, const std::string* error) {
+                hidden_challenge_input_->clear();
+                if (error != nullptr) { show_error(text(*error)); set_busy(false); return; }
+                try {
+                    if (!response->ok) throw SupervisoryResponseError(
+                        response->error_code + ": " + response->error_message);
+                    const auto result = parse_hidden_challenge_result(
+                        *response, workspace, revision, candidate_hash);
+                    hidden_challenge_result_->setText(QString(
+                        "Observed validation: %1 | promotable: %2 | suites: %3")
+                        .arg(text(result.outcome), result.promotable ? "yes" : "no")
+                        .arg(result.suites.as_array().size()));
+                    hidden_challenge_result_->setToolTip(
+                        "Validation: " + text(result.validation_id)
+                        + "\nSnapshot: " + text(result.snapshot_hash)
+                        + "\nRecord: " + text(result.record_hash)
+                        + "\nSuite commitments: " + text(result.suites.dump()));
+                    set_busy(false);
+                    inspect_selected_workspace();
+                } catch (const std::exception& decode_error) {
+                    show_error(QString::fromUtf8(decode_error.what())); set_busy(false);
+                }
+            });
+    } catch (const std::exception& error) {
+        hidden_challenge_input_->clear();
+        show_error(QString::fromUtf8(error.what())); set_busy(false);
+    }
+}
+
 void SupervisoryView::render(const SupervisoryWorkspaceInspection& inspection) {
     if (inspection.current_plan.is_null()) {
         if (inspection.goal_id.has_value()) {
@@ -567,6 +652,10 @@ void SupervisoryView::render(const SupervisoryWorkspaceInspection& inspection) {
             QString("%1  [%2] | validation: %3 | user decision: %4 | installation: %5")
                 .arg(candidate_id, state, validation, approval, installation),
             candidates_);
+        if (state == "current") {
+            item->setData(Qt::UserRole + 3, text(string_field(candidate, "revisionId")));
+            item->setData(Qt::UserRole + 4, text(string_field(candidate, "candidateHash")));
+        }
         const Json& claim = candidate.at("modelClaim");
         if (!claim.is_null()) {
             if (!claim.is_string()) throw SupervisoryResponseError(
@@ -753,6 +842,10 @@ void SupervisoryView::set_busy(bool busy) {
         && !candidates_->currentItem()->data(Qt::UserRole + 1).toString().isEmpty();
     approve_candidate_->setEnabled(!busy && pending_proposal && client_.is_running());
     reject_candidate_->setEnabled(!busy && pending_proposal && client_.is_running());
+    const bool current_candidate = candidates_->currentItem() != nullptr
+        && !candidates_->currentItem()->data(Qt::UserRole + 3).toString().isEmpty();
+    submit_hidden_challenge_->setEnabled(
+        !busy && current_candidate && client_.is_running());
 }
 
 } // namespace axiom_colab::gui

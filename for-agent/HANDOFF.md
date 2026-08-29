@@ -1,8 +1,17 @@
 # Axiom CoLab Current Handoff
 
-Last updated: 2026-08-29
+Last updated: 2026-08-30
 
 ## Current state
+
+- The Qt selected-candidate panel now submits private hidden-challenge fixture
+  and command JSON through the existing host-owned operation, binding the
+  displayed current revision and candidate hash.
+- Qt clears the private editor immediately after a valid request is submitted.
+  Its strict result decoder accepts only matching workspace/revision/candidate
+  bindings and redacted outcome, promotability, evidence hashes, and salted
+  suite commitments; fixtures, definitions, salts, and process output do not
+  remain in completed widget state.
 
 - Supervisory protocol `1.1` now includes a narrow host-owned hidden-challenge
   submission. It binds the exact current candidate revision/hash, combines
@@ -863,10 +872,10 @@ installation controls:
 
 ## Exact next work
 
-Add the Qt hidden-challenge submission view on top of the narrow host-owned
-operation without persisting private fixture bytes, challenge definitions, or
-output in widget state after completion. Candidate source authoring must
-delegate to the existing workshop, not write repository rows or files from Qt.
+Add candidate source/specification authoring through a narrow host operation
+that delegates to the existing workshop; Qt must not write repository rows or
+candidate files directly. Preserve immutable revision history and make a source
+change visibly invalidate prior validation and pending approval state.
 Keep installed-candidate execution absent until the executable loading strategy
 preserves its exact candidate and installation evidence hashes.
 

@@ -180,6 +180,28 @@ std::string SupervisoryProcessClient::decide_installation(
     }), std::move(handler));
 }
 
+std::string SupervisoryProcessClient::submit_hidden_challenge(
+    std::string_view workspace_id, std::string_view revision_id,
+    std::string_view candidate_hash, Json fixtures, Json commands,
+    ResponseHandler handler) {
+    if (!valid_identity(workspace_id, "workspace:")
+        || !valid_identity(revision_id, "evidence:")) {
+        throw std::invalid_argument("hidden challenge identity is malformed");
+    }
+    if (!candidate_hash.starts_with("sha256:") || candidate_hash.size() != 71
+        || !fixtures.is_array() || !commands.is_array()
+        || commands.as_array().empty()) {
+        throw std::invalid_argument("hidden challenge binding is malformed");
+    }
+    return send_request(Json::object({
+        {"protocolVersion", "1.1"}, {"operation", "submit-hidden-challenge"},
+        {"workspaceId", std::string(workspace_id)},
+        {"revisionId", std::string(revision_id)},
+        {"candidateHash", std::string(candidate_hash)},
+        {"fixtures", std::move(fixtures)}, {"commands", std::move(commands)},
+    }), std::move(handler));
+}
+
 std::string SupervisoryProcessClient::send_request(Json request,
                                                    ResponseHandler handler) {
     if (!is_running()) {
