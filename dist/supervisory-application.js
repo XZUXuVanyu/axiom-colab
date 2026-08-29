@@ -31,6 +31,21 @@ function freezeSnapshot(snapshot) {
     for (const tool of copy.tools)Object.freeze(tool);
     Object.freeze(copy.tools);
     for (const candidate of copy.candidates){
+        for (const source of candidate.sources)Object.freeze(source);
+        Object.freeze(candidate.sources);
+        Object.freeze(candidate.descriptor);
+        if (candidate.proposal !== null) Object.freeze(candidate.proposal.requestedPermissions);
+        Object.freeze(candidate.proposal);
+        if (candidate.validation !== null) {
+            Object.freeze(candidate.validation.toolchain);
+            Object.freeze(candidate.validation.confinement);
+            for (const suite of candidate.validation.suites){
+                for (const process of suite.processes)Object.freeze(process);
+                Object.freeze(suite.processes);
+                Object.freeze(suite);
+            }
+            Object.freeze(candidate.validation.suites);
+        }
         Object.freeze(candidate.validation);
         Object.freeze(candidate.approval);
         Object.freeze(candidate.installation);
@@ -166,8 +181,24 @@ export class SupervisoryApplicationModel {
             }
         }
         for (const candidate of snapshot.candidates){
+            const sourcePaths = new Set(candidate.sources.map((source)=>source.path));
+            if (sourcePaths.size !== candidate.sources.length) fail('INVALID_CANDIDATE_SOURCE', 'candidate source manifest contains duplicate paths');
             if (candidate.approval !== null && candidate.validation === null) fail('MISLEADING_AUTHORITY', 'approval must retain its validation projection');
+            if (candidate.approval !== null && candidate.proposal === null) fail('MISLEADING_AUTHORITY', 'approval must retain its exact proposal projection');
+            if (candidate.proposal?.state === 'proposed' && candidate.approval !== null) fail('MISLEADING_AUTHORITY', 'pending proposal cannot carry a user decision');
             if (candidate.installation !== null && candidate.approval === null) fail('MISLEADING_AUTHORITY', 'installation must retain its approval projection');
+            if (candidate.validation !== null) {
+                const suiteKinds = new Set(candidate.validation.suites.map((suite)=>suite.kind));
+                if (suiteKinds.size !== 3 || !suiteKinds.has('candidate') || !suiteKinds.has('standard') || !suiteKinds.has('challenge')) {
+                    fail('INVALID_VALIDATION_EVIDENCE', 'validation projection must retain all three independent suites');
+                }
+                for (const suite of candidate.validation.suites){
+                    if (suite.processes.length !== suite.commandCount) fail('INVALID_VALIDATION_EVIDENCE', 'validation suite command count does not match observed processes');
+                    if (suite.hidden && suite.processes.some((process)=>process.stdout !== null || process.stderr !== null)) {
+                        fail('MISLEADING_AUTHORITY', 'hidden challenge output must remain redacted');
+                    }
+                }
+            }
         }
         for (const tool of snapshot.tools){
             if (tool.source === 'installed' && tool.installationEvidenceHash === null) fail('MISLEADING_AUTHORITY', 'installed Tools require verified installation evidence');

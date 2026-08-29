@@ -39,7 +39,28 @@ $config = [ordered]@{
     bridgePath = $bridge
     bridgeArgs = @()
     hostActorId = 'actor:local-host'
+    userActorId = 'actor:local-user'
     maxLineBytes = 65536
+    memoryToolPolicies = @(
+        [ordered]@{
+            toolName = 'compute_buffer'
+            toolId = 'tool:compute-buffer'
+            toolVersion = '1.0.0'
+            operations = @('compute.create', 'compute.read', 'compute.update', 'compute.snapshot', 'compute.release')
+            maxOperations = 2
+            maxRequestBytes = 1048576
+            lifetimeMs = 10000
+        },
+        [ordered]@{
+            toolName = 'derive_artifact'
+            toolId = 'tool:derive-artifact'
+            toolVersion = '1.0.0'
+            operations = @('artifact.read', 'artifact.derive')
+            maxOperations = 2
+            maxRequestBytes = 1048576
+            lifetimeMs = 10000
+        }
+    )
 }
 if (-not [string]::IsNullOrWhiteSpace($BridgeWorkingDirectory)) {
     $config['bridgeWorkingDirectory'] = Resolve-AbsolutePath `

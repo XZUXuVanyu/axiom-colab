@@ -4,6 +4,42 @@ Entries are chronological. Each entry corresponds to one logical Git commit and
 records its exact subject, purpose, material changes, and validation actually
 performed.
 
+## 2026-08-29 - feat(gui): extend supervised candidate workflows
+
+Purpose: continue Stage 8 through policy-scoped memory execution, inspectable
+candidate evidence, and exact user decisions without moving authority into Qt.
+
+Material changes:
+
+- Composed explicit per-Tool policies and the authenticated loopback service so
+  production memory-dependent built-ins receive fresh workspace/call-scoped
+  grants with quotas, expiry, and automatic revocation.
+- Materialized candidate revisions through repository integrity checks and
+  projected descriptor/source manifests, validation hashes, toolchain/policy
+  bindings, confinement, and all three public suite/process outcomes while
+  rejecting hidden challenge-output disclosure.
+- Added Qt candidate evidence inspection and host-computed Tool executability;
+  installed candidates remain non-executable.
+- Added exact proposal/hash approve/reject commands. The host supplies trusted
+  user identity and delegates every decision to the existing proposal service,
+  which repeats current-candidate, validation, permission, replay, and workspace
+  checks.
+- Made the offscreen Widgets CTest select its configured Qt runtime instead of
+  an older ambient DLL.
+
+Validation actually run:
+
+- `pnpm.cmd test`: all 85 TypeScript tests passed.
+- `pnpm.cmd run test:integration`: all 5 portable real-Bridge cases passed,
+  including production supervisory `compute_buffer`; 3 opt-in WSL cases skipped.
+- Qt 6.12.0/MSVC 19.51 Release built with warnings as errors and all 3 CTest
+  targets passed, including candidate evidence and exact-decision refresh.
+- Initial diagnostic runs exposed missing Developer Command Prompt includes and
+  then an older ambient Qt DLL (`0xc0000139`); the recorded initialized build and
+  configured test runtime produced the passing results above.
+- Windows PowerShell parsed the generated-config script successfully.
+- `git diff --check` passed with newline-conversion notices only.
+
 ## 2026-08-28 - feat(gui): serve supervisory transport process
 
 Purpose: provide the tested shell-free process framing that the Qt client can

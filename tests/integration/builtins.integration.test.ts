@@ -1,12 +1,14 @@
 import assert from 'node:assert/strict'
-import { existsSync, mkdirSync, rmSync } from 'node:fs'
+import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
+import { spawn } from 'node:child_process'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import test from 'node:test'
 
 import {
   AuthenticatedMemoryHttpServer, AuthenticatedMemoryService,
-  contentHash, LocalMemoryStore, MemorySessionProvider, MemoryWorkflows,
+  contentHash, createLocalApprovedPlanReader, LocalGoalLifecycle, LocalMemoryStore,
+  MemorySessionProvider, MemoryWorkflows,
 } from '../../dist/index.js'
 import { AdapterService, ProcessRunner, ToolObserver } from '../../dist/adapter-service.js'
 
@@ -62,4 +64,51 @@ test('production built-ins use explicit scoped policy for compute and artifact d
   } finally {
     adapter.dispose(); await server.close(); workflows.close(); store.close()
   }
+})
+
+test('production supervisory process executes a configured memory-dependent built-in', { skip: !available }, async () => {
+  const root = join(tmpdir(), `axiom-supervisory-builtins-${crypto.randomUUID()}`); mkdirSync(root); roots.push(root)
+  const stateRoot = join(root, 'state')
+  const store = new LocalMemoryStore(join(stateRoot, 'memory')); store.createWorkspace('workspace:alpha')
+  const workflows = new MemoryWorkflows(store)
+  const now = new Date()
+  const invocation = (authority: 'model' | 'user', operation: 'working.propose' | 'working.approve') => ({
+    authority, context: { workspaceId: 'workspace:alpha', actorId: `actor:${authority}`, callId: `call:${authority}`, toolId: 'tool:test' },
+    capability: { protocolVersion: '1.0', capabilityId: `capability:${authority}`, workspaceId: 'workspace:alpha', actorId: `actor:${authority}`, toolId: 'tool:test', callId: `call:${authority}`, operations: [operation], issuedAt: now.toISOString(), expiresAt: new Date(now.getTime() + 60_000).toISOString(), nonce: authority },
+  }) as any
+  const proposal = workflows.proposeWorking(invocation('model', 'working.propose'), 'goal:one:plan', { goalId: 'goal:one', objective: 'Create scoped compute memory.' })
+  workflows.approveWorking(invocation('user', 'working.approve'), proposal.id, { workspaceId: 'workspace:alpha', proposalId: proposal.id, proposalHash: proposal.hash, decision: 'approved' })
+  const lifecycle = new LocalGoalLifecycle(join(stateRoot, 'lifecycle.sqlite3'), {
+    approvedPlan: createLocalApprovedPlanReader(workflows, 'actor:local-host'),
+    async stopGoal() {}, async resumeGoal() {}, async revokeCapability() {}, async recoverWorkspace() {},
+  })
+  lifecycle.registerGoal('workspace:alpha', 'goal:one')
+  lifecycle.close(); workflows.close(); store.close()
+  const configPath = join(root, 'config.json')
+  writeFileSync(configPath, JSON.stringify({
+    stateRoot, bridgePath: bridge, bridgeArgs: [], bridgeWorkingDirectory: resolve('.'),
+    memoryToolPolicies: [{
+      toolName: 'compute_buffer', toolId: 'tool:compute-buffer', toolVersion: '1.0.0',
+      operations: ['compute.create'], maxOperations: 1, maxRequestBytes: 4096, lifetimeMs: 10_000,
+    }],
+  }))
+  const child = spawn(process.execPath, [resolve('proj/scripts/run-supervisory.mjs'), configPath], {
+    cwd: resolve('.'), stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true,
+  })
+  let stdout = ''; let stderr = ''
+  child.stdout.setEncoding('utf8'); child.stderr.setEncoding('utf8')
+  child.stdout.on('data', (chunk: string) => { stdout += chunk })
+  child.stderr.on('data', (chunk: string) => { stderr += chunk })
+  child.stdin.end(`${JSON.stringify({
+    protocolVersion: '1.1', id: 'memory:1', operation: 'execute-tool',
+    workspaceId: 'workspace:alpha', goalId: 'goal:one', tool: 'compute_buffer',
+    arguments: { action: 'create', base64: Buffer.from('scoped').toString('base64') },
+  })}\n`)
+  const exitCode = await new Promise<number | null>((resolveExit, reject) => {
+    child.once('error', reject); child.once('exit', resolveExit)
+  })
+  assert.equal(exitCode, 0, stderr)
+  const response = JSON.parse(stdout.trim())
+  assert.equal(response.ok, true)
+  assert.match(response.result.result.id, /^object:/)
 })

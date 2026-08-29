@@ -20,6 +20,9 @@ test('supervisory transport lists workspaces and correlates immutable inspection
     async executeTool(workspaceId: string, goalId: string, tool: string, args: unknown) {
       return { workspaceId, goalId, callId: 'call:one', tool, result: args, reportArtifactId: 'object:report', reportHash: `sha256:${'1'.repeat(64)}` }
     },
+    async decideInstallation(workspaceId: string, proposalId: string, proposalHash: string, decision: string) {
+      return { workspaceId, proposalId, proposalHash, decision }
+    },
   }
   const transport = new SupervisoryTransport(host as any)
   const listed = JSON.parse(await transport.handle(JSON.stringify({ protocolVersion: '1.1', id: 'one', operation: 'list-workspaces' })))
@@ -32,6 +35,8 @@ test('supervisory transport lists workspaces and correlates immutable inspection
   const executed = JSON.parse(await transport.handle(JSON.stringify({ protocolVersion: '1.1', id: 'three', operation: 'execute-tool', workspaceId: 'workspace:alpha', goalId: 'goal:one', tool: 'add_numbers', arguments: { left: 2, right: 3 } })))
   assert.equal(executed.result.callId, 'call:one')
   assert.deepEqual(executed.result.result, { left: 2, right: 3 })
+  const decided = JSON.parse(await transport.handle(JSON.stringify({ protocolVersion: '1.1', id: 'four', operation: 'decide-installation', workspaceId: 'workspace:alpha', proposalId: 'proposal:one', proposalHash: `sha256:${'2'.repeat(64)}`, decision: 'rejected' })))
+  assert.equal(decided.result.decision, 'rejected')
 })
 
 test('supervisory transport rejects malformed, oversized, and authority-changing requests', async () => {
@@ -50,6 +55,8 @@ test('supervisory transport rejects malformed, oversized, and authority-changing
   assert.equal(oversized.error.code, 'REQUEST_TOO_LARGE')
   const invalidArguments = JSON.parse(await transport.handle(JSON.stringify({ protocolVersion: '1.1', id: 'execute', operation: 'execute-tool', workspaceId: 'workspace:alpha', goalId: 'goal:one', tool: 'add_numbers', arguments: [] })))
   assert.equal(invalidArguments.error.code, 'INVALID_TOOL_ARGUMENTS')
+  const invalidDecision = JSON.parse(await transport.handle(JSON.stringify({ protocolVersion: '1.1', id: 'decision', operation: 'decide-installation', workspaceId: 'workspace:alpha', proposalId: 'proposal:one', proposalHash: `sha256:${'2'.repeat(64)}`, decision: 'installed' })))
+  assert.equal(invalidDecision.error.code, 'INVALID_DECISION')
 })
 
 test('supervisory transport preserves deterministic host failure codes', async () => {

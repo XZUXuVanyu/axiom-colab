@@ -48,6 +48,8 @@ export class LocalSupervisoryBackend {
         const installations = this.candidates.listInstallationEvidence(workspaceId);
         const projectedCandidates = revisions.map((revision)=>{
             const specification = this.candidates.readSpecification(workspaceId, revision.specificationId);
+            const materialized = this.candidates.materializeRevision(workspaceId, revision.revisionId);
+            if (materialized === null) fail('CANDIDATE_NOT_FOUND', 'candidate revision disappeared during inspection');
             const validation = latestValidation(revision, validations);
             const proposal = proposalFor(revision, proposals);
             const approval = proposal?.state === 'approved' ? this.candidates.inspectInstallationApproval(workspaceId, proposal.proposalId) : null;
@@ -55,14 +57,48 @@ export class LocalSupervisoryBackend {
             return {
                 candidateId: revision.candidateId,
                 revisionId: revision.revisionId,
+                revision: revision.revision,
                 candidateHash: revision.candidateHash,
                 state: revision.state,
                 modelClaim: specification?.problem ?? null,
+                descriptor: structuredClone(materialized.descriptor),
+                descriptorHash: revision.descriptorHash,
+                sourceHash: revision.sourceHash,
+                sources: revision.sources.map((source)=>({
+                        ...source
+                    })),
+                proposal: proposal === null ? null : {
+                    proposalId: proposal.proposalId,
+                    proposalHash: proposal.proposalHash,
+                    validationId: proposal.validationId,
+                    validationRecordHash: proposal.validationRecordHash,
+                    candidateSnapshotHash: proposal.candidateSnapshotHash,
+                    requestedPermissions: [
+                        ...proposal.requestedPermissions
+                    ],
+                    state: proposal.state
+                },
                 validation: validation === null ? null : {
                     validationId: validation.record.validationId,
                     recordHash: validation.record.recordHash,
+                    snapshotHash: validation.snapshot.snapshotHash,
                     outcome: validation.record.outcome,
-                    promotable: this.validator.isPromotionEligible(validation.snapshot.snapshotHash, validation.record)
+                    promotable: this.validator.isPromotionEligible(validation.snapshot.snapshotHash, validation.record),
+                    completedAt: validation.record.completedAt,
+                    toolchain: {
+                        ...validation.snapshot.toolchain
+                    },
+                    toolchainHash: validation.snapshot.toolchainHash,
+                    policyHash: validation.snapshot.policyHash,
+                    confinement: {
+                        ...validation.record.confinement
+                    },
+                    suites: validation.record.suites.map((suite)=>({
+                            ...suite,
+                            processes: suite.processes.map((process)=>({
+                                    ...process
+                                }))
+                        }))
                 },
                 approval: proposal === null || proposal.state === 'proposed' ? null : {
                     proposalId: proposal.proposalId,
@@ -80,6 +116,7 @@ export class LocalSupervisoryBackend {
                 name: descriptor.name,
                 descriptor,
                 source: 'built-in',
+                executable: this.options.executableBuiltIn?.(workspaceId, descriptor) ?? !descriptor.sideEffect,
                 installationEvidenceHash: null
             }));
         const installedEvidence = new Map(this.candidates.listInstalledTools(workspaceId).map((item)=>[
@@ -95,6 +132,7 @@ export class LocalSupervisoryBackend {
                 name: registration.publicName,
                 descriptor: assertToolDescriptor(registration.descriptor),
                 source: 'installed',
+                executable: false,
                 installationEvidenceHash: registration.installationEvidenceHash
             });
         }

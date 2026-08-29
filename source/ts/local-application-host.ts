@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 
 import type { AdapterService } from './adapter-service.js'
+import type { TrustedInvocationSession } from './adapter-service.js'
 import type { JsonValue } from './harness-types.js'
 import { contentHash } from './laboratory-contract.js'
 import type { LocalCandidateRepository } from './candidate-repository.js'
@@ -19,6 +20,7 @@ import type {
   InstalledToolRegistration, InstalledToolRegistry, ToolInstallationEvidence,
 } from './tool-installation.js'
 import type { ValidationPromotionAuthority } from './tool-installation-proposal.js'
+import type { ToolInstallationProposalService } from './tool-installation-proposal.js'
 
 export interface InstalledToolRediscovery {
   rediscover(context: {
@@ -42,6 +44,14 @@ export interface LocalApplicationHostOptions {
     readonly observations: readonly SupervisoryToolObservation[]
   }
   readonly memory?: (workspaceId: LaboratoryId<'workspace'>) => SupervisoryMemoryProjection
+  readonly memorySession?: (
+    workspaceId: LaboratoryId<'workspace'>,
+    toolName: string,
+    callId: LaboratoryId<'call'>,
+  ) => TrustedInvocationSession | undefined
+  readonly memoryPolicyAvailable?: (toolName: string) => boolean
+  readonly proposalService?: ToolInstallationProposalService
+  readonly userActorId?: LaboratoryId<'actor'>
 }
 
 export class LocalApplicationHostError extends Error {
@@ -87,6 +97,8 @@ export class LocalApplicationHost {
       {
         builtInTools: () => this.descriptors,
         rediscoveredTools: (workspaceId) => this.registry.list(workspaceId),
+        executableBuiltIn: (_workspaceId, descriptor) => !descriptor.sideEffect
+          || (options.memoryPolicyAvailable?.(descriptor.name) ?? false),
         lifecycle: options.lifecycle,
         ...(options.goalProgress === undefined ? {} : { goalProgress: options.goalProgress }),
         ...(options.memory === undefined ? {} : { memory: options.memory }),
@@ -116,6 +128,22 @@ export class LocalApplicationHost {
     return this.backend.inspect(workspaceId, goalId)
   }
 
+  async decideInstallation(
+    workspaceId: LaboratoryId<'workspace'>,
+    proposalId: LaboratoryId<'proposal'>,
+    proposalHash: `sha256:${string}`,
+    decision: 'approved' | 'rejected',
+  ): Promise<{ readonly workspaceId: LaboratoryId<'workspace'>; readonly proposalId: LaboratoryId<'proposal'>; readonly proposalHash: `sha256:${string}`; readonly decision: 'approved' | 'rejected' }> {
+    this.ensureReady()
+    if (this.options.proposalService === undefined || this.options.userActorId === undefined) fail('OPERATION_NOT_AVAILABLE', 'installation decisions are not composed')
+    const proposal = this.options.candidates.inspectInstallationProposal(workspaceId, proposalId)
+    if (proposal === null || proposal.proposalHash !== proposalHash) fail('STALE_INSTALLATION_PROPOSAL', 'proposal identity and hash do not match visible state')
+    const context = { workspaceId, actorId: this.options.userActorId, authority: 'user' as const }
+    if (decision === 'approved') this.options.proposalService.approve(context, proposalId)
+    else this.options.proposalService.reject(context, proposalId)
+    return { workspaceId, proposalId, proposalHash, decision }
+  }
+
   async executeTool(
     workspaceId: LaboratoryId<'workspace'>,
     goalId: LaboratoryId<'goal'>,
@@ -129,11 +157,14 @@ export class LocalApplicationHost {
     if (goal?.plan === null || goal === null) fail('GOAL_NOT_FOUND', 'selected goal has no authoritative approved plan')
     const descriptor = this.descriptors.find((item) => item.name === toolName)
     if (descriptor === undefined) fail('TOOL_NOT_EXECUTABLE', 'Tool is not executable by the production Adapter')
-    if (descriptor.sideEffect) fail('TOOL_REQUIRES_POLICY', 'side-effecting Tool execution requires an explicit host policy')
     const callId = `call:${randomUUID()}` as LaboratoryId<'call'>
+    const memorySession = this.options.memorySession?.(workspaceId, toolName, callId)
+    if (descriptor.sideEffect && memorySession === undefined) {
+      fail('TOOL_REQUIRES_POLICY', 'side-effecting Tool execution requires an explicit host policy')
+    }
     const ledgerStart = this.options.adapter.ledger.snapshot().length
     const startedAt = new Date().toISOString()
-    const result = await this.options.adapter.invoke(toolName, args, callId, signal)
+    const result = await this.options.adapter.invoke(toolName, args, callId, signal, memorySession)
     const completedAt = new Date().toISOString()
     const report = {
       goalId, planRevisionId: goal.plan.id, planHash: goal.plan.hash,

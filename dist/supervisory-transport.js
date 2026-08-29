@@ -74,6 +74,22 @@ function parseRequest(text, maxBytes) {
         if (!record(value.arguments)) fail('INVALID_TOOL_ARGUMENTS', 'Tool arguments must be an object');
         return value;
     }
+    if (value.operation === 'decide-installation') {
+        exact(value, [
+            'protocolVersion',
+            'id',
+            'operation',
+            'workspaceId',
+            'proposalId',
+            'proposalHash',
+            'decision'
+        ]);
+        if (typeof value.workspaceId !== 'string' || !/^workspace:[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(value.workspaceId)) fail('INVALID_WORKSPACE_ID', 'workspace identity is malformed');
+        if (typeof value.proposalId !== 'string' || !/^proposal:[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(value.proposalId)) fail('INVALID_PROPOSAL_ID', 'proposal identity is malformed');
+        if (typeof value.proposalHash !== 'string' || !/^sha256:[0-9a-f]{64}$/.test(value.proposalHash)) fail('INVALID_PROPOSAL_HASH', 'proposal hash is malformed');
+        if (value.decision !== 'approved' && value.decision !== 'rejected') fail('INVALID_DECISION', 'decision must be approved or rejected');
+        return value;
+    }
     fail('UNKNOWN_OPERATION', 'supervisory operation is unknown');
 }
 function code(error) {
@@ -112,7 +128,7 @@ export class SupervisoryTransport {
                 goals: [
                     ...this.host.goals(request.workspaceId)
                 ]
-            } : request.operation === 'inspect' ? await this.host.inspect(request.workspaceId, request.goalId) : await this.host.executeTool(request.workspaceId, request.goalId, request.tool, request.arguments);
+            } : request.operation === 'inspect' ? await this.host.inspect(request.workspaceId, request.goalId) : request.operation === 'execute-tool' ? await this.host.executeTool(request.workspaceId, request.goalId, request.tool, request.arguments) : await this.host.decideInstallation(request.workspaceId, request.proposalId, request.proposalHash, request.decision);
             const response = {
                 protocolVersion: SUPERVISORY_TRANSPORT_VERSION,
                 id: request.id,

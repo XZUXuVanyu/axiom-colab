@@ -36,6 +36,7 @@ private:
     void load_goals();
     void inspect_selected_workspace();
     void execute_selected_tool();
+    void decide_selected_installation(bool approve);
     void render(const SupervisoryWorkspaceInspection& inspection);
     void show_error(const QString& message);
     void set_busy(bool busy);
@@ -52,6 +53,9 @@ private:
     QLabel* goal_progress_{};
     QListWidget* tools_{};
     QListWidget* candidates_{};
+    QPlainTextEdit* candidate_details_{};
+    QPushButton* approve_candidate_{};
+    QPushButton* reject_candidate_{};
     QListWidget* timeline_{};
     QListWidget* observations_{};
     QListWidget* compute_memory_{};

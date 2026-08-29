@@ -58,6 +58,8 @@ test('local supervisory backend composes isolated durable state from authoritati
   assert.equal(snapshot.tools[0]?.name, 'add_numbers')
   assert.equal(snapshot.candidates[0]?.candidateHash, revision.candidateHash)
   assert.equal(snapshot.candidates[0]?.modelClaim, 'Need a deterministic bounded addition Tool.')
+  assert.equal(snapshot.candidates[0]?.descriptorHash, revision.descriptorHash)
+  assert.deepEqual(snapshot.candidates[0]?.sources, revision.sources)
   assert.equal(snapshot.timeline[0]?.kind, 'model-claim')
 
   const other = await makeBackend().inspect('workspace:beta', null)
@@ -70,6 +72,7 @@ test('local supervisory backend composes isolated durable state from authoritati
   repository = new LocalCandidateRepository(join(root, 'candidates.sqlite3'))
   snapshot = await makeBackend().inspect('workspace:alpha', null)
   assert.equal(snapshot.candidates[0]?.candidateHash, revision.candidateHash)
+  assert.deepEqual(snapshot.candidates[0]?.sources, revision.sources)
 
   workflows.close(); repository.close(); store.close()
 })

@@ -182,6 +182,12 @@ if(CPP_ADAPTER_BUILD_GUI)
             set_tests_properties(axiom-supervisory-view-tests PROPERTIES
                 ENVIRONMENT "QT_QPA_PLATFORM=offscreen"
             )
+            if(WIN32)
+                set_tests_properties(axiom-supervisory-view-tests PROPERTIES
+                    ENVIRONMENT_MODIFICATION
+                        "PATH=path_list_prepend:$<TARGET_FILE_DIR:Qt6::Core>"
+                )
+            endif()
         endif()
         qt_add_executable(cpp-adapter-gui WIN32
             source/cpp/gui/main.cpp

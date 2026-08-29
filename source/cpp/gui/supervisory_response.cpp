@@ -223,4 +223,26 @@ SupervisoryToolExecution parse_tool_execution_result(
             .report_artifact_id = artifact_id, .report_hash = report_hash};
 }
 
+SupervisoryInstallationDecision parse_installation_decision_result(
+    const SupervisoryResponse& response, std::string_view expected_workspace_id,
+    std::string_view expected_proposal_id, std::string_view expected_proposal_hash,
+    std::string_view expected_decision) {
+    if (!response.ok) fail("cannot decode installation decision from an error response");
+    const auto& result = require_object(response.result, "installation decision result");
+    require_exact_fields(result, {"workspaceId", "proposalId", "proposalHash", "decision"});
+    const auto& workspace_id = require_string(response.result.at("workspaceId"), "workspaceId");
+    const auto& proposal_id = require_string(response.result.at("proposalId"), "proposalId");
+    const auto& proposal_hash = require_string(response.result.at("proposalHash"), "proposalHash");
+    const auto& decision = require_string(response.result.at("decision"), "decision");
+    if (workspace_id != expected_workspace_id || !valid_identity(workspace_id, "workspace:")
+        || proposal_id != expected_proposal_id || !valid_identity(proposal_id, "proposal:")
+        || proposal_hash != expected_proposal_hash || !proposal_hash.starts_with("sha256:")
+        || proposal_hash.size() != 71 || decision != expected_decision
+        || (decision != "approved" && decision != "rejected")) {
+        fail("installation decision result does not match the exact displayed proposal");
+    }
+    return {.workspace_id = workspace_id, .proposal_id = proposal_id,
+            .proposal_hash = proposal_hash, .decision = decision};
+}
+
 } // namespace axiom_colab::gui

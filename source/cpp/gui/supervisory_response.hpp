@@ -51,6 +51,13 @@ struct SupervisoryToolExecution final {
     std::string report_hash;
 };
 
+struct SupervisoryInstallationDecision final {
+    std::string workspace_id;
+    std::string proposal_id;
+    std::string proposal_hash;
+    std::string decision;
+};
+
 [[nodiscard]] SupervisoryResponse parse_supervisory_response(
     std::string_view text, std::string_view expected_request_id);
 [[nodiscard]] std::vector<std::string> parse_workspace_list_result(
@@ -64,5 +71,9 @@ struct SupervisoryToolExecution final {
 [[nodiscard]] SupervisoryToolExecution parse_tool_execution_result(
     const SupervisoryResponse& response, std::string_view expected_workspace_id,
     std::string_view expected_goal_id, std::string_view expected_tool);
+[[nodiscard]] SupervisoryInstallationDecision parse_installation_decision_result(
+    const SupervisoryResponse& response, std::string_view expected_workspace_id,
+    std::string_view expected_proposal_id, std::string_view expected_proposal_hash,
+    std::string_view expected_decision);
 
 } // namespace axiom_colab::gui

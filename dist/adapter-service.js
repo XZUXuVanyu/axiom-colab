@@ -28,7 +28,7 @@ export class AdapterService {
         for (const descriptor of descriptors)this.descriptorsByName.set(descriptor.name, descriptor);
         return descriptors;
     }
-    async invoke(toolName, args, callId, signal) {
+    async invoke(toolName, args, callId, signal, trustedContextOverride) {
         if (this.disposed) {
             throw new ProcessExecutionError('DISPOSED', 'adapter service is disposed');
         }
@@ -53,7 +53,7 @@ export class AdapterService {
         let release;
         let trustedSession;
         try {
-            const provided = this.config.trustedContextProvider?.(toolName, callId);
+            const provided = trustedContextOverride ?? this.config.trustedContextProvider?.(toolName, callId);
             const trustedContext = provided !== undefined && 'envelope' in provided ? (trustedSession = provided).envelope : provided;
             const request = makeToolCallRequest(callId, toolName, args, trustedContext);
             release = await this.gate.acquire(signal);

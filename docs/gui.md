@@ -7,13 +7,23 @@ approved working-memory plan. Workspace and goal selectors render the approved
 objective, revision identity, and hash beside host-projected resource, Tool,
 candidate, and immutable timeline summaries.
 Candidate rows keep model claims, validator outcomes, user decisions, and
-verified installation state visibly separate. No approval, installation,
-memory-authority, or lifecycle mutation operation is present. A selected goal
-may execute an Adapter-discovered, side-effect-free built-in with JSON object
-arguments. The host creates the call identity, seals the actual result in an
-immutable session-report artifact, and the view refreshes inspection. Tools
-that require memory policy and rediscovered installed Tools are not executable
-through this initial command.
+verified installation state visibly separate. Selecting a candidate shows its
+exact revision/descriptor/source hashes, source-file manifest, validation
+snapshot and record hashes, toolchain and policy bindings, confinement facts,
+and observed candidate/standard/challenge suite process outcomes. Hidden
+challenge output remains redacted. A pending installation proposal shows its
+exact proposal/candidate/validation hashes and requested permissions before
+enabling explicit approve/reject buttons. The host supplies the configured
+local user identity and delegates to the existing proposal service; Qt cannot
+author an approval record. No installation or lifecycle mutation operation is
+present. A selected goal may execute an
+Adapter-discovered pure built-in or a built-in covered by an explicit
+`memoryToolPolicies` entry, using JSON object arguments. For a memory-dependent
+call, the host starts a numeric-loopback-only memory service, issues a fresh
+workspace/Tool/call-bound grant with the configured operations and quotas, and
+revokes it when the Adapter call ends. The host seals the actual result in an
+immutable session-report artifact and the view refreshes inspection.
+Rediscovered installed Tools remain non-executable.
 
 Create the explicit process config outside the authoritative state directory:
 
@@ -75,7 +85,7 @@ This first GUI slice intentionally does not:
 - infer or register dependencies;
 - recursively reproduce arbitrary source directory trees;
 - edit CMake for external source trees;
-- execute memory-dependent or installed candidate Tools.
+- execute installed candidate Tools.
 
 Those features can be layered onto the same C++-authoritative workflow later.
 Imported code must currently conform to the contract in

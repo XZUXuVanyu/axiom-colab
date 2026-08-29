@@ -45,6 +45,10 @@ public:
         std::string_view workspace_id, std::string_view goal_id,
         std::string_view tool, cpp_adapter::Json arguments,
         ResponseHandler handler);
+    [[nodiscard]] std::string decide_installation(
+        std::string_view workspace_id, std::string_view proposal_id,
+        std::string_view proposal_hash, std::string_view decision,
+        ResponseHandler handler);
 
 private:
     struct PendingRequest final {

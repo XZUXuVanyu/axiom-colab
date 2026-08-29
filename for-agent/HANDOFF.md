@@ -4,19 +4,46 @@ Last updated: 2026-08-29
 
 ## Current state
 
+- Pending installation proposals now project the exact proposal hash, bound
+  candidate/validation hashes, requested permissions, and state. Qt shows these
+  facts before enabling explicit approve/reject controls.
+- Supervisory decisions carry only workspace, proposal identity/hash, and the
+  decision. The production host supplies `actor:local-user` (or the strict
+  configured replacement) and delegates to `ToolInstallationProposalService`;
+  stale hashes, changed candidates, non-promotable validation, replay, and
+  cross-workspace decisions fail through existing authority checks.
+- Candidate inspection now materializes each revision through repository
+  integrity checks and projects descriptor/source-file bindings plus public
+  validation snapshot, record, toolchain, policy, confinement, suite, and
+  observed process evidence. Private source/fixture payloads, challenge
+  definitions, salts, and hidden output remain outside the projection.
+- The Qt Laboratory view has a selectable candidate evidence panel that shows
+  source manifests and actual candidate/standard/challenge outcomes separately
+  from the model claim, approval, installation, and promotability labels.
+- Tool projections now carry host-computed executability. Qt can offer a
+  policy-covered memory built-in without inferring authority from its
+  descriptor, while rediscovered installed candidates remain non-executable.
+- The production supervisory process now starts the authenticated
+  numeric-loopback memory service and accepts strict explicit
+  `memoryToolPolicies`. A covered discovered built-in receives a fresh
+  workspace/Tool/call-bound session with configured operations, byte/call
+  quotas, lifetime, and automatic Adapter revocation.
+- Side-effecting built-ins without a policy still fail closed. The generated
+  local configuration supplies bounded policies for `compute_buffer` and
+  `derive_artifact`; rediscovered installed candidates remain deliberately
+  non-executable until their exact executable loading boundary exists.
 - Supervisory protocol `1.1` adds one constrained `execute-tool` command. It
   requires an exact visible goal/approved-plan binding and accepts only
-  Adapter-discovered Tools whose authoritative descriptor declares no side
-  effects. The host generates call IDs and does not accept caller-authored
+  Adapter-discovered built-ins that are pure or covered by explicit host memory
+  policy. The host generates call IDs and does not accept caller-authored
   trusted context.
 - Successful calls are sealed with their actual Adapter ledger record and
   observed result into an immutable, hash-verified goal-session-report artifact
   before success is returned. The Qt workflow submits strict JSON object
   arguments, validates the correlated execution/evidence response, shows the
   result, and refreshes authoritative inspection.
-- Memory-dependent Tools, side-effecting Tools, and rediscovered installed
-  Tools remain deliberately non-executable through this command until explicit
-  per-Tool memory policy and executable loading boundaries are composed.
+- Side-effecting Tools without explicit memory policy and all rediscovered
+  installed Tools remain deliberately non-executable through this command.
 - Supervisory inspection now includes host-owned metadata projections for all
   three semantic memory classes: bounded compute objects, approved working
   revisions, and immutable artifacts with complete parent/child lineage and
@@ -107,7 +134,8 @@ Last updated: 2026-08-29
 - `SupervisoryTransport` version `1.1` defines strict JSON reads plus constrained
   pure-Tool execution. Requests use strict fields, validated
   identities, a 64 KiB default limit, request-ID correlation, and structured
-  errors; approval, installation, lifecycle, and memory-authority operations are absent.
+  errors; the only approval operation is the exact-hash installation-proposal
+  decision, while installation, lifecycle, and memory-authority operations are absent.
 - Host inspection now has a selection-independent path, preventing concurrent
   transport requests from redirecting shared UI workspace/goal selection.
 - `LocalApplicationHost` now owns Adapter descriptor discovery, deterministic
@@ -795,9 +823,14 @@ installation controls:
 
 ## Exact next work
 
-Compose explicit per-Tool memory policies and the loopback memory service for
-the existing memory-dependent built-ins before beginning candidate-authoring
-and approval controls. Keep installed-candidate execution absent until the
+Define a production validation profile that binds candidate-authored and
+laboratory-standard build/test commands, toolchain, WSL distribution, staging
+root, allowed executables, and resource policy. Only after that profile exists,
+add hidden challenge submission through a narrow host-owned operation that
+stores private fixtures separately and invokes the existing enforcing validator;
+do not send hidden definitions or output back through inspection. Candidate
+source authoring must delegate to the existing workshop, not write repository
+rows or files from Qt. Keep installed-candidate execution absent until the
 executable loading strategy preserves its exact candidate and installation
 evidence hashes.
 

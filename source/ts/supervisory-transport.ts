@@ -9,6 +9,7 @@ export interface SupervisoryTransportHost {
   goals(workspaceId: LaboratoryId<'workspace'>): readonly LaboratoryId<'goal'>[]
   inspect(workspaceId: LaboratoryId<'workspace'>, goalId: LaboratoryId<'goal'> | null): Promise<SupervisoryWorkspaceSnapshot>
   executeTool(workspaceId: LaboratoryId<'workspace'>, goalId: LaboratoryId<'goal'>, tool: string, args: Record<string, JsonValue>): Promise<SupervisoryToolExecution>
+  decideInstallation(workspaceId: LaboratoryId<'workspace'>, proposalId: LaboratoryId<'proposal'>, proposalHash: `sha256:${string}`, decision: 'approved' | 'rejected'): Promise<JsonValue>
 }
 
 type Request =
@@ -16,6 +17,7 @@ type Request =
   | { readonly protocolVersion: typeof SUPERVISORY_TRANSPORT_VERSION; readonly id: string; readonly operation: 'list-goals'; readonly workspaceId: LaboratoryId<'workspace'> }
   | { readonly protocolVersion: typeof SUPERVISORY_TRANSPORT_VERSION; readonly id: string; readonly operation: 'inspect'; readonly workspaceId: LaboratoryId<'workspace'>; readonly goalId: LaboratoryId<'goal'> | null }
   | { readonly protocolVersion: typeof SUPERVISORY_TRANSPORT_VERSION; readonly id: string; readonly operation: 'execute-tool'; readonly workspaceId: LaboratoryId<'workspace'>; readonly goalId: LaboratoryId<'goal'>; readonly tool: string; readonly arguments: Record<string, JsonValue> }
+  | { readonly protocolVersion: typeof SUPERVISORY_TRANSPORT_VERSION; readonly id: string; readonly operation: 'decide-installation'; readonly workspaceId: LaboratoryId<'workspace'>; readonly proposalId: LaboratoryId<'proposal'>; readonly proposalHash: `sha256:${string}`; readonly decision: 'approved' | 'rejected' }
 
 interface ErrorPayload { readonly code: string; readonly message: string }
 type Response =
@@ -68,6 +70,14 @@ function parseRequest(text: string, maxBytes: number): Request {
     if (!record(value.arguments)) fail('INVALID_TOOL_ARGUMENTS', 'Tool arguments must be an object')
     return value as unknown as Request
   }
+  if (value.operation === 'decide-installation') {
+    exact(value, ['protocolVersion', 'id', 'operation', 'workspaceId', 'proposalId', 'proposalHash', 'decision'])
+    if (typeof value.workspaceId !== 'string' || !/^workspace:[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(value.workspaceId)) fail('INVALID_WORKSPACE_ID', 'workspace identity is malformed')
+    if (typeof value.proposalId !== 'string' || !/^proposal:[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(value.proposalId)) fail('INVALID_PROPOSAL_ID', 'proposal identity is malformed')
+    if (typeof value.proposalHash !== 'string' || !/^sha256:[0-9a-f]{64}$/.test(value.proposalHash)) fail('INVALID_PROPOSAL_HASH', 'proposal hash is malformed')
+    if (value.decision !== 'approved' && value.decision !== 'rejected') fail('INVALID_DECISION', 'decision must be approved or rejected')
+    return value as unknown as Request
+  }
   fail('UNKNOWN_OPERATION', 'supervisory operation is unknown')
 }
 
@@ -100,7 +110,9 @@ export class SupervisoryTransport {
           ? { workspaceId: request.workspaceId, goals: [...this.host.goals(request.workspaceId)] }
           : request.operation === 'inspect'
             ? await this.host.inspect(request.workspaceId, request.goalId)
-            : await this.host.executeTool(request.workspaceId, request.goalId, request.tool, request.arguments)
+            : request.operation === 'execute-tool'
+              ? await this.host.executeTool(request.workspaceId, request.goalId, request.tool, request.arguments)
+              : await this.host.decideInstallation(request.workspaceId, request.proposalId, request.proposalHash, request.decision)
       const response: Response = { protocolVersion: SUPERVISORY_TRANSPORT_VERSION, id: request.id, ok: true, result: result as JsonValue }
       return JSON.stringify(response)
     } catch (error) {

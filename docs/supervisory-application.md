@@ -88,18 +88,31 @@ shell-free child process and does not open SQLite databases or installed-Tool
 directories itself.
 
 `SupervisoryTransport` version `1.1` defines the local supervisory JSON
-boundary. It accepts `list-workspaces`, `list-goals`, `inspect`, and the
-constrained `execute-tool` command, uses strict exact-field parsing,
+boundary. It accepts `list-workspaces`, `list-goals`, `inspect`, constrained
+`execute-tool`, and exact-hash `decide-installation`, using strict exact-field parsing,
 validates workspace and goal identities, bounds request bytes, correlates every
 valid request ID, and returns structured deterministic failures. Tool execution
 requires a registered goal with its exact current approved plan and is limited
-to Adapter-discovered descriptors that declare no side effects. The host
+to Adapter-discovered built-ins that either declare no side effects or have an
+explicit host memory policy. A policy-covered call receives a fresh
+workspace/Tool/call-bound loopback memory session whose operations and quotas
+come from configuration and whose grant is revoked on completion. The host
 generates the call identity, invokes the Adapter, and seals the actual ledger
 record and result into a hash-verified immutable goal-session-report artifact
-before returning success. Memory-dependent, installed-candidate, approval,
-installation, and lifecycle commands remain absent until their separate host
-policies exist. Host inspection bypasses mutable UI selection, so concurrent clients
+before returning success. One exact-hash installation decision command accepts
+only a visible workspace, proposal identity/hash, and `approved` or `rejected`.
+The host supplies trusted user identity and delegates to
+`ToolInstallationProposalService`, which repeats live candidate, validation,
+permission, and proposal checks before authoring an approval. Installation and
+lifecycle commands remain absent. Host inspection bypasses mutable UI selection, so concurrent clients
 cannot redirect one another's workspace or goal request.
+
+Candidate inspection materializes each stored revision through the repository's
+integrity checks before projection. The read-only projection includes descriptor
+and source-manifest hashes, validation snapshot/record hashes, toolchain and
+policy bindings, confinement observations, and all three public suite/process
+outcomes. It never projects captured source bytes, private fixtures, challenge
+definitions, commitment salts, or hidden challenge output.
 
 `runSupervisoryTransportServer` supplies the shell-free JSON-lines process
 boundary. It incrementally decodes UTF-8, emits only protocol responses on

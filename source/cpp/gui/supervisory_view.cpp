@@ -53,6 +53,17 @@ bool boolean_field(const Json& value, std::string_view field) {
     return member.as_bool();
 }
 
+void exact_fields(const Json::object_t& object,
+                  std::initializer_list<std::string_view> fields,
+                  std::string_view name) {
+    if (object.size() != fields.size()) {
+        throw SupervisoryResponseError(std::string(name) + " has missing or unknown fields");
+    }
+    for (const auto field : fields) if (!object.contains(field)) {
+        throw SupervisoryResponseError(std::string(name) + " has missing or unknown fields");
+    }
+}
+
 QString text(const std::string& value) {
     return QString::fromUtf8(value.data(), static_cast<qsizetype>(value.size()));
 }
@@ -110,7 +121,7 @@ void SupervisoryView::build_ui() {
     heading->setFont(heading_font);
     page->addWidget(heading);
     page->addWidget(new QLabel(
-        "Host-verified workspace state with a constrained pure-Tool command path. This view cannot approve, install, or grant memory authority.",
+        "Host-verified workspace state with a constrained policy-scoped Tool command path. This view cannot approve or install.",
         this));
 
     auto* selection = new QHBoxLayout();
@@ -154,7 +165,7 @@ void SupervisoryView::build_ui() {
     plan_layout->addWidget(goal_progress_);
     page->addWidget(plan_group);
 
-    auto* execution_group = new QGroupBox("Execute existing side-effect-free Tool", this);
+    auto* execution_group = new QGroupBox("Execute host-authorized built-in Tool", this);
     auto* execution_layout = new QGridLayout(execution_group);
     execution_tool_selector_ = new QComboBox(execution_group);
     execution_tool_selector_->setObjectName("executionToolSelector");
@@ -163,7 +174,7 @@ void SupervisoryView::build_ui() {
     execution_arguments_->setMaximumHeight(90);
     execute_button_ = new QPushButton("Execute", execution_group);
     execute_button_->setObjectName("executeTool");
-    execution_result_ = new QLabel("Select a goal and a side-effect-free built-in Tool.", execution_group);
+    execution_result_ = new QLabel("Select a goal and a host-authorized built-in Tool.", execution_group);
     execution_result_->setObjectName("executionResult");
     execution_result_->setWordWrap(true);
     execution_result_->setTextInteractionFlags(Qt::TextSelectableByMouse);
@@ -183,6 +194,26 @@ void SupervisoryView::build_ui() {
     summaries->addWidget(list_group("Compute memory", &compute_memory_, this), 2, 0);
     summaries->addWidget(list_group("Approved working revisions", &working_memory_, this), 2, 1);
     summaries->addWidget(list_group("Artifact lineage and provenance", &artifacts_, this), 3, 0, 1, 2);
+    auto* candidate_evidence = new QGroupBox("Selected candidate source manifest and validation evidence", this);
+    auto* candidate_evidence_layout = new QVBoxLayout(candidate_evidence);
+    auto* candidate_actions = new QHBoxLayout();
+    approve_candidate_ = new QPushButton("Approve exact proposal", candidate_evidence);
+    approve_candidate_->setObjectName("approveCandidate");
+    reject_candidate_ = new QPushButton("Reject exact proposal", candidate_evidence);
+    reject_candidate_->setObjectName("rejectCandidate");
+    approve_candidate_->setEnabled(false);
+    reject_candidate_->setEnabled(false);
+    candidate_actions->addWidget(approve_candidate_);
+    candidate_actions->addWidget(reject_candidate_);
+    candidate_actions->addStretch();
+    candidate_evidence_layout->addLayout(candidate_actions);
+    candidate_details_ = new QPlainTextEdit(candidate_evidence);
+    candidate_details_->setObjectName("candidateDetails");
+    candidate_details_->setReadOnly(true);
+    candidate_details_->setPlaceholderText("Select a Tool candidate to inspect its exact source and observed validation bindings.");
+    candidate_details_->setMaximumHeight(220);
+    candidate_evidence_layout->addWidget(candidate_details_);
+    summaries->addWidget(candidate_evidence, 4, 0, 1, 2);
     compute_memory_->setObjectName("computeMemory");
     working_memory_->setObjectName("workingMemory");
     artifacts_->setObjectName("artifactLineage");
@@ -202,6 +233,20 @@ void SupervisoryView::build_ui() {
             });
     connect(execute_button_, &QPushButton::clicked, this,
             &SupervisoryView::execute_selected_tool);
+    connect(candidates_, &QListWidget::currentRowChanged, this,
+            [this](int row) {
+                auto* item = row < 0 ? nullptr : candidates_->item(row);
+                candidate_details_->setPlainText(
+                    item == nullptr ? QString{} : item->data(Qt::UserRole).toString());
+                const bool pending = item != nullptr
+                    && !item->data(Qt::UserRole + 1).toString().isEmpty();
+                approve_candidate_->setEnabled(pending && !busy_);
+                reject_candidate_->setEnabled(pending && !busy_);
+            });
+    connect(approve_candidate_, &QPushButton::clicked, this,
+            [this] { decide_selected_installation(true); });
+    connect(reject_candidate_, &QPushButton::clicked, this,
+            [this] { decide_selected_installation(false); });
 }
 
 void SupervisoryView::start_process() {
@@ -397,6 +442,39 @@ void SupervisoryView::execute_selected_tool() {
     }
 }
 
+void SupervisoryView::decide_selected_installation(bool approve) {
+    auto* item = candidates_->currentItem();
+    if (item == nullptr || workspace_selector_->currentText().isEmpty()) {
+        show_error("Select a pending exact installation proposal first");
+        return;
+    }
+    const std::string workspace = workspace_selector_->currentText().toStdString();
+    const std::string proposal_id = item->data(Qt::UserRole + 1).toString().toStdString();
+    const std::string proposal_hash = item->data(Qt::UserRole + 2).toString().toStdString();
+    const std::string decision = approve ? "approved" : "rejected";
+    set_busy(true);
+    try {
+        (void)client_.decide_installation(
+            workspace, proposal_id, proposal_hash, decision,
+            [this, workspace, proposal_id, proposal_hash, decision](
+                const SupervisoryResponse* response, const std::string* error) {
+                if (error != nullptr) { show_error(text(*error)); set_busy(false); return; }
+                try {
+                    if (!response->ok) throw SupervisoryResponseError(
+                        response->error_code + ": " + response->error_message);
+                    (void)parse_installation_decision_result(
+                        *response, workspace, proposal_id, proposal_hash, decision);
+                    set_busy(false);
+                    inspect_selected_workspace();
+                } catch (const std::exception& decode_error) {
+                    show_error(QString::fromUtf8(decode_error.what())); set_busy(false);
+                }
+            });
+    } catch (const std::exception& error) {
+        show_error(QString::fromUtf8(error.what())); set_busy(false);
+    }
+}
+
 void SupervisoryView::render(const SupervisoryWorkspaceInspection& inspection) {
     if (inspection.current_plan.is_null()) {
         if (inspection.goal_id.has_value()) {
@@ -462,7 +540,7 @@ void SupervisoryView::render(const SupervisoryWorkspaceInspection& inspection) {
         const QString name = text(string_field(tool, "name"));
         const QString source = text(string_field(tool, "source"));
         auto* item = new QListWidgetItem(QString("%1  [%2]").arg(name, source), tools_);
-        if (source == "built-in" && !boolean_field(tool.at("descriptor"), "sideEffect")) {
+        if (source == "built-in" && boolean_field(tool, "executable")) {
             execution_tool_selector_->addItem(name);
         }
         const Json& evidence = tool.at("installationEvidenceHash");
@@ -474,8 +552,12 @@ void SupervisoryView::render(const SupervisoryWorkspaceInspection& inspection) {
     }
 
     candidates_->clear();
+    candidate_details_->clear();
     for (const Json& candidate : inspection.candidates.as_array()) {
-        require_object(candidate, "candidate");
+        const auto& candidate_object = require_object(candidate, "candidate");
+        exact_fields(candidate_object, {"candidateId", "revisionId", "revision", "candidateHash",
+            "state", "modelClaim", "descriptor", "descriptorHash", "sourceHash", "sources",
+            "proposal", "validation", "approval", "installation"}, "candidate");
         const QString candidate_id = text(string_field(candidate, "candidateId"));
         const QString state = text(string_field(candidate, "state"));
         const QString validation = optional_state(candidate, "validation", "outcome");
@@ -496,7 +578,83 @@ void SupervisoryView::render(const SupervisoryWorkspaceInspection& inspection) {
             item->setText(item->text() + QString(" | promotable: %1")
                 .arg(boolean_field(validation_value, "promotable") ? "yes" : "no"));
         }
+        QString detail = QString("Candidate: %1\nRevision: %2 (%3)\nCandidate hash: %4\nDescriptor hash: %5\nSource hash: %6\nDescriptor claim:\n%7\n\nSource manifest:")
+            .arg(candidate_id, text(string_field(candidate, "revisionId")))
+            .arg(integer_field(candidate, "revision"))
+            .arg(text(string_field(candidate, "candidateHash")),
+                 text(string_field(candidate, "descriptorHash")),
+                 text(string_field(candidate, "sourceHash")), text(candidate.at("descriptor").dump()));
+        const Json& sources = candidate.at("sources");
+        if (!sources.is_array()) throw SupervisoryResponseError("candidate sources must be an array");
+        for (const Json& source_file : sources.as_array()) {
+            const auto& source_object = require_object(source_file, "candidate source");
+            exact_fields(source_object, {"path", "size", "hash"}, "candidate source");
+            detail += QString("\n- %1 | %2 bytes | %3")
+                .arg(text(string_field(source_file, "path")))
+                .arg(integer_field(source_file, "size"))
+                .arg(text(string_field(source_file, "hash")));
+        }
+        if (validation_value.is_null()) {
+            detail += "\n\nValidation: none observed";
+        } else {
+            const auto& validation_object = require_object(validation_value, "candidate validation");
+            exact_fields(validation_object, {"validationId", "snapshotHash", "recordHash", "outcome",
+                "promotable", "completedAt", "toolchain", "toolchainHash", "policyHash",
+                "confinement", "suites"}, "candidate validation");
+            const Json& toolchain = validation_value.at("toolchain");
+            const auto& toolchain_object = require_object(toolchain, "validation toolchain");
+            exact_fields(toolchain_object, {"name", "version", "target"}, "validation toolchain");
+            const Json& confinement = validation_value.at("confinement");
+            require_object(confinement, "validation confinement");
+            detail += QString("\n\nObserved validation: %1 | promotable: %2\nValidation: %3\nSnapshot: %4\nRecord: %5\nToolchain: %6 %7 (%8)\nToolchain hash: %9\nPolicy hash: %10\nConfinement backend: %11 | filesystem=%12 descendants=%13 network=%14 cpu=%15 memory=%16")
+                .arg(text(string_field(validation_value, "outcome")), boolean_field(validation_value, "promotable") ? "yes" : "no",
+                     text(string_field(validation_value, "validationId")), text(string_field(validation_value, "snapshotHash")),
+                     text(string_field(validation_value, "recordHash")), text(string_field(toolchain, "name")),
+                     text(string_field(toolchain, "version")), text(string_field(toolchain, "target")),
+                     text(string_field(validation_value, "toolchainHash")), text(string_field(validation_value, "policyHash")),
+                     text(string_field(confinement, "backend")))
+                .arg(boolean_field(confinement, "filesystem")).arg(boolean_field(confinement, "descendantProcesses"))
+                .arg(boolean_field(confinement, "network")).arg(boolean_field(confinement, "cpu"))
+                .arg(boolean_field(confinement, "memory"));
+            const Json& suites = validation_value.at("suites");
+            if (!suites.is_array()) throw SupervisoryResponseError("validation suites must be an array");
+            for (const Json& suite : suites.as_array()) {
+                require_object(suite, "validation suite");
+                detail += QString("\n\nSuite %1 [%2] | outcome=%3 | commands=%4 | hidden=%5\nDefinition hash: %6")
+                    .arg(text(string_field(suite, "suiteId")), text(string_field(suite, "kind")),
+                         text(string_field(suite, "outcome")))
+                    .arg(integer_field(suite, "commandCount"))
+                    .arg(boolean_field(suite, "hidden") ? "yes" : "no")
+                    .arg(text(string_field(suite, "definitionHash")));
+                const Json& processes = suite.at("processes");
+                if (!processes.is_array()) throw SupervisoryResponseError("validation processes must be an array");
+                for (const Json& process : processes.as_array()) {
+                    require_object(process, "validation process");
+                    detail += QString("\n  - %1: %2, exit=%3, %4 ms\n    stdout=%5 stderr=%6")
+                        .arg(text(string_field(process, "commandId")), text(string_field(process, "outcome")))
+                        .arg(process.at("exitCode").is_null() ? "none" : QString::number(integer_field(process, "exitCode")))
+                        .arg(integer_field(process, "durationMs"))
+                        .arg(text(string_field(process, "stdoutHash")), text(string_field(process, "stderrHash")));
+                }
+            }
+        }
+        item->setData(Qt::UserRole, detail);
+        const Json& proposal = candidate.at("proposal");
+        if (!proposal.is_null()) {
+            require_object(proposal, "installation proposal");
+            detail += QString("\n\nInstallation proposal: %1 [%2]\nProposal hash: %3\nValidation: %4\nValidation record: %5\nCandidate snapshot: %6\nRequested permissions: %7")
+                .arg(text(string_field(proposal, "proposalId")), text(string_field(proposal, "state")),
+                     text(string_field(proposal, "proposalHash")), text(string_field(proposal, "validationId")),
+                     text(string_field(proposal, "validationRecordHash")), text(string_field(proposal, "candidateSnapshotHash")),
+                     text(proposal.at("requestedPermissions").dump()));
+            item->setData(Qt::UserRole, detail);
+            if (string_field(proposal, "state") == "proposed") {
+                item->setData(Qt::UserRole + 1, text(string_field(proposal, "proposalId")));
+                item->setData(Qt::UserRole + 2, text(string_field(proposal, "proposalHash")));
+            }
+        }
     }
+    if (candidates_->count() > 0) candidates_->setCurrentRow(0);
 
 
     observations_->clear();
@@ -591,6 +749,10 @@ void SupervisoryView::set_busy(bool busy) {
     execute_button_->setEnabled(!busy && client_.is_running()
                                 && goal_selector_->currentIndex() > 0
                                 && execution_tool_selector_->count() > 0);
+    const bool pending_proposal = candidates_->currentItem() != nullptr
+        && !candidates_->currentItem()->data(Qt::UserRole + 1).toString().isEmpty();
+    approve_candidate_->setEnabled(!busy && pending_proposal && client_.is_running());
+    reject_candidate_->setEnabled(!busy && pending_proposal && client_.is_running());
 }
 
 } // namespace axiom_colab::gui

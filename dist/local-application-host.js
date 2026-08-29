@@ -47,6 +47,7 @@ export class LocalApplicationHost {
         this.backend = new LocalSupervisoryBackend(options.store, options.workflows, options.candidates, options.validator, {
             builtInTools: ()=>this.descriptors,
             rediscoveredTools: (workspaceId)=>this.registry.list(workspaceId),
+            executableBuiltIn: (_workspaceId, descriptor)=>!descriptor.sideEffect || (options.memoryPolicyAvailable?.(descriptor.name) ?? false),
             lifecycle: options.lifecycle,
             ...options.goalProgress === undefined ? {} : {
                 goalProgress: options.goalProgress
@@ -74,6 +75,25 @@ export class LocalApplicationHost {
         this.ensureReady();
         return this.backend.inspect(workspaceId, goalId);
     }
+    async decideInstallation(workspaceId, proposalId, proposalHash, decision) {
+        this.ensureReady();
+        if (this.options.proposalService === undefined || this.options.userActorId === undefined) fail('OPERATION_NOT_AVAILABLE', 'installation decisions are not composed');
+        const proposal = this.options.candidates.inspectInstallationProposal(workspaceId, proposalId);
+        if (proposal === null || proposal.proposalHash !== proposalHash) fail('STALE_INSTALLATION_PROPOSAL', 'proposal identity and hash do not match visible state');
+        const context = {
+            workspaceId,
+            actorId: this.options.userActorId,
+            authority: 'user'
+        };
+        if (decision === 'approved') this.options.proposalService.approve(context, proposalId);
+        else this.options.proposalService.reject(context, proposalId);
+        return {
+            workspaceId,
+            proposalId,
+            proposalHash,
+            decision
+        };
+    }
     async executeTool(workspaceId, goalId, toolName, args, signal = new AbortController().signal) {
         this.ensureReady();
         this.options.store.reopenWorkspace(workspaceId);
@@ -81,11 +101,14 @@ export class LocalApplicationHost {
         if (goal?.plan === null || goal === null) fail('GOAL_NOT_FOUND', 'selected goal has no authoritative approved plan');
         const descriptor = this.descriptors.find((item)=>item.name === toolName);
         if (descriptor === undefined) fail('TOOL_NOT_EXECUTABLE', 'Tool is not executable by the production Adapter');
-        if (descriptor.sideEffect) fail('TOOL_REQUIRES_POLICY', 'side-effecting Tool execution requires an explicit host policy');
         const callId = `call:${randomUUID()}`;
+        const memorySession = this.options.memorySession?.(workspaceId, toolName, callId);
+        if (descriptor.sideEffect && memorySession === undefined) {
+            fail('TOOL_REQUIRES_POLICY', 'side-effecting Tool execution requires an explicit host policy');
+        }
         const ledgerStart = this.options.adapter.ledger.snapshot().length;
         const startedAt = new Date().toISOString();
-        const result = await this.options.adapter.invoke(toolName, args, callId, signal);
+        const result = await this.options.adapter.invoke(toolName, args, callId, signal, memorySession);
         const completedAt = new Date().toISOString();
         const report = {
             goalId,

@@ -2,19 +2,35 @@ import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { isAbsolute, join, resolve } from 'node:path';
 import { AdapterService } from './adapter-service.js';
+import { AuthenticatedMemoryHttpServer } from './authenticated-memory-http.js';
+import { AuthenticatedMemoryService } from './authenticated-memory-service.js';
 import { LocalCandidateRepository } from './candidate-repository.js';
 import { LocalApplicationHost } from './local-application-host.js';
 import { LocalGoalLifecycle } from './local-goal-lifecycle.js';
 import { LocalMemoryStore } from './local-memory-store.js';
 import { MemoryWorkflows } from './memory-workflows.js';
+import { MemorySessionProvider } from './memory-session-provider.js';
 import { ToolObserver } from './observer.js';
 import { ProcessRunner } from './process-runner.js';
 import { SupervisoryTransport } from './supervisory-transport.js';
 import { runSupervisoryTransportServer } from './supervisory-transport-server.js';
 import { ToolInstallationService } from './tool-installation.js';
+import { ToolInstallationProposalService } from './tool-installation-proposal.js';
 function record(value) {
     return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
+const TOOL_MEMORY_OPERATIONS = new Set([
+    'compute.create',
+    'compute.read',
+    'compute.update',
+    'compute.snapshot',
+    'compute.release',
+    'working.read',
+    'working.propose',
+    'artifact.read',
+    'artifact.create',
+    'artifact.derive'
+]);
 function absolute(value, field) {
     if (typeof value !== 'string' || !isAbsolute(value)) throw new TypeError(`${field} must be an absolute path`);
     return resolve(value);
@@ -259,15 +275,55 @@ export function parseLocalSupervisoryProcessConfig(value) {
         'bridgeArgs',
         'bridgeWorkingDirectory',
         'hostActorId',
-        'maxLineBytes'
+        'userActorId',
+        'maxLineBytes',
+        'memoryToolPolicies'
     ]);
     for (const key of Object.keys(value))if (!allowed.has(key)) throw new TypeError(`supervisory process config contains unknown field ${key}`);
     const bridgeArgs = value.bridgeArgs ?? [];
     if (!Array.isArray(bridgeArgs) || !bridgeArgs.every((item)=>typeof item === 'string')) throw new TypeError('bridgeArgs must be an array of strings');
     const hostActorId = value.hostActorId ?? 'actor:local-host';
     if (typeof hostActorId !== 'string' || !/^actor:[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(hostActorId)) throw new TypeError('hostActorId is malformed');
+    const userActorId = value.userActorId ?? 'actor:local-user';
+    if (typeof userActorId !== 'string' || !/^actor:[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(userActorId)) throw new TypeError('userActorId is malformed');
     const maxLineBytes = value.maxLineBytes ?? 64 * 1024;
     if (!Number.isSafeInteger(maxLineBytes) || maxLineBytes < 256) throw new TypeError('maxLineBytes must be a safe integer of at least 256');
+    const rawPolicies = value.memoryToolPolicies ?? [];
+    if (!Array.isArray(rawPolicies)) throw new TypeError('memoryToolPolicies must be an array');
+    const memoryToolPolicies = new Map();
+    for (const [index, item] of rawPolicies.entries()){
+        if (!record(item)) throw new TypeError(`memoryToolPolicies[${index}] must be an object`);
+        const policyFields = new Set([
+            'toolName',
+            'toolId',
+            'toolVersion',
+            'operations',
+            'maxOperations',
+            'maxRequestBytes',
+            'lifetimeMs'
+        ]);
+        for (const key of Object.keys(item))if (!policyFields.has(key)) throw new TypeError(`memoryToolPolicies[${index}] contains unknown field ${key}`);
+        if (typeof item.toolName !== 'string' || !/^[a-z][a-z0-9_]{0,127}$/.test(item.toolName)) throw new TypeError(`memoryToolPolicies[${index}].toolName is malformed`);
+        if (memoryToolPolicies.has(item.toolName)) throw new TypeError(`memoryToolPolicies contains duplicate Tool ${item.toolName}`);
+        if (typeof item.toolId !== 'string' || !/^tool:[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(item.toolId)) throw new TypeError(`memoryToolPolicies[${index}].toolId is malformed`);
+        if (typeof item.toolVersion !== 'string' || item.toolVersion.length === 0) throw new TypeError(`memoryToolPolicies[${index}].toolVersion must not be empty`);
+        if (!Array.isArray(item.operations) || item.operations.length === 0 || !item.operations.every((operation)=>typeof operation === 'string' && TOOL_MEMORY_OPERATIONS.has(operation))) throw new TypeError(`memoryToolPolicies[${index}].operations must contain only Tool memory operations`);
+        const positive = (field)=>{
+            const number = item[field];
+            if (!Number.isSafeInteger(number) || number <= 0) throw new TypeError(`memoryToolPolicies[${index}].${field} must be a positive safe integer`);
+            return number;
+        };
+        memoryToolPolicies.set(item.toolName, {
+            toolId: item.toolId,
+            toolVersion: item.toolVersion,
+            operations: [
+                ...item.operations
+            ],
+            maxOperations: positive('maxOperations'),
+            maxRequestBytes: positive('maxRequestBytes'),
+            lifetimeMs: positive('lifetimeMs')
+        });
+    }
     return {
         stateRoot: absolute(value.stateRoot, 'stateRoot'),
         bridgePath: absolute(value.bridgePath, 'bridgePath'),
@@ -278,13 +334,18 @@ export function parseLocalSupervisoryProcessConfig(value) {
             bridgeWorkingDirectory: absolute(value.bridgeWorkingDirectory, 'bridgeWorkingDirectory')
         },
         hostActorId: hostActorId,
-        maxLineBytes: maxLineBytes
+        userActorId: userActorId,
+        maxLineBytes: maxLineBytes,
+        memoryToolPolicies
     };
 }
 export async function runLocalSupervisoryProcess(configValue) {
     const config = parseLocalSupervisoryProcessConfig(configValue);
     const store = new LocalMemoryStore(join(config.stateRoot, 'memory'));
     const workflows = new MemoryWorkflows(store);
+    const memoryService = new AuthenticatedMemoryService(workflows);
+    const memoryServer = new AuthenticatedMemoryHttpServer(memoryService);
+    const memoryEndpoint = await memoryServer.listen();
     const candidates = new LocalCandidateRepository(join(config.stateRoot, 'candidates.sqlite3'));
     const validator = {
         isPromotionEligible (snapshotHash, record) {
@@ -341,6 +402,20 @@ export async function runLocalSupervisoryProcess(configValue) {
         hostActorId: config.hostActorId,
         goalProgress: createLocalGoalProgressReader(workflows, config.hostActorId, approvedPlan),
         memory: createLocalMemoryProjectionReader(workflows, config.hostActorId),
+        memorySession: (workspaceId, toolName, callId)=>new MemorySessionProvider({
+                service: memoryService,
+                endpoint: memoryEndpoint,
+                scope: {
+                    workspaceId,
+                    actorId: config.hostActorId,
+                    authority: 'trusted-host',
+                    sessionGeneration: 1
+                },
+                policyForTool: (name)=>config.memoryToolPolicies.get(name)
+            }).create(toolName, callId),
+        memoryPolicyAvailable: (toolName)=>config.memoryToolPolicies.has(toolName),
+        proposalService: new ToolInstallationProposalService(candidates, validator),
+        userActorId: config.userActorId,
         createInstallation: (registry)=>new ToolInstallationService(candidates, validator, {
                 installationRoot: join(config.stateRoot, 'installed'),
                 registry
@@ -359,6 +434,7 @@ export async function runLocalSupervisoryProcess(configValue) {
         process.off('SIGINT', close);
         process.off('SIGTERM', close);
         host.close();
+        await memoryServer.close();
     }
 }
 export function readLocalSupervisoryProcessConfig(path) {

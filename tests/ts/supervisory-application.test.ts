@@ -11,7 +11,7 @@ function state(): SupervisoryWorkspaceSnapshot {
     workspaceId: 'workspace:alpha', goalId: null, currentPlan: null, progress: null, observations: [],
     memory: { compute: [], working: [], artifacts: [] },
     tools: [{
-      name: 'add_numbers', source: 'built-in', installationEvidenceHash: null,
+      name: 'add_numbers', source: 'built-in', executable: true, installationEvidenceHash: null,
       descriptor: {
         name: 'add_numbers', description: 'Add numbers', whenToUse: 'When addition is required.',
         inputSchema: { type: 'object' }, outputSchema: { type: 'object' },
@@ -23,9 +23,32 @@ function state(): SupervisoryWorkspaceSnapshot {
       quota: { maxBytes: 100, maxObjects: 10 }, expiredObjects: 0, corruptObjects: 0,
     },
     candidates: [{
-      candidateId: 'tool:candidate', revisionId: 'evidence:revision', candidateHash: `sha256:${'1'.repeat(64)}`,
+      candidateId: 'tool:candidate', revisionId: 'evidence:revision', revision: 1, candidateHash: `sha256:${'1'.repeat(64)}`,
       state: 'current', modelClaim: 'All tests should pass.',
-      validation: { validationId: 'validation:run', recordHash: `sha256:${'2'.repeat(64)}`, outcome: 'failed', promotable: false },
+      descriptor: { name: 'candidate' }, descriptorHash: `sha256:${'3'.repeat(64)}`,
+      sourceHash: `sha256:${'4'.repeat(64)}`,
+      sources: [{ path: 'src/tool.cpp', size: 12, hash: `sha256:${'5'.repeat(64)}` }],
+      proposal: null,
+      validation: {
+        validationId: 'validation:run', snapshotHash: `sha256:${'6'.repeat(64)}`,
+        recordHash: `sha256:${'2'.repeat(64)}`, outcome: 'failed', promotable: false,
+        completedAt: '2026-08-28T00:01:00.000Z',
+        toolchain: { name: 'MSVC', version: '19.51', target: 'x64' },
+        toolchainHash: `sha256:${'7'.repeat(64)}`, policyHash: `sha256:${'8'.repeat(64)}`,
+        confinement: { backend: 'wsl', filesystem: true, descendantProcesses: true, network: true, cpu: true, memory: true },
+        suites: (['candidate', 'standard', 'challenge'] as const).map((kind) => ({
+          suiteId: `${kind}-suite`, kind, definitionHash: `sha256:${'9'.repeat(64)}`,
+          hidden: kind === 'challenge', commandCount: 1, outcome: kind === 'standard' ? 'failed' as const : 'passed' as const,
+          processes: [{
+            commandId: `${kind}-command`, commandHash: `sha256:${'a'.repeat(64)}`,
+            outcome: kind === 'standard' ? 'failed' as const : 'passed' as const,
+            exitCode: kind === 'standard' ? 1 : 0, signalName: null, errorCode: null,
+            durationMs: 10, stdoutBytes: 0, stderrBytes: 0,
+            stdoutHash: `sha256:${'b'.repeat(64)}`, stderrHash: `sha256:${'c'.repeat(64)}`,
+            stdout: kind === 'challenge' ? null : '', stderr: kind === 'challenge' ? null : '',
+          }],
+        })),
+      },
       approval: null, installation: null,
     }],
     timeline: [
@@ -109,5 +132,16 @@ test('supervisory projection rejects incomplete artifact lineage', async () => {
   await assert.rejects(
     model.selectWorkspace('workspace:alpha'),
     (error: unknown) => error instanceof SupervisoryApplicationError && error.code === 'INVALID_ARTIFACT_LINEAGE',
+  )
+})
+
+test('supervisory projection rejects disclosed hidden challenge output', async () => {
+  const backend = new Backend()
+  const challenge = backend.value.candidates[0]!.validation!.suites.find((suite) => suite.kind === 'challenge')!
+  ;(challenge.processes[0] as any).stdout = 'hidden fixture leaked'
+  const model = new SupervisoryApplicationModel(backend as unknown as SupervisoryBackend)
+  await assert.rejects(
+    model.selectWorkspace('workspace:alpha'),
+    (error: unknown) => error instanceof SupervisoryApplicationError && error.code === 'MISLEADING_AUTHORITY',
   )
 })

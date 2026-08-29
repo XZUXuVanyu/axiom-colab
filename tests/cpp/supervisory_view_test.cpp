@@ -34,13 +34,16 @@ int main(int argc, char* argv[]) {
     auto* execute = view.findChild<QPushButton*>("executeTool");
     auto* arguments = view.findChild<QPlainTextEdit*>("executionArguments");
     auto* execution_result = view.findChild<QLabel*>("executionResult");
+    auto* candidate_details = view.findChild<QPlainTextEdit*>("candidateDetails");
+    auto* reject_candidate = view.findChild<QPushButton*>("rejectCandidate");
     if (workspaces == nullptr || goals == nullptr || resources == nullptr
         || plan == nullptr || status == nullptr || compute == nullptr
         || working == nullptr || artifacts == nullptr) {
         std::cerr << "[FAIL] supervisory widgets are not inspectable\n";
         return 1;
     }
-    if (execute == nullptr || arguments == nullptr || execution_result == nullptr) {
+    if (execute == nullptr || arguments == nullptr || execution_result == nullptr
+        || candidate_details == nullptr || reject_candidate == nullptr) {
         std::cerr << "[FAIL] Tool execution widgets are not inspectable\n";
         return 1;
     }
@@ -89,6 +92,28 @@ int main(int argc, char* argv[]) {
         || !artifacts->item(0)->text().contains("object:artifact")
         || !artifacts->item(0)->toolTip().contains("Schema hash")) {
         std::cerr << "[FAIL] memory and artifact lineage did not render\n";
+        return 1;
+    }
+    if (!candidate_details->toPlainText().contains("src/tool.cpp")
+        || !candidate_details->toPlainText().contains("Suite standard-suite [standard] | outcome=failed")
+        || !candidate_details->toPlainText().contains("promotable: no")) {
+        std::cerr << "[FAIL] candidate source and observed validation evidence did not render\n";
+        return 1;
+    }
+    if (!reject_candidate->isEnabled()
+        || !candidate_details->toPlainText().contains("proposal:fixture [proposed]")) {
+        std::cerr << "[FAIL] exact pending installation proposal was not actionable\n";
+        return 1;
+    }
+    reject_candidate->click();
+    timer.restart();
+    while (timer.elapsed() < 5000
+           && !candidate_details->toPlainText().contains("proposal:fixture [rejected]")) {
+        application.processEvents();
+        QThread::msleep(10);
+    }
+    if (!candidate_details->toPlainText().contains("proposal:fixture [rejected]")) {
+        std::cerr << "[FAIL] exact installation rejection did not refresh authoritative state\n";
         return 1;
     }
     arguments->setPlainText(R"({"left":2,"right":3})");

@@ -159,6 +159,27 @@ std::string SupervisoryProcessClient::execute_tool(
     }), std::move(handler));
 }
 
+std::string SupervisoryProcessClient::decide_installation(
+    std::string_view workspace_id, std::string_view proposal_id,
+    std::string_view proposal_hash, std::string_view decision,
+    ResponseHandler handler) {
+    if (!valid_identity(workspace_id, "workspace:")
+        || !valid_identity(proposal_id, "proposal:")) {
+        throw std::invalid_argument("installation decision identity is malformed");
+    }
+    if (!proposal_hash.starts_with("sha256:") || proposal_hash.size() != 71
+        || (decision != "approved" && decision != "rejected")) {
+        throw std::invalid_argument("installation decision binding is malformed");
+    }
+    return send_request(Json::object({
+        {"protocolVersion", "1.1"}, {"operation", "decide-installation"},
+        {"workspaceId", std::string(workspace_id)},
+        {"proposalId", std::string(proposal_id)},
+        {"proposalHash", std::string(proposal_hash)},
+        {"decision", std::string(decision)},
+    }), std::move(handler));
+}
+
 std::string SupervisoryProcessClient::send_request(Json request,
                                                    ResponseHandler handler) {
     if (!is_running()) {

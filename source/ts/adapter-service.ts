@@ -69,6 +69,7 @@ export class AdapterService {
     args: unknown,
     callId: string,
     signal: AbortSignal,
+    trustedContextOverride?: TrustedInvocationEnvelope | TrustedInvocationSession,
   ): Promise<JsonValue> {
     if (this.disposed) {
       throw new ProcessExecutionError('DISPOSED', 'adapter service is disposed')
@@ -92,7 +93,7 @@ export class AdapterService {
     let release: (() => void) | undefined
     let trustedSession: TrustedInvocationSession | undefined
     try {
-      const provided = this.config.trustedContextProvider?.(toolName, callId)
+      const provided = trustedContextOverride ?? this.config.trustedContextProvider?.(toolName, callId)
       const trustedContext = provided !== undefined && 'envelope' in provided
         ? (trustedSession = provided).envelope
         : provided

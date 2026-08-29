@@ -7,6 +7,7 @@ import test from 'node:test'
 import {
   LocalApplicationHost, LocalApplicationHostError, LocalCandidateRepository,
   InvocationLedger, LocalGoalLifecycle, LocalMemoryStore, MemoryWorkflows,
+  contentHash, installationProposalBinding,
 } from '../../dist/index.js'
 
 const roots: string[] = []
@@ -126,5 +127,89 @@ test('application host executes only discovered pure Tools and seals the observa
   } as any)
   assert.equal(artifacts[0]?.id, execution.reportArtifactId)
   await assert.rejects(host.executeTool('workspace:alpha', 'goal:one', 'mutate_state', {}), (error: unknown) => (error as any).code === 'TOOL_REQUIRES_POLICY')
+  host.close()
+})
+
+test('application host executes a side-effecting built-in only with a call-scoped memory session', async () => {
+  const value = fixture()
+  const plan = {
+    id: 'object:plan', key: 'goal:one:plan', revision: 1,
+    value: { goalId: 'goal:one', objective: 'Use scoped memory.' }, hash: `sha256:${'1'.repeat(64)}`,
+    proposalId: 'proposal:plan', committedAt: '2026-08-29T05:00:00.000Z',
+  } as const
+  value.lifecycle.close()
+  const lifecycle = new LocalGoalLifecycle(join(value.root, 'memory-lifecycle.sqlite3'), {
+    approvedPlan: () => plan, async stopGoal() {}, async resumeGoal() {},
+    async revokeCapability() {}, async recoverWorkspace() {},
+  })
+  lifecycle.registerGoal('workspace:alpha', 'goal:one')
+  const ledger = new InvocationLedger()
+  let receivedWorkspace = ''
+  let revoked = false
+  const adapter = {
+    ledger,
+    async initialize() { return [{
+      name: 'memory_tool', description: 'Uses memory.', whenToUse: 'For memory.',
+      parameters: { type: 'object' }, output: { type: 'object' }, timeoutMs: 1000,
+      allowParallel: false, sideEffect: true,
+    }] },
+    async invoke(tool: string, _args: unknown, callId: string, _signal: AbortSignal, session: any) {
+      assert.equal(session.envelope.workspaceId, 'workspace:alpha')
+      assert.equal(session.envelope.callId, callId)
+      ledger.start(callId, tool); ledger.succeed(callId, 1); session.revoke()
+      return { stored: true }
+    },
+    dispose() {},
+  }
+  const host = new LocalApplicationHost({
+    ...value, lifecycle, adapter, validator: { isPromotionEligible: () => false }, hostActorId: 'actor:host',
+    createInstallation: () => ({ rediscover: () => [] }),
+    memorySession(workspaceId: string, toolName: string, callId: string) {
+      receivedWorkspace = workspaceId
+      assert.equal(toolName, 'memory_tool')
+      return { envelope: { workspaceId, callId }, revoke() { revoked = true } }
+    },
+    memoryPolicyAvailable: (toolName: string) => toolName === 'memory_tool',
+  } as any)
+  await host.initialize()
+  const projected = await host.inspect('workspace:alpha', 'goal:one')
+  assert.equal(projected.tools.find((tool: any) => tool.name === 'memory_tool')?.executable, true)
+  const result = await host.executeTool('workspace:alpha', 'goal:one', 'memory_tool', {})
+  assert.deepEqual(result.result, { stored: true })
+  assert.equal(receivedWorkspace, 'workspace:alpha')
+  assert.equal(revoked, true)
+  host.close()
+})
+
+test('application host binds a user decision to the exact visible proposal hash', async () => {
+  const value = fixture()
+  const proposalBase = {
+    protocolVersion: '1.0', proposalId: 'proposal:one', workspaceId: 'workspace:alpha',
+    candidateId: 'tool:candidate', revisionId: 'evidence:revision', candidateHash: `sha256:${'1'.repeat(64)}`,
+    specificationId: 'proposal:specification', specificationHash: `sha256:${'2'.repeat(64)}`,
+    validationId: 'validation:one', validationRecordHash: `sha256:${'3'.repeat(64)}`,
+    candidateSnapshotHash: `sha256:${'4'.repeat(64)}`, requestedPermissions: ['artifact.read'],
+    permissionsHash: contentHash(['artifact.read']), state: 'proposed',
+    createdAt: '2026-08-29T06:00:00.000Z', createdBy: 'actor:model',
+  } as any
+  const proposal = { ...proposalBase, proposalHash: contentHash(installationProposalBinding(proposalBase)) }
+  value.candidates.saveInstallationProposal(proposal)
+  const decisions: string[] = []
+  const host = new LocalApplicationHost({
+    ...value, validator: { isPromotionEligible: () => false }, hostActorId: 'actor:host',
+    createInstallation: () => ({ rediscover: () => [] }), userActorId: 'actor:local-user',
+    proposalService: {
+      approve() { decisions.push('approved') },
+      reject(context: any, proposalId: string) { decisions.push(`${context.actorId}:${proposalId}:rejected`) },
+    },
+  } as any)
+  await host.initialize()
+  await assert.rejects(
+    host.decideInstallation('workspace:alpha', 'proposal:one', `sha256:${'f'.repeat(64)}`, 'rejected'),
+    (error: unknown) => (error as any).code === 'STALE_INSTALLATION_PROPOSAL',
+  )
+  const decided = await host.decideInstallation('workspace:alpha', 'proposal:one', proposal.proposalHash, 'rejected')
+  assert.equal(decided.decision, 'rejected')
+  assert.deepEqual(decisions, ['actor:local-user:proposal:one:rejected'])
   host.close()
 })

@@ -77,6 +77,24 @@ test('local supervisory process config rejects ambient paths and unknown authori
   assert.throws(() => parseLocalSupervisoryProcessConfig({
     stateRoot: resolve('.'), bridgePath: process.execPath, approval: true,
   }), /unknown field approval/)
+  assert.throws(() => parseLocalSupervisoryProcessConfig({
+    stateRoot: resolve('.'), bridgePath: process.execPath, userActorId: 'actor:bad value',
+  }), /userActorId is malformed/)
+  assert.throws(() => parseLocalSupervisoryProcessConfig({
+    stateRoot: resolve('.'), bridgePath: process.execPath,
+    memoryToolPolicies: [{
+      toolName: 'memory_tool', toolId: 'tool:memory', toolVersion: '1.0.0',
+      operations: ['working.approve'], maxOperations: 1, maxRequestBytes: 1024, lifetimeMs: 1000,
+    }],
+  }), /only Tool memory operations/)
+  const parsed = parseLocalSupervisoryProcessConfig({
+    stateRoot: resolve('.'), bridgePath: process.execPath,
+    memoryToolPolicies: [{
+      toolName: 'memory_tool', toolId: 'tool:memory', toolVersion: '1.0.0',
+      operations: ['compute.read'], maxOperations: 1, maxRequestBytes: 1024, lifetimeMs: 1000,
+    }],
+  })
+  assert.deepEqual(parsed.memoryToolPolicies.get('memory_tool')?.operations, ['compute.read'])
 })
 
 test('local approved-plan reader binds committed working state to the exact goal', () => {
