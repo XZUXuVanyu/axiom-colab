@@ -144,6 +144,7 @@ export { LocalApplicationHost, LocalApplicationHostError } from './local-applica
 export { SUPERVISORY_TRANSPORT_VERSION, SupervisoryTransport, SupervisoryTransportError } from './supervisory-transport.js';
 export { runSupervisoryTransportServer } from './supervisory-transport-server.js';
 export { createLocalApprovedPlanReader, createLocalGoalProgressReader, createLocalMemoryProjectionReader, parseLocalSupervisoryProcessConfig, readLocalSupervisoryProcessConfig, runLocalSupervisoryProcess } from './local-supervisory-process.js';
+export { parseProductionValidationProfile } from './production-validation-profile.js';
 export { InvocationLedger } from './invocation-ledger.js';
 
 

@@ -4,6 +4,7 @@ import { isAbsolute, join, resolve } from 'node:path';
 import { AdapterService } from './adapter-service.js';
 import { AuthenticatedMemoryHttpServer } from './authenticated-memory-http.js';
 import { AuthenticatedMemoryService } from './authenticated-memory-service.js';
+import { CandidateValidationRunner } from './candidate-validation.js';
 import { LocalCandidateRepository } from './candidate-repository.js';
 import { LocalApplicationHost } from './local-application-host.js';
 import { LocalGoalLifecycle } from './local-goal-lifecycle.js';
@@ -12,10 +13,12 @@ import { MemoryWorkflows } from './memory-workflows.js';
 import { MemorySessionProvider } from './memory-session-provider.js';
 import { ToolObserver } from './observer.js';
 import { ProcessRunner } from './process-runner.js';
+import { parseProductionValidationProfile } from './production-validation-profile.js';
 import { SupervisoryTransport } from './supervisory-transport.js';
 import { runSupervisoryTransportServer } from './supervisory-transport-server.js';
 import { ToolInstallationService } from './tool-installation.js';
 import { ToolInstallationProposalService } from './tool-installation-proposal.js';
+import { WslValidationBackend } from './wsl-validation-backend.js';
 function record(value) {
     return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
@@ -277,7 +280,8 @@ export function parseLocalSupervisoryProcessConfig(value) {
         'hostActorId',
         'userActorId',
         'maxLineBytes',
-        'memoryToolPolicies'
+        'memoryToolPolicies',
+        'validationProfile'
     ]);
     for (const key of Object.keys(value))if (!allowed.has(key)) throw new TypeError(`supervisory process config contains unknown field ${key}`);
     const bridgeArgs = value.bridgeArgs ?? [];
@@ -324,8 +328,15 @@ export function parseLocalSupervisoryProcessConfig(value) {
             lifetimeMs: positive('lifetimeMs')
         });
     }
+    const stateRoot = absolute(value.stateRoot, 'stateRoot');
+    const validationProfile = parseProductionValidationProfile(value.validationProfile);
+    const state = stateRoot.replaceAll('\\', '/').replace(/\/$/, '').toLowerCase();
+    const staging = validationProfile.stagingRoot.replaceAll('\\', '/').replace(/\/$/, '').toLowerCase();
+    if (state === staging || state.startsWith(`${staging}/`) || staging.startsWith(`${state}/`)) {
+        throw new TypeError('validationProfile.stagingRoot must not overlap the authoritative stateRoot');
+    }
     return {
-        stateRoot: absolute(value.stateRoot, 'stateRoot'),
+        stateRoot,
         bridgePath: absolute(value.bridgePath, 'bridgePath'),
         bridgeArgs: [
             ...bridgeArgs
@@ -336,7 +347,8 @@ export function parseLocalSupervisoryProcessConfig(value) {
         hostActorId: hostActorId,
         userActorId: userActorId,
         maxLineBytes: maxLineBytes,
-        memoryToolPolicies
+        memoryToolPolicies,
+        validationProfile
     };
 }
 export async function runLocalSupervisoryProcess(configValue) {
@@ -347,11 +359,16 @@ export async function runLocalSupervisoryProcess(configValue) {
     const memoryServer = new AuthenticatedMemoryHttpServer(memoryService);
     const memoryEndpoint = await memoryServer.listen();
     const candidates = new LocalCandidateRepository(join(config.stateRoot, 'candidates.sqlite3'));
-    const validator = {
-        isPromotionEligible (snapshotHash, record) {
-            return record.outcome === 'passed' && record.confinement.filesystem && record.confinement.descendantProcesses && record.confinement.network && record.confinement.cpu && record.confinement.memory && candidates.isValidationAuthentic(snapshotHash, record);
-        }
-    };
+    const validatorActorId = 'actor:local-validator';
+    const validatorCredential = candidates.issueValidatorCredential(validatorActorId);
+    const validator = new CandidateValidationRunner({
+        executionBackend: new WslValidationBackend({
+            distribution: config.validationProfile.wslDistribution
+        }),
+        temporaryRoot: config.validationProfile.stagingRoot,
+        evidenceRepository: candidates,
+        validatorCredential
+    });
     const unavailable = async ()=>{
         throw Object.assign(new Error('lifecycle mutation is not exposed by the read-only process'), {
             code: 'OPERATION_NOT_AVAILABLE'
@@ -416,12 +433,21 @@ export async function runLocalSupervisoryProcess(configValue) {
         memoryPolicyAvailable: (toolName)=>config.memoryToolPolicies.has(toolName),
         proposalService: new ToolInstallationProposalService(candidates, validator),
         userActorId: config.userActorId,
+        challengeValidator: validator,
+        validationProfile: config.validationProfile,
+        validatorActorId,
         createInstallation: (registry)=>new ToolInstallationService(candidates, validator, {
                 installationRoot: join(config.stateRoot, 'installed'),
                 registry
             })
     });
-    const close = ()=>host.close();
+    let closed = false;
+    const close = ()=>{
+        if (closed) return;
+        closed = true;
+        candidates.revokeValidatorCredential(validatorCredential);
+        host.close();
+    };
     process.once('SIGINT', close);
     process.once('SIGTERM', close);
     try {

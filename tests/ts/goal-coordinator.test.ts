@@ -48,6 +48,7 @@ test('goal coordinator executes only a committed plan and seals its actual trail
   const tools = {
     ledger,
     async invoke(tool: string, args: unknown, callId: string) {
+      ledger.start('call:overlapping', 'unrelated_tool'); ledger.succeed('call:overlapping', 1)
       ledger.start(callId, tool); ledger.succeed(callId, 1)
       const input = args as { a: number; b: number }
       return { result: input.a + input.b }
@@ -57,6 +58,8 @@ test('goal coordinator executes only a committed plan and seals its actual trail
   const completed = await coordinator.run(approved, trusted, new AbortController().signal)
   assert.equal(completed.report.observations[0]?.result.result, 5)
   assert.equal(completed.report.calls[0]?.status, 'succeeded')
+  assert.equal(completed.report.calls.length, 1)
+  assert.equal(completed.report.calls[0]?.callId, completed.report.observations[0]?.callId)
   assert.deepEqual(JSON.parse(Buffer.from(workflows.readArtifact(trusted, completed.reportArtifact.id)).toString('utf8')), completed.report)
 
   await assert.rejects(

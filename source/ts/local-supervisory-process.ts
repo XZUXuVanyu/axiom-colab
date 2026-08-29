@@ -5,7 +5,7 @@ import { isAbsolute, join, resolve } from 'node:path'
 import { AdapterService } from './adapter-service.js'
 import { AuthenticatedMemoryHttpServer } from './authenticated-memory-http.js'
 import { AuthenticatedMemoryService } from './authenticated-memory-service.js'
-import type { ValidationRecord } from './candidate-validation.js'
+import { CandidateValidationRunner } from './candidate-validation.js'
 import { LocalCandidateRepository } from './candidate-repository.js'
 import type { GoalSessionReport } from './goal-coordinator.js'
 import type { JsonValue } from './harness-types.js'
@@ -17,10 +17,12 @@ import { MemoryWorkflows, type WorkingRevision } from './memory-workflows.js'
 import { MemorySessionProvider, type MemoryToolGrantPolicy } from './memory-session-provider.js'
 import { ToolObserver } from './observer.js'
 import { ProcessRunner } from './process-runner.js'
+import { parseProductionValidationProfile, type ProductionValidationProfile } from './production-validation-profile.js'
 import { SupervisoryTransport } from './supervisory-transport.js'
 import { runSupervisoryTransportServer } from './supervisory-transport-server.js'
 import { ToolInstallationService } from './tool-installation.js'
 import { ToolInstallationProposalService } from './tool-installation-proposal.js'
+import { WslValidationBackend } from './wsl-validation-backend.js'
 import type {
   SupervisoryMemoryProjection, SupervisoryProgressProjection, SupervisoryToolObservation,
 } from './supervisory-application.js'
@@ -34,6 +36,7 @@ export interface LocalSupervisoryProcessConfig {
   readonly maxLineBytes: number
   readonly userActorId: LaboratoryId<'actor'>
   readonly memoryToolPolicies: ReadonlyMap<string, MemoryToolGrantPolicy>
+  readonly validationProfile: ProductionValidationProfile
 }
 
 function record(value: unknown): value is Record<string, unknown> {
@@ -231,7 +234,7 @@ export function createLocalMemoryProjectionReader(
 
 export function parseLocalSupervisoryProcessConfig(value: unknown): LocalSupervisoryProcessConfig {
   if (!record(value)) throw new TypeError('supervisory process config must be an object')
-  const allowed = new Set(['stateRoot', 'bridgePath', 'bridgeArgs', 'bridgeWorkingDirectory', 'hostActorId', 'userActorId', 'maxLineBytes', 'memoryToolPolicies'])
+  const allowed = new Set(['stateRoot', 'bridgePath', 'bridgeArgs', 'bridgeWorkingDirectory', 'hostActorId', 'userActorId', 'maxLineBytes', 'memoryToolPolicies', 'validationProfile'])
   for (const key of Object.keys(value)) if (!allowed.has(key)) throw new TypeError(`supervisory process config contains unknown field ${key}`)
   const bridgeArgs = value.bridgeArgs ?? []
   if (!Array.isArray(bridgeArgs) || !bridgeArgs.every((item) => typeof item === 'string')) throw new TypeError('bridgeArgs must be an array of strings')
@@ -264,8 +267,15 @@ export function parseLocalSupervisoryProcessConfig(value: unknown): LocalSupervi
       maxOperations: positive('maxOperations'), maxRequestBytes: positive('maxRequestBytes'), lifetimeMs: positive('lifetimeMs'),
     })
   }
+  const stateRoot = absolute(value.stateRoot, 'stateRoot')
+  const validationProfile = parseProductionValidationProfile(value.validationProfile)
+  const state = stateRoot.replaceAll('\\', '/').replace(/\/$/, '').toLowerCase()
+  const staging = validationProfile.stagingRoot.replaceAll('\\', '/').replace(/\/$/, '').toLowerCase()
+  if (state === staging || state.startsWith(`${staging}/`) || staging.startsWith(`${state}/`)) {
+    throw new TypeError('validationProfile.stagingRoot must not overlap the authoritative stateRoot')
+  }
   return {
-    stateRoot: absolute(value.stateRoot, 'stateRoot'),
+    stateRoot,
     bridgePath: absolute(value.bridgePath, 'bridgePath'),
     bridgeArgs: [...bridgeArgs] as string[],
     ...(value.bridgeWorkingDirectory === undefined ? {} : { bridgeWorkingDirectory: absolute(value.bridgeWorkingDirectory, 'bridgeWorkingDirectory') }),
@@ -273,6 +283,7 @@ export function parseLocalSupervisoryProcessConfig(value: unknown): LocalSupervi
     userActorId: userActorId as LaboratoryId<'actor'>,
     maxLineBytes: maxLineBytes as number,
     memoryToolPolicies,
+    validationProfile,
   }
 }
 
@@ -284,17 +295,14 @@ export async function runLocalSupervisoryProcess(configValue: unknown): Promise<
   const memoryServer = new AuthenticatedMemoryHttpServer(memoryService)
   const memoryEndpoint = await memoryServer.listen()
   const candidates = new LocalCandidateRepository(join(config.stateRoot, 'candidates.sqlite3'))
-  const validator = {
-    isPromotionEligible(snapshotHash: string, record: ValidationRecord): boolean {
-      return record.outcome === 'passed'
-        && record.confinement.filesystem
-        && record.confinement.descendantProcesses
-        && record.confinement.network
-        && record.confinement.cpu
-        && record.confinement.memory
-        && candidates.isValidationAuthentic(snapshotHash, record)
-    },
-  }
+  const validatorActorId = 'actor:local-validator' as LaboratoryId<'actor'>
+  const validatorCredential = candidates.issueValidatorCredential(validatorActorId)
+  const validator = new CandidateValidationRunner({
+    executionBackend: new WslValidationBackend({ distribution: config.validationProfile.wslDistribution }),
+    temporaryRoot: config.validationProfile.stagingRoot,
+    evidenceRepository: candidates,
+    validatorCredential,
+  })
   const unavailable = async (): Promise<never> => { throw Object.assign(new Error('lifecycle mutation is not exposed by the read-only process'), { code: 'OPERATION_NOT_AVAILABLE' }) }
   const approvedPlan = createLocalApprovedPlanReader(workflows, config.hostActorId)
   const lifecycle = new LocalGoalLifecycle(join(config.stateRoot, 'lifecycle.sqlite3'), {
@@ -328,11 +336,20 @@ export async function runLocalSupervisoryProcess(configValue: unknown): Promise<
     memoryPolicyAvailable: (toolName) => config.memoryToolPolicies.has(toolName),
     proposalService: new ToolInstallationProposalService(candidates, validator),
     userActorId: config.userActorId,
+    challengeValidator: validator,
+    validationProfile: config.validationProfile,
+    validatorActorId,
     createInstallation: (registry) => new ToolInstallationService(candidates, validator, {
       installationRoot: join(config.stateRoot, 'installed'), registry,
     }),
   })
-  const close = (): void => host.close()
+  let closed = false
+  const close = (): void => {
+    if (closed) return
+    closed = true
+    candidates.revokeValidatorCredential(validatorCredential)
+    host.close()
+  }
   process.once('SIGINT', close)
   process.once('SIGTERM', close)
   try {

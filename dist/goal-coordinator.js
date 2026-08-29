@@ -27,12 +27,13 @@ export class GoalCoordinator {
             throw new GoalCoordinatorError('INVALID_APPROVED_PLAN', 'approved goal plan must identify a goal and contain at least one call');
         }
         const startedAt = this.now().toISOString();
-        const ledgerStart = this.tools.ledger.snapshot().length;
         const observations = [];
+        const issuedCallIds = new Set();
         const resultingArtifactIds = [];
         for (const call of plan.calls){
             if (signal.aborted) throw new GoalCoordinatorError('GOAL_CANCELLED', 'goal execution was cancelled');
             const callId = `call:${randomUUID()}`;
+            issuedCallIds.add(callId);
             const result = await this.tools.invoke(call.tool, call.arguments, callId, signal);
             observations.push({
                 callId,
@@ -43,13 +44,17 @@ export class GoalCoordinator {
                 resultingArtifactIds.push(result.id);
             }
         }
+        const calls = this.tools.ledger.snapshot().filter((record)=>issuedCallIds.has(record.callId));
+        if (calls.length !== issuedCallIds.size || calls.some((record)=>record.status !== 'succeeded') || observations.some((observation)=>!calls.some((record)=>record.callId === observation.callId && record.tool === observation.tool))) {
+            throw new GoalCoordinatorError('INVALID_TOOL_EVIDENCE', 'Tool ledger does not contain one successful matching record for every coordinator-issued call');
+        }
         const report = {
             goalId: plan.goalId,
             planRevisionId: approvedPlan.id,
             planHash: approvedPlan.hash,
             startedAt,
             completedAt: this.now().toISOString(),
-            calls: this.tools.ledger.snapshot().slice(ledgerStart),
+            calls,
             observations,
             resultingArtifactIds
         };

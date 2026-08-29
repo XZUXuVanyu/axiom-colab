@@ -9,6 +9,7 @@ import {
   InvocationLedger, LocalGoalLifecycle, LocalMemoryStore, MemoryWorkflows,
   contentHash, installationProposalBinding,
 } from '../../dist/index.js'
+import { ToolWorkshop } from '../../dist/tool-workshop.js'
 
 const roots: string[] = []
 test.afterEach(() => { for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true }) })
@@ -108,6 +109,7 @@ test('application host executes only discovered pure Tools and seals the observa
       { name: 'mutate_state', description: 'Mutates.', whenToUse: 'Never here.', parameters: { type: 'object' }, output: { type: 'object' }, timeoutMs: 1000, allowParallel: false, sideEffect: true },
     ] },
     async invoke(tool: string, args: unknown, callId: string) {
+      ledger.start('call:overlapping', 'unrelated_tool'); ledger.succeed('call:overlapping', 1)
       ledger.start(callId, tool); ledger.succeed(callId, 1)
       return { tool, arguments: args }
     },
@@ -126,6 +128,11 @@ test('application host executes only discovered pure Tools and seals the observa
     capability: { protocolVersion: '1.0', capabilityId: 'capability:read', workspaceId: 'workspace:alpha', actorId: 'actor:test', toolId: 'tool:test', callId: 'call:read', operations: ['artifact.read'], issuedAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 60_000).toISOString(), nonce: 'read' },
   } as any)
   assert.equal(artifacts[0]?.id, execution.reportArtifactId)
+  const report = JSON.parse(Buffer.from(workflows.readArtifact({
+    authority: 'trusted-host', context: { workspaceId: 'workspace:alpha', actorId: 'actor:test', callId: 'call:read', toolId: 'tool:test' },
+    capability: { protocolVersion: '1.0', capabilityId: 'capability:read-report', workspaceId: 'workspace:alpha', actorId: 'actor:test', toolId: 'tool:test', callId: 'call:read', operations: ['artifact.read'], issuedAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 60_000).toISOString(), nonce: 'read-report' },
+  } as any, execution.reportArtifactId)).toString('utf8'))
+  assert.deepEqual(report.calls.map((record: any) => record.callId), [execution.callId])
   await assert.rejects(host.executeTool('workspace:alpha', 'goal:one', 'mutate_state', {}), (error: unknown) => (error as any).code === 'TOOL_REQUIRES_POLICY')
   host.close()
 })
@@ -211,5 +218,63 @@ test('application host binds a user decision to the exact visible proposal hash'
   const decided = await host.decideInstallation('workspace:alpha', 'proposal:one', proposal.proposalHash, 'rejected')
   assert.equal(decided.decision, 'rejected')
   assert.deepEqual(decisions, ['actor:local-user:proposal:one:rejected'])
+  host.close()
+})
+
+test('application host binds hidden challenges to the exact current candidate and returns redacted evidence', async () => {
+  const value = fixture()
+  const workshop = new ToolWorkshop({ repository: value.candidates, idFactory: () => crypto.randomUUID() })
+  const model = { workspaceId: 'workspace:alpha', actorId: 'actor:model', authority: 'model' } as const
+  const specification = workshop.defineSpecification(model, {
+    problem: 'Provide a deterministic candidate.', publicName: 'candidate_tool', description: 'Candidate.',
+    inputSchema: { type: 'object' }, outputSchema: { type: 'object' }, requestedPermissions: [],
+    acceptanceCriteria: ['Pass the hidden user challenge.'],
+  })
+  const revision = workshop.createCandidateRevision(model, {
+    specificationId: specification.specificationId,
+    descriptor: { name: 'candidate_tool' },
+    sources: [{ path: 'src/tool.cpp', content: 'candidate source' }],
+  })
+  let captured: any
+  const record = {
+    validationId: 'validation:hidden', recordHash: `sha256:${'4'.repeat(64)}`, outcome: 'passed',
+    suites: [
+      { kind: 'candidate', outcome: 'passed', definitionHash: `sha256:${'5'.repeat(64)}`, commandCount: 1, hidden: false },
+      { kind: 'standard', outcome: 'passed', definitionHash: `sha256:${'6'.repeat(64)}`, commandCount: 1, hidden: false },
+      { kind: 'challenge', outcome: 'passed', definitionHash: `sha256:${'7'.repeat(64)}`, commandCount: 1, hidden: true },
+    ],
+  }
+  const challengeValidator = { async validate(request: any) {
+    captured = request
+    return { snapshot: { snapshotHash: `sha256:${'3'.repeat(64)}` }, record }
+  } }
+  const validationProfile = {
+    toolchain: { name: 'cmake', version: 'system', target: 'linux-x86_64' },
+    wslDistribution: 'Ubuntu-24.04', stagingRoot: join(value.root, 'staging'),
+    policy: { allowedExecutables: ['/usr/bin/cmake', '/usr/bin/ctest'], process: { timeoutMs: 1, maxStdinBytes: 1, maxStdoutBytes: 1, maxStderrBytes: 1, killGraceMs: 1 }, resources: { maxMemoryBytes: 1, cpuQuotaPercent: 1, maxProcesses: 1 }, maxCommands: 3 },
+    candidateSuite: { suiteId: 'candidate', kind: 'candidate', commands: [{ commandId: 'build', executable: '/usr/bin/cmake', args: [], cwd: 'candidate' }] },
+    standardSuite: { suiteId: 'standard', kind: 'standard', commands: [{ commandId: 'standard', executable: '/usr/bin/ctest', args: [], cwd: 'candidate' }] },
+  } as const
+  const host = new LocalApplicationHost({
+    ...value, validator: { isPromotionEligible: () => true }, hostActorId: 'actor:host',
+    createInstallation: () => ({ rediscover: () => [] }), challengeValidator,
+    validationProfile, validatorActorId: 'actor:validator',
+  } as any)
+  await host.initialize()
+  await assert.rejects(
+    host.submitHiddenChallenge('workspace:alpha', revision.revisionId, `sha256:${'f'.repeat(64)}`, [{ path: 'private/input.txt', content: 'secret' }], [{ commandId: 'hidden', executable: '/usr/bin/ctest', args: [], cwd: 'candidate' }]),
+    (error: unknown) => (error as any).code === 'STALE_CANDIDATE_REVISION',
+  )
+  const result = await host.submitHiddenChallenge(
+    'workspace:alpha', revision.revisionId, revision.candidateHash,
+    [{ path: 'private/input.txt', content: 'secret' }],
+    [{ commandId: 'hidden', executable: '/usr/bin/ctest', args: [], cwd: 'candidate' }],
+  )
+  assert.equal(captured.descriptor.name, 'candidate_tool')
+  assert.equal(captured.suites[2].kind, 'challenge')
+  assert.equal(captured.fixtures[0].content, 'secret')
+  assert.equal(result.promotable, true)
+  assert.deepEqual(result.suites.map((suite) => suite.hidden), [false, false, true])
+  assert.doesNotMatch(JSON.stringify(result), /secret|stdout|stderr|fixtures|commands/)
   host.close()
 })

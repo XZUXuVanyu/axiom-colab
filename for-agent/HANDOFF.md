@@ -4,6 +4,27 @@ Last updated: 2026-08-29
 
 ## Current state
 
+- Supervisory protocol `1.1` now includes a narrow host-owned hidden-challenge
+  submission. It binds the exact current candidate revision/hash, combines
+  private fixtures and challenge commands with profile-owned candidate and
+  laboratory-standard suites, and invokes the authenticated repository-backed
+  `CandidateValidationRunner` through the configured WSL backend.
+- Hidden challenge responses expose only validation/snapshot/record hashes,
+  outcome, promotability, and salted suite commitments. Fixture bytes,
+  challenge definitions, command output, and salts remain private and absent
+  from inspection. The process-local validator credential is revoked during
+  owned shutdown.
+- Production supervisory configuration now requires a strict validation
+  profile binding the exact toolchain, WSL distribution, non-authoritative
+  staging root, Linux executable allowlist, process/resource ceilings, and
+  separate candidate and laboratory-standard command suites. Unknown fields,
+  duplicate identities/allowlist entries, unsafe working directories,
+  non-allowlisted commands, excessive command counts, and state/staging overlap
+  fail before host startup.
+- Goal execution evidence is now selected by the exact host-issued call IDs
+  instead of by positional slices of the shared Adapter ledger. Concurrent or
+  unrelated Adapter activity cannot be absorbed into a goal-session report,
+  and missing, mismatched, or non-successful exact records fail closed.
 - Pending installation proposals now project the exact proposal hash, bound
   candidate/validation hashes, requested permissions, and state. Qt shows these
   facts before enabling explicit approve/reject controls.
@@ -359,6 +380,25 @@ otherwise modified by the consolidation work.
 
 Passed in `D:\Dev\axiom-colab`:
 
+- Stage 8 hidden challenge host operation `pnpm.cmd test`: all 86 TypeScript
+  tests passed, including exact current-candidate binding, canonical private
+  fixture decoding, redacted results, and malformed submission rejection.
+- Stage 8 hidden challenge host operation `pnpm.cmd run test:integration`:
+  five portable real-Bridge tests passed; three opt-in WSL confinement tests
+  remained skipped.
+- Stage 8 production validation profile `pnpm.cmd test`: all 85 TypeScript
+  tests passed and regenerated `dist/`.
+- Stage 8 production validation profile `pnpm.cmd run test:integration`: five
+  real-Bridge integrations passed; the three opt-in WSL confinement cases were
+  skipped by their existing portable-CI gate.
+- `new-supervisory-config.ps1` generated a smoke configuration whose nested
+  candidate commands and resource ceilings round-tripped through PowerShell
+  JSON decoding. An initial smoke attempt used an unquoted executable path with
+  spaces and was corrected to a no-space existing fixture path.
+- Stage 8 exact-call evidence bug fix `pnpm.cmd test`: all 85 TypeScript tests
+  passed. The host and goal-coordinator regressions inject unrelated ledger
+  activity during execution and verify that immutable reports contain only the
+  matching host/coordinator-issued call records.
 - Existing pure-Tool execution slice `pnpm.cmd test`: all 82 TypeScript tests
   passed, including strict transport arguments, host-generated identity,
   immutable report sealing, rejection of a side-effecting descriptor, and a
@@ -823,16 +863,12 @@ installation controls:
 
 ## Exact next work
 
-Define a production validation profile that binds candidate-authored and
-laboratory-standard build/test commands, toolchain, WSL distribution, staging
-root, allowed executables, and resource policy. Only after that profile exists,
-add hidden challenge submission through a narrow host-owned operation that
-stores private fixtures separately and invokes the existing enforcing validator;
-do not send hidden definitions or output back through inspection. Candidate
-source authoring must delegate to the existing workshop, not write repository
-rows or files from Qt. Keep installed-candidate execution absent until the
-executable loading strategy preserves its exact candidate and installation
-evidence hashes.
+Add the Qt hidden-challenge submission view on top of the narrow host-owned
+operation without persisting private fixture bytes, challenge definitions, or
+output in widget state after completion. Candidate source authoring must
+delegate to the existing workshop, not write repository rows or files from Qt.
+Keep installed-candidate execution absent until the executable loading strategy
+preserves its exact candidate and installation evidence hashes.
 
 Keep the WSL integration suite opt-in for portable CI, and run it explicitly on
 the supported Windows/Ubuntu composition before changing its confinement

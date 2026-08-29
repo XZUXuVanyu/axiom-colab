@@ -23,6 +23,16 @@ test('supervisory transport lists workspaces and correlates immutable inspection
     async decideInstallation(workspaceId: string, proposalId: string, proposalHash: string, decision: string) {
       return { workspaceId, proposalId, proposalHash, decision }
     },
+    async submitHiddenChallenge(workspaceId: string, revisionId: string, candidateHash: string, fixtures: any[], commands: any[]) {
+      assert.equal(Buffer.from(fixtures[0].content).toString(), 'private fixture')
+      assert.equal(commands[0].commandId, 'hidden-test')
+      return {
+        workspaceId, revisionId, candidateHash, validationId: 'validation:one',
+        snapshotHash: `sha256:${'3'.repeat(64)}`, recordHash: `sha256:${'4'.repeat(64)}`,
+        outcome: 'passed', promotable: true,
+        suites: [{ kind: 'challenge', outcome: 'passed', definitionHash: `sha256:${'5'.repeat(64)}`, commandCount: 1, hidden: true }],
+      }
+    },
   }
   const transport = new SupervisoryTransport(host as any)
   const listed = JSON.parse(await transport.handle(JSON.stringify({ protocolVersion: '1.1', id: 'one', operation: 'list-workspaces' })))
@@ -37,6 +47,14 @@ test('supervisory transport lists workspaces and correlates immutable inspection
   assert.deepEqual(executed.result.result, { left: 2, right: 3 })
   const decided = JSON.parse(await transport.handle(JSON.stringify({ protocolVersion: '1.1', id: 'four', operation: 'decide-installation', workspaceId: 'workspace:alpha', proposalId: 'proposal:one', proposalHash: `sha256:${'2'.repeat(64)}`, decision: 'rejected' })))
   assert.equal(decided.result.decision, 'rejected')
+  const challenged = JSON.parse(await transport.handle(JSON.stringify({
+    protocolVersion: '1.1', id: 'five', operation: 'submit-hidden-challenge',
+    workspaceId: 'workspace:alpha', revisionId: 'evidence:revision', candidateHash: `sha256:${'2'.repeat(64)}`,
+    fixtures: [{ path: 'tests/private.txt', contentBase64: Buffer.from('private fixture').toString('base64') }],
+    commands: [{ commandId: 'hidden-test', executable: '/usr/bin/ctest', args: ['--test-dir', 'build'], cwd: 'candidate' }],
+  })))
+  assert.equal(challenged.result.validationId, 'validation:one')
+  assert.doesNotMatch(JSON.stringify(challenged.result), /private fixture|contentBase64|stdout|stderr/)
 })
 
 test('supervisory transport rejects malformed, oversized, and authority-changing requests', async () => {
@@ -57,6 +75,9 @@ test('supervisory transport rejects malformed, oversized, and authority-changing
   assert.equal(invalidArguments.error.code, 'INVALID_TOOL_ARGUMENTS')
   const invalidDecision = JSON.parse(await transport.handle(JSON.stringify({ protocolVersion: '1.1', id: 'decision', operation: 'decide-installation', workspaceId: 'workspace:alpha', proposalId: 'proposal:one', proposalHash: `sha256:${'2'.repeat(64)}`, decision: 'installed' })))
   assert.equal(invalidDecision.error.code, 'INVALID_DECISION')
+  const challengeTransport = new SupervisoryTransport({ workspaces: () => [], goals: () => [], async inspect() { throw new Error('unused') } } as any)
+  const invalidChallenge = JSON.parse(await challengeTransport.handle(JSON.stringify({ protocolVersion: '1.1', id: 'challenge', operation: 'submit-hidden-challenge', workspaceId: 'workspace:alpha', revisionId: 'evidence:one', candidateHash: `sha256:${'2'.repeat(64)}`, fixtures: [{ path: 'secret', contentBase64: 'not base64' }], commands: [] })))
+  assert.equal(invalidChallenge.error.code, 'INVALID_HIDDEN_CHALLENGE')
 })
 
 test('supervisory transport preserves deterministic host failure codes', async () => {

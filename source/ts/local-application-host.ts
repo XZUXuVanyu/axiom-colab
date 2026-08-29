@@ -3,6 +3,9 @@ import { randomUUID } from 'node:crypto'
 import type { AdapterService } from './adapter-service.js'
 import type { TrustedInvocationSession } from './adapter-service.js'
 import type { JsonValue } from './harness-types.js'
+import type {
+  CandidateFile, CandidateValidationRequest, CandidateValidationResult, ValidationCommand,
+} from './candidate-validation.js'
 import { contentHash } from './laboratory-contract.js'
 import type { LocalCandidateRepository } from './candidate-repository.js'
 import type { LaboratoryId } from './laboratory-contract.js'
@@ -21,6 +24,25 @@ import type {
 } from './tool-installation.js'
 import type { ValidationPromotionAuthority } from './tool-installation-proposal.js'
 import type { ToolInstallationProposalService } from './tool-installation-proposal.js'
+import type { ProductionValidationProfile } from './production-validation-profile.js'
+
+export interface HiddenChallengeValidationResult {
+  readonly workspaceId: LaboratoryId<'workspace'>
+  readonly revisionId: LaboratoryId<'evidence'>
+  readonly candidateHash: `sha256:${string}`
+  readonly validationId: LaboratoryId<'validation'>
+  readonly snapshotHash: `sha256:${string}`
+  readonly recordHash: `sha256:${string}`
+  readonly outcome: 'passed' | 'failed' | 'limited'
+  readonly promotable: boolean
+  readonly suites: readonly {
+    readonly kind: 'candidate' | 'standard' | 'challenge'
+    readonly outcome: 'passed' | 'failed' | 'limited'
+    readonly definitionHash: `sha256:${string}`
+    readonly commandCount: number
+    readonly hidden: boolean
+  }[]
+}
 
 export interface InstalledToolRediscovery {
   rediscover(context: {
@@ -52,6 +74,9 @@ export interface LocalApplicationHostOptions {
   readonly memoryPolicyAvailable?: (toolName: string) => boolean
   readonly proposalService?: ToolInstallationProposalService
   readonly userActorId?: LaboratoryId<'actor'>
+  readonly challengeValidator?: Pick<{ validate(request: CandidateValidationRequest): Promise<CandidateValidationResult> }, 'validate'>
+  readonly validationProfile?: ProductionValidationProfile
+  readonly validatorActorId?: LaboratoryId<'actor'>
 }
 
 export class LocalApplicationHostError extends Error {
@@ -144,6 +169,54 @@ export class LocalApplicationHost {
     return { workspaceId, proposalId, proposalHash, decision }
   }
 
+  async submitHiddenChallenge(
+    workspaceId: LaboratoryId<'workspace'>,
+    revisionId: LaboratoryId<'evidence'>,
+    candidateHash: `sha256:${string}`,
+    fixtures: readonly CandidateFile[],
+    commands: readonly ValidationCommand[],
+  ): Promise<HiddenChallengeValidationResult> {
+    this.ensureReady()
+    const runner = this.options.challengeValidator
+    const profile = this.options.validationProfile
+    const validatorActorId = this.options.validatorActorId
+    if (runner === undefined || profile === undefined || validatorActorId === undefined) {
+      fail('OPERATION_NOT_AVAILABLE', 'hidden challenge validation is not composed')
+    }
+    const materialized = this.options.candidates.materializeRevision(workspaceId, revisionId)
+    if (materialized === null) fail('CANDIDATE_REVISION_NOT_FOUND', 'candidate revision is not visible in this workspace')
+    if (materialized.revision.state !== 'current' || materialized.revision.candidateHash !== candidateHash) {
+      fail('STALE_CANDIDATE_REVISION', 'hidden challenge must bind the exact current candidate revision')
+    }
+    if (commands.length === 0) fail('INVALID_HIDDEN_CHALLENGE', 'hidden challenge must contain at least one command')
+    const request: CandidateValidationRequest = {
+      workspaceId,
+      candidateId: materialized.revision.candidateId,
+      validatorActorId,
+      descriptor: materialized.descriptor,
+      sources: materialized.sources,
+      fixtures,
+      toolchain: profile.toolchain,
+      policy: profile.policy,
+      suites: [profile.candidateSuite, profile.standardSuite, {
+        suiteId: 'user-hidden-challenge', kind: 'challenge', commands,
+      }],
+    }
+    const result = await runner.validate(request)
+    return {
+      workspaceId, revisionId, candidateHash,
+      validationId: result.record.validationId,
+      snapshotHash: result.snapshot.snapshotHash,
+      recordHash: result.record.recordHash,
+      outcome: result.record.outcome,
+      promotable: this.options.validator.isPromotionEligible(result.snapshot.snapshotHash, result.record),
+      suites: result.record.suites.map((suite) => ({
+        kind: suite.kind, outcome: suite.outcome, definitionHash: suite.definitionHash,
+        commandCount: suite.commandCount, hidden: suite.hidden,
+      })),
+    }
+  }
+
   async executeTool(
     workspaceId: LaboratoryId<'workspace'>,
     goalId: LaboratoryId<'goal'>,
@@ -162,14 +235,17 @@ export class LocalApplicationHost {
     if (descriptor.sideEffect && memorySession === undefined) {
       fail('TOOL_REQUIRES_POLICY', 'side-effecting Tool execution requires an explicit host policy')
     }
-    const ledgerStart = this.options.adapter.ledger.snapshot().length
     const startedAt = new Date().toISOString()
     const result = await this.options.adapter.invoke(toolName, args, callId, signal, memorySession)
     const completedAt = new Date().toISOString()
+    const calls = this.options.adapter.ledger.snapshot().filter((record) => record.callId === callId)
+    if (calls.length !== 1 || calls[0]?.tool !== toolName || calls[0].status !== 'succeeded') {
+      fail('INVALID_TOOL_EVIDENCE', 'Adapter ledger does not contain one successful record for the exact host-issued call')
+    }
     const report = {
       goalId, planRevisionId: goal.plan.id, planHash: goal.plan.hash,
       startedAt, completedAt,
-      calls: this.options.adapter.ledger.snapshot().slice(ledgerStart),
+      calls,
       observations: [{ callId, tool: toolName, result }], resultingArtifactIds: [],
     }
     const issued = new Date()

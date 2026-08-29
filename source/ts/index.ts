@@ -212,5 +212,7 @@ export {
   runLocalSupervisoryProcess,
 } from './local-supervisory-process.js'
 export type { LocalSupervisoryProcessConfig } from './local-supervisory-process.js'
+export { parseProductionValidationProfile } from './production-validation-profile.js'
+export type { ProductionValidationProfile } from './production-validation-profile.js'
 export { InvocationLedger } from './invocation-ledger.js'
 export type { ExpectedCallPolicy, InvocationRecord, VerificationResult } from './invocation-ledger.js'

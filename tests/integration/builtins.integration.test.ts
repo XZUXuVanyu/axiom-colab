@@ -87,6 +87,16 @@ test('production supervisory process executes a configured memory-dependent buil
   const configPath = join(root, 'config.json')
   writeFileSync(configPath, JSON.stringify({
     stateRoot, bridgePath: bridge, bridgeArgs: [], bridgeWorkingDirectory: resolve('.'),
+    validationProfile: {
+      toolchain: { name: 'cmake', version: 'system', target: 'linux-x86_64' },
+      wslDistribution: 'Ubuntu-24.04', stagingRoot: join(root, 'validation-staging'),
+      allowedExecutables: ['/usr/bin/cmake', '/usr/bin/ctest'],
+      process: { timeoutMs: 30_000, maxStdinBytes: 1024, maxStdoutBytes: 1_048_576, maxStderrBytes: 1_048_576, killGraceMs: 250 },
+      resources: { maxMemoryBytes: 536_870_912, cpuQuotaPercent: 100, maxProcesses: 32 },
+      maxCommands: 2,
+      candidateCommands: [{ commandId: 'candidate-build', executable: '/usr/bin/cmake', args: ['--build', 'build'], cwd: 'candidate' }],
+      standardCommands: [{ commandId: 'standard-test', executable: '/usr/bin/ctest', args: ['--test-dir', 'build'], cwd: 'candidate' }],
+    },
     memoryToolPolicies: [{
       toolName: 'compute_buffer', toolId: 'tool:compute-buffer', toolVersion: '1.0.0',
       operations: ['compute.create'], maxOperations: 1, maxRequestBytes: 4096, lifetimeMs: 10_000,

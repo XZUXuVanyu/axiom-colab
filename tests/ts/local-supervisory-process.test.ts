@@ -14,6 +14,19 @@ import {
 const roots: string[] = []
 test.afterEach(() => { for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true }) })
 
+function validationProfile(stagingRoot = resolve('build/validation-staging')) {
+  return {
+    toolchain: { name: 'cmake', version: '4.1.1', target: 'linux-x86_64' },
+    wslDistribution: 'Ubuntu-24.04', stagingRoot,
+    allowedExecutables: ['/usr/bin/cmake', '/usr/bin/ctest'],
+    process: { timeoutMs: 30_000, maxStdinBytes: 1024, maxStdoutBytes: 1_048_576, maxStderrBytes: 1_048_576, killGraceMs: 250 },
+    resources: { maxMemoryBytes: 536_870_912, cpuQuotaPercent: 100, maxProcesses: 32 },
+    maxCommands: 4,
+    candidateCommands: [{ commandId: 'candidate-build', executable: '/usr/bin/cmake', args: ['--build', 'build'], cwd: 'candidate' }],
+    standardCommands: [{ commandId: 'standard-tests', executable: '/usr/bin/ctest', args: ['--test-dir', 'build'], cwd: 'standard' }],
+  }
+}
+
 test('local supervisory process composes durable state and Bridge discovery behind JSON lines', async () => {
   const root = join(tmpdir(), `axiom-supervisory-main-${crypto.randomUUID()}`)
   mkdirSync(root); roots.push(root)
@@ -40,6 +53,7 @@ test('local supervisory process composes durable state and Bridge discovery behi
     bridgePath: process.execPath,
     bridgeArgs: [resolve('tests/fixtures/fake-bridge.mjs')],
     bridgeWorkingDirectory: resolve('.'),
+    validationProfile: validationProfile(join(root, 'validation-staging')),
   }))
 
   const child = spawn(process.execPath, [resolve('proj/scripts/run-supervisory.mjs'), configPath], {
@@ -72,29 +86,40 @@ test('local supervisory process composes durable state and Bridge discovery behi
 
 test('local supervisory process config rejects ambient paths and unknown authority fields', () => {
   assert.throws(() => parseLocalSupervisoryProcessConfig({
-    stateRoot: 'relative', bridgePath: process.execPath,
+    stateRoot: 'relative', bridgePath: process.execPath, validationProfile: validationProfile(),
   }), /stateRoot must be an absolute path/)
   assert.throws(() => parseLocalSupervisoryProcessConfig({
-    stateRoot: resolve('.'), bridgePath: process.execPath, approval: true,
+    stateRoot: resolve('.'), bridgePath: process.execPath, validationProfile: validationProfile(), approval: true,
   }), /unknown field approval/)
   assert.throws(() => parseLocalSupervisoryProcessConfig({
-    stateRoot: resolve('.'), bridgePath: process.execPath, userActorId: 'actor:bad value',
+    stateRoot: resolve('.'), bridgePath: process.execPath, validationProfile: validationProfile(), userActorId: 'actor:bad value',
   }), /userActorId is malformed/)
   assert.throws(() => parseLocalSupervisoryProcessConfig({
-    stateRoot: resolve('.'), bridgePath: process.execPath,
+    stateRoot: resolve('.'), bridgePath: process.execPath, validationProfile: validationProfile(),
     memoryToolPolicies: [{
       toolName: 'memory_tool', toolId: 'tool:memory', toolVersion: '1.0.0',
       operations: ['working.approve'], maxOperations: 1, maxRequestBytes: 1024, lifetimeMs: 1000,
     }],
   }), /only Tool memory operations/)
   const parsed = parseLocalSupervisoryProcessConfig({
-    stateRoot: resolve('.'), bridgePath: process.execPath,
+    stateRoot: resolve('build/test-state'), bridgePath: process.execPath,
+    validationProfile: validationProfile(resolve('build/test-validation-staging')),
     memoryToolPolicies: [{
       toolName: 'memory_tool', toolId: 'tool:memory', toolVersion: '1.0.0',
       operations: ['compute.read'], maxOperations: 1, maxRequestBytes: 1024, lifetimeMs: 1000,
     }],
   })
   assert.deepEqual(parsed.memoryToolPolicies.get('memory_tool')?.operations, ['compute.read'])
+  assert.equal(parsed.validationProfile.candidateSuite.kind, 'candidate')
+  assert.equal(parsed.validationProfile.standardSuite.kind, 'standard')
+  assert.throws(() => parseLocalSupervisoryProcessConfig({
+    stateRoot: resolve('.'), bridgePath: process.execPath,
+    validationProfile: { ...validationProfile(), standardCommands: [{ commandId: 'escape', executable: '/usr/bin/sh', args: [], cwd: '..' }] },
+  }), /not allowlisted/)
+  assert.throws(() => parseLocalSupervisoryProcessConfig({
+    stateRoot: resolve('state'), bridgePath: process.execPath,
+    validationProfile: validationProfile(resolve('state/validation-staging')),
+  }), /must not overlap/)
 })
 
 test('local approved-plan reader binds committed working state to the exact goal', () => {

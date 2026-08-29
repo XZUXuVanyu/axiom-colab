@@ -32,8 +32,16 @@ powershell.exe -ExecutionPolicy Bypass `
   -File .\proj\scripts\new-supervisory-config.ps1 `
   -StateRoot D:\Axiom\state `
   -BridgePath D:\Dev\axiom-colab\build\windows\Release\cpp-tool-bridge.exe `
+  -ValidationStagingRoot D:\Axiom\validation-staging `
   -OutputPath D:\Axiom\config\supervisory.json
 ```
+
+The generated configuration also contains the required production validation
+profile: exact toolchain identity, Ubuntu distribution, a non-overlapping
+staging root, an absolute Linux executable allowlist, bounded process/resource
+policy, candidate build commands, and laboratory-standard test commands. The
+supervisory process rejects missing, unknown, duplicated, escaping, or
+overlapping profile values before opening the production host.
 
 Then launch the GUI with
 `cpp-adapter-gui.exe --supervisory-config D:\Axiom\config\supervisory.json`.

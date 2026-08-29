@@ -4,6 +4,42 @@ Entries are chronological. Each entry corresponds to one logical Git commit and
 records its exact subject, purpose, material changes, and validation actually
 performed.
 
+## 2026-08-30 - feat(validation): add supervised hidden challenge validation
+
+Purpose: complete the Stage 8 production validation boundary and expose hidden
+user tests without moving validation authority or private evidence into Qt or
+public inspection.
+
+Material changes:
+
+- Replaced positional shared-ledger slicing with exact host/coordinator-issued
+  call-ID selection.
+- Made report creation fail closed unless every expected call has exactly one
+  matching successful ledger record for the expected Tool.
+- Added regression coverage that injects unrelated ledger activity during both
+  supervisory single-Tool execution and coordinated goal execution.
+- Added a strict production profile for toolchain identity, WSL distribution,
+  non-overlapping staging, executable allowlisting, resource limits, and
+  candidate/laboratory-standard commands.
+- Added bounded `submit-hidden-challenge` transport and host paths that bind the
+  exact current candidate, materialize repository-verified source, persist
+  private evidence through an authenticated validator, and expose only redacted
+  hashes, commitments, outcomes, and promotability.
+- Composed WSL validation and process-owned validator credential revocation,
+  updated configuration generation and documentation, and regenerated `dist/`.
+
+Validation actually run:
+
+- `pnpm.cmd test`: passed all 86 TypeScript tests.
+- One intermediate run had 85 passes and one assertion failure because a
+  deliberate 256-byte framing limit rejected a malformed challenge before
+  payload parsing; separating those assertions produced the final pass.
+- `pnpm.cmd run test:integration`: passed five portable real-Bridge tests;
+  three opt-in WSL confinement tests retained their skip gate.
+- The configuration generator produced nested command/resource JSON that
+  round-tripped through PowerShell decoding. Its first smoke invocation used an
+  unquoted path containing spaces and failed before the corrected invocation.
+
 ## 2026-08-29 - feat(gui): extend supervised candidate workflows
 
 Purpose: continue Stage 8 through policy-scoped memory execution, inspectable

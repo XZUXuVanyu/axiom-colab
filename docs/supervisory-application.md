@@ -89,7 +89,8 @@ directories itself.
 
 `SupervisoryTransport` version `1.1` defines the local supervisory JSON
 boundary. It accepts `list-workspaces`, `list-goals`, `inspect`, constrained
-`execute-tool`, and exact-hash `decide-installation`, using strict exact-field parsing,
+`execute-tool`, exact-hash `decide-installation`, and host-owned
+`submit-hidden-challenge`, using strict exact-field parsing,
 validates workspace and goal identities, bounds request bytes, correlates every
 valid request ID, and returns structured deterministic failures. Tool execution
 requires a registered goal with its exact current approved plan and is limited
@@ -106,6 +107,17 @@ The host supplies trusted user identity and delegates to
 permission, and proposal checks before authoring an approval. Installation and
 lifecycle commands remain absent. Host inspection bypasses mutable UI selection, so concurrent clients
 cannot redirect one another's workspace or goal request.
+
+Hidden challenge submission binds the exact visible current candidate revision
+and candidate hash. The request carries private fixture bytes and challenge
+commands through the bounded local process channel; the host combines them
+with the immutable repository materialization and configured candidate and
+laboratory-standard suites. Production validation uses an authenticated
+repository credential, the configured WSL confinement backend, and the
+non-authoritative staging root. The response contains only validation,
+snapshot, and record identities/hashes plus redacted suite commitments and
+outcomes. Fixture bytes, challenge commands, salts, stdout, and stderr are not
+returned or added to inspection projections.
 
 Candidate inspection materializes each stored revision through the repository's
 integrity checks before projection. The read-only projection includes descriptor
