@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+import { contentHash } from './laboratory-contract.js';
 import { LocalSupervisoryBackend } from './local-supervisory-backend.js';
 import { SupervisoryApplicationModel } from './supervisory-application.js';
 export class LocalApplicationHostError extends Error {
@@ -71,6 +73,83 @@ export class LocalApplicationHost {
     inspect(workspaceId, goalId) {
         this.ensureReady();
         return this.backend.inspect(workspaceId, goalId);
+    }
+    async executeTool(workspaceId, goalId, toolName, args, signal = new AbortController().signal) {
+        this.ensureReady();
+        this.options.store.reopenWorkspace(workspaceId);
+        const goal = this.options.lifecycle.inspectGoal(workspaceId, goalId);
+        if (goal?.plan === null || goal === null) fail('GOAL_NOT_FOUND', 'selected goal has no authoritative approved plan');
+        const descriptor = this.descriptors.find((item)=>item.name === toolName);
+        if (descriptor === undefined) fail('TOOL_NOT_EXECUTABLE', 'Tool is not executable by the production Adapter');
+        if (descriptor.sideEffect) fail('TOOL_REQUIRES_POLICY', 'side-effecting Tool execution requires an explicit host policy');
+        const callId = `call:${randomUUID()}`;
+        const ledgerStart = this.options.adapter.ledger.snapshot().length;
+        const startedAt = new Date().toISOString();
+        const result = await this.options.adapter.invoke(toolName, args, callId, signal);
+        const completedAt = new Date().toISOString();
+        const report = {
+            goalId,
+            planRevisionId: goal.plan.id,
+            planHash: goal.plan.hash,
+            startedAt,
+            completedAt,
+            calls: this.options.adapter.ledger.snapshot().slice(ledgerStart),
+            observations: [
+                {
+                    callId,
+                    tool: toolName,
+                    result
+                }
+            ],
+            resultingArtifactIds: []
+        };
+        const issued = new Date();
+        const reportArtifact = this.options.workflows.createArtifact({
+            authority: 'trusted-host',
+            context: {
+                workspaceId,
+                actorId: this.options.hostActorId,
+                callId,
+                toolId: 'tool:supervisory-host'
+            },
+            capability: {
+                protocolVersion: '1.0',
+                capabilityId: `capability:${randomUUID()}`,
+                workspaceId,
+                actorId: this.options.hostActorId,
+                toolId: 'tool:supervisory-host',
+                callId,
+                operations: [
+                    'artifact.create'
+                ],
+                issuedAt: issued.toISOString(),
+                expiresAt: new Date(issued.getTime() + 60_000).toISOString(),
+                nonce: randomUUID()
+            }
+        }, Buffer.from(JSON.stringify(report), 'utf8'), {
+            type: 'object',
+            title: 'Axiom goal session report',
+            protocolVersion: '1.0'
+        }, {
+            operation: 'goal.tool.execution',
+            parametersHash: contentHash({
+                goalId,
+                planHash: goal.plan.hash,
+                toolName,
+                args
+            }),
+            softwareVersion: '1.0.0',
+            validationId: null
+        });
+        return {
+            workspaceId,
+            goalId,
+            callId,
+            tool: toolName,
+            result,
+            reportArtifactId: reportArtifact.id,
+            reportHash: reportArtifact.hash
+        };
     }
     async initialize(signal) {
         if (this.closed) fail('HOST_CLOSED', 'application host is closed');

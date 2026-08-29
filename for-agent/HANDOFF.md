@@ -4,6 +4,19 @@ Last updated: 2026-08-29
 
 ## Current state
 
+- Supervisory protocol `1.1` adds one constrained `execute-tool` command. It
+  requires an exact visible goal/approved-plan binding and accepts only
+  Adapter-discovered Tools whose authoritative descriptor declares no side
+  effects. The host generates call IDs and does not accept caller-authored
+  trusted context.
+- Successful calls are sealed with their actual Adapter ledger record and
+  observed result into an immutable, hash-verified goal-session-report artifact
+  before success is returned. The Qt workflow submits strict JSON object
+  arguments, validates the correlated execution/evidence response, shows the
+  result, and refreshes authoritative inspection.
+- Memory-dependent Tools, side-effecting Tools, and rediscovered installed
+  Tools remain deliberately non-executable through this command until explicit
+  per-Tool memory policy and executable loading boundaries are composed.
 - Supervisory inspection now includes host-owned metadata projections for all
   three semantic memory classes: bounded compute objects, approved working
   revisions, and immutable artifacts with complete parent/child lineage and
@@ -54,8 +67,8 @@ Last updated: 2026-08-29
 - A complete Qt 6.12.0 MSVC 2022 64-bit kit is installed side-by-side at
   `C:\Qt\6.12.0\msvc2022_64`; its Widgets header is intact and all current GUI
   targets compile. The damaged 6.11.2 kit remains untouched.
-- `runLocalSupervisoryProcess` and `proj/scripts/run-supervisory.mjs` now provide
-  the production read-only Node entry point. Strict explicit configuration
+- `runLocalSupervisoryProcess` and `proj/scripts/run-supervisory.mjs` provide
+  the constrained production Node entry point. Strict explicit configuration
   selects absolute state, Bridge, and working-directory paths; the process
   composes durable memory/candidate/lifecycle repositories, Adapter discovery,
   installed-Tool rediscovery, authentic promotion inspection, the local host,
@@ -91,10 +104,10 @@ Last updated: 2026-08-29
 - Valid request IDs survive parseable rejections such as unknown operations;
   malformed JSON remains uncorrelated. Real child-process tests exercise the
   framing rather than only calling the transport in-process.
-- `SupervisoryTransport` now defines version `1.0` read-only JSON operations
-  for `list-workspaces` and `inspect`. Requests use strict fields, validated
+- `SupervisoryTransport` version `1.1` defines strict JSON reads plus constrained
+  pure-Tool execution. Requests use strict fields, validated
   identities, a 64 KiB default limit, request-ID correlation, and structured
-  errors; mutation and authority-changing operations are absent.
+  errors; approval, installation, lifecycle, and memory-authority operations are absent.
 - Host inspection now has a selection-independent path, preventing concurrent
   transport requests from redirecting shared UI workspace/goal selection.
 - `LocalApplicationHost` now owns Adapter descriptor discovery, deterministic
@@ -318,6 +331,14 @@ otherwise modified by the consolidation work.
 
 Passed in `D:\Dev\axiom-colab`:
 
+- Existing pure-Tool execution slice `pnpm.cmd test`: all 82 TypeScript tests
+  passed, including strict transport arguments, host-generated identity,
+  immutable report sealing, rejection of a side-effecting descriptor, and a
+  real production-process call through the fake Bridge with correlated result
+  and report-artifact evidence.
+- Qt 6.12.0/MSVC 19.51 Release rebuilt with warnings as errors; all three CTest
+  targets passed, including real-process protocol `1.1` execution and an
+  offscreen Widgets call/result/evidence refresh.
 - Memory/lineage slice `pnpm.cmd test`: all 81 TypeScript tests passed,
   including scoped enumeration of compute, working, and artifact metadata,
   parent/child derivation, cross-workspace isolation, and rejection of
@@ -774,10 +795,11 @@ installation controls:
 
 ## Exact next work
 
-Expose the existing-Tool execution workflow through host-owned commands before beginning
-candidate-authoring and approval controls. Keep mutations absent from the
-current read-only transport until their exact authority and refresh behavior
-are implemented and tested independently.
+Compose explicit per-Tool memory policies and the loopback memory service for
+the existing memory-dependent built-ins before beginning candidate-authoring
+and approval controls. Keep installed-candidate execution absent until the
+executable loading strategy preserves its exact candidate and installation
+evidence hashes.
 
 Keep the WSL integration suite opt-in for portable CI, and run it explicitly on
 the supported Windows/Ubuntu composition before changing its confinement

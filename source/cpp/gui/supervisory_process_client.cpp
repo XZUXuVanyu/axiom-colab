@@ -103,7 +103,7 @@ bool SupervisoryProcessClient::is_running() const {
 
 std::string SupervisoryProcessClient::list_workspaces(ResponseHandler handler) {
     return send_request(Json::object({
-        {"protocolVersion", "1.0"},
+        {"protocolVersion", "1.1"},
         {"operation", "list-workspaces"},
     }), std::move(handler));
 }
@@ -114,7 +114,7 @@ std::string SupervisoryProcessClient::list_goals(
         throw std::invalid_argument("workspace identity is malformed");
     }
     return send_request(Json::object({
-        {"protocolVersion", "1.0"},
+        {"protocolVersion", "1.1"},
         {"operation", "list-goals"},
         {"workspaceId", std::string(workspace_id)},
     }), std::move(handler));
@@ -130,10 +130,32 @@ std::string SupervisoryProcessClient::inspect(
         throw std::invalid_argument("goal identity is malformed");
     }
     return send_request(Json::object({
-        {"protocolVersion", "1.0"},
+        {"protocolVersion", "1.1"},
         {"operation", "inspect"},
         {"workspaceId", std::string(workspace_id)},
         {"goalId", goal_id.has_value() ? Json(std::string(*goal_id)) : Json(nullptr)},
+    }), std::move(handler));
+}
+
+std::string SupervisoryProcessClient::execute_tool(
+    std::string_view workspace_id, std::string_view goal_id,
+    std::string_view tool, Json arguments, ResponseHandler handler) {
+    if (!valid_identity(workspace_id, "workspace:")
+        || !valid_identity(goal_id, "goal:")) {
+        throw std::invalid_argument("Tool execution selection identity is malformed");
+    }
+    if (tool.empty() || tool.size() > 128 || !std::islower(static_cast<unsigned char>(tool.front()))
+        || !std::all_of(tool.begin(), tool.end(), [](char character) {
+            return std::islower(static_cast<unsigned char>(character)) != 0
+                || std::isdigit(static_cast<unsigned char>(character)) != 0 || character == '_';
+        })) {
+        throw std::invalid_argument("Tool name is malformed");
+    }
+    if (!arguments.is_object()) throw std::invalid_argument("Tool arguments must be an object");
+    return send_request(Json::object({
+        {"protocolVersion", "1.1"}, {"operation", "execute-tool"},
+        {"workspaceId", std::string(workspace_id)}, {"goalId", std::string(goal_id)},
+        {"tool", std::string(tool)}, {"arguments", std::move(arguments)},
     }), std::move(handler));
 }
 

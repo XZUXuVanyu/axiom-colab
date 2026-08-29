@@ -75,7 +75,7 @@ SupervisoryResponse parse_supervisory_response(
     require_fields(object, {"protocolVersion", "id", "ok"});
     const auto& version = require_string(value.at("protocolVersion"),
                                          "protocolVersion");
-    if (version != "1.0") {
+    if (version != "1.1") {
         fail("supervisory protocol version is unsupported");
     }
     const auto& request_id = require_string(value.at("id"), "response id");
@@ -196,6 +196,31 @@ SupervisoryWorkspaceInspection parse_workspace_inspection_result(
         .timeline = response.result.at("timeline"),
         .controls = response.result.at("controls"),
     };
+}
+
+SupervisoryToolExecution parse_tool_execution_result(
+    const SupervisoryResponse& response, std::string_view expected_workspace_id,
+    std::string_view expected_goal_id, std::string_view expected_tool) {
+    if (!response.ok) fail("cannot decode Tool execution from an error response");
+    const auto& result = require_object(response.result, "Tool execution result");
+    require_exact_fields(result, {"workspaceId", "goalId", "callId", "tool", "result",
+                                  "reportArtifactId", "reportHash"});
+    const auto& workspace_id = require_string(response.result.at("workspaceId"), "workspaceId");
+    const auto& goal_id = require_string(response.result.at("goalId"), "goalId");
+    const auto& call_id = require_string(response.result.at("callId"), "callId");
+    const auto& tool = require_string(response.result.at("tool"), "tool");
+    const auto& artifact_id = require_string(response.result.at("reportArtifactId"), "reportArtifactId");
+    const auto& report_hash = require_string(response.result.at("reportHash"), "reportHash");
+    if (workspace_id != expected_workspace_id || !valid_identity(workspace_id, "workspace:")
+        || goal_id != expected_goal_id || !valid_identity(goal_id, "goal:")
+        || tool != expected_tool || !valid_identity(call_id, "call:")
+        || !valid_identity(artifact_id, "object:")
+        || !report_hash.starts_with("sha256:") || report_hash.size() != 71) {
+        fail("Tool execution result does not match the requested authority binding");
+    }
+    return {.workspace_id = workspace_id, .goal_id = goal_id, .call_id = call_id,
+            .tool = tool, .result = response.result.at("result"),
+            .report_artifact_id = artifact_id, .report_hash = report_hash};
 }
 
 } // namespace axiom_colab::gui

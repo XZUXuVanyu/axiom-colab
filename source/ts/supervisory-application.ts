@@ -46,6 +46,16 @@ export interface SupervisoryToolObservation {
   readonly observedAt: string
 }
 
+export interface SupervisoryToolExecution {
+  readonly workspaceId: LaboratoryId<'workspace'>
+  readonly goalId: LaboratoryId<'goal'>
+  readonly callId: LaboratoryId<'call'>
+  readonly tool: string
+  readonly result: JsonValue
+  readonly reportArtifactId: LaboratoryId<'object'>
+  readonly reportHash: `sha256:${string}`
+}
+
 export interface SupervisoryComputeProjection {
   readonly objectId: LaboratoryId<'object'>
   readonly revision: number

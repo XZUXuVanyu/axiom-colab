@@ -10,6 +10,7 @@ class QComboBox;
 class QLabel;
 class QListWidget;
 class QPushButton;
+class QPlainTextEdit;
 
 namespace axiom_colab::gui {
 
@@ -34,6 +35,7 @@ private:
     void load_workspaces();
     void load_goals();
     void inspect_selected_workspace();
+    void execute_selected_tool();
     void render(const SupervisoryWorkspaceInspection& inspection);
     void show_error(const QString& message);
     void set_busy(bool busy);
@@ -55,6 +57,10 @@ private:
     QListWidget* compute_memory_{};
     QListWidget* working_memory_{};
     QListWidget* artifacts_{};
+    QComboBox* execution_tool_selector_{};
+    QPlainTextEdit* execution_arguments_{};
+    QPushButton* execute_button_{};
+    QLabel* execution_result_{};
     bool busy_{};
 };
 

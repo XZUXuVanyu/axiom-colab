@@ -1,4 +1,4 @@
-export const SUPERVISORY_TRANSPORT_VERSION = '1.0';
+export const SUPERVISORY_TRANSPORT_VERSION = '1.1';
 export class SupervisoryTransportError extends Error {
     code;
     constructor(code, message){
@@ -58,6 +58,22 @@ function parseRequest(text, maxBytes) {
         if (value.goalId !== null && (typeof value.goalId !== 'string' || !/^goal:[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(value.goalId))) fail('INVALID_GOAL_ID', 'goal identity is malformed');
         return value;
     }
+    if (value.operation === 'execute-tool') {
+        exact(value, [
+            'protocolVersion',
+            'id',
+            'operation',
+            'workspaceId',
+            'goalId',
+            'tool',
+            'arguments'
+        ]);
+        if (typeof value.workspaceId !== 'string' || !/^workspace:[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(value.workspaceId)) fail('INVALID_WORKSPACE_ID', 'workspace identity is malformed');
+        if (typeof value.goalId !== 'string' || !/^goal:[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(value.goalId)) fail('INVALID_GOAL_ID', 'goal identity is malformed');
+        if (typeof value.tool !== 'string' || !/^[a-z][a-z0-9_]{0,127}$/.test(value.tool)) fail('INVALID_TOOL_NAME', 'Tool name is malformed');
+        if (!record(value.arguments)) fail('INVALID_TOOL_ARGUMENTS', 'Tool arguments must be an object');
+        return value;
+    }
     fail('UNKNOWN_OPERATION', 'supervisory operation is unknown');
 }
 function code(error) {
@@ -96,7 +112,7 @@ export class SupervisoryTransport {
                 goals: [
                     ...this.host.goals(request.workspaceId)
                 ]
-            } : await this.host.inspect(request.workspaceId, request.goalId);
+            } : request.operation === 'inspect' ? await this.host.inspect(request.workspaceId, request.goalId) : await this.host.executeTool(request.workspaceId, request.goalId, request.tool, request.arguments);
             const response = {
                 protocolVersion: SUPERVISORY_TRANSPORT_VERSION,
                 id: request.id,

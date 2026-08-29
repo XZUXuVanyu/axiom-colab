@@ -188,7 +188,8 @@ export type {
   SupervisoryArtifactProjection, SupervisoryComputeProjection, SupervisoryFactKind,
   SupervisoryMemoryProjection, SupervisoryPlanProjection, SupervisoryProgressProjection,
   SupervisoryTimelineEntry, SupervisoryToolObservation,
-  SupervisoryToolProjection, SupervisoryWorkingProjection, SupervisoryWorkspaceSnapshot,
+  SupervisoryToolExecution, SupervisoryToolProjection, SupervisoryWorkingProjection,
+  SupervisoryWorkspaceSnapshot,
 } from './supervisory-application.js'
 export { LocalSupervisoryBackend, LocalSupervisoryBackendError } from './local-supervisory-backend.js'
 export type {

@@ -36,6 +36,7 @@ using cpp_adapter::ToolError;
 using axiom_colab::gui::SupervisoryResponseError;
 using axiom_colab::gui::parse_supervisory_response;
 using axiom_colab::gui::parse_goal_list_result;
+using axiom_colab::gui::parse_tool_execution_result;
 using axiom_colab::gui::parse_workspace_inspection_result;
 using axiom_colab::gui::parse_workspace_list_result;
 
@@ -75,7 +76,7 @@ void check_supervisory_response_error(Callable&& callable) {
 
 void test_supervisory_response_parser() {
     const auto success = parse_supervisory_response(
-        R"({"protocolVersion":"1.0","id":"request:1","ok":true,"result":{"workspaces":["workspace:one"]}})",
+        R"({"protocolVersion":"1.1","id":"request:1","ok":true,"result":{"workspaces":["workspace:one"]}})",
         "request:1");
     CHECK(success.ok);
     const auto workspaces = parse_workspace_list_result(success);
@@ -83,7 +84,7 @@ void test_supervisory_response_parser() {
     CHECK(workspaces[0] == "workspace:one");
 
     const auto goal_response = parse_supervisory_response(
-        R"({"protocolVersion":"1.0","id":"request:goals","ok":true,"result":{"workspaceId":"workspace:one","goals":["goal:one"]}})",
+        R"({"protocolVersion":"1.1","id":"request:goals","ok":true,"result":{"workspaceId":"workspace:one","goals":["goal:one"]}})",
         "request:goals");
     const auto goals = parse_goal_list_result(goal_response, "workspace:one");
     CHECK(goals.workspace_id == "workspace:one");
@@ -94,13 +95,19 @@ void test_supervisory_response_parser() {
     });
     check_supervisory_response_error([] {
         const auto duplicate_goals = parse_supervisory_response(
-            R"({"protocolVersion":"1.0","id":"request:goals","ok":true,"result":{"workspaceId":"workspace:one","goals":["goal:one","goal:one"]}})",
+            R"({"protocolVersion":"1.1","id":"request:goals","ok":true,"result":{"workspaceId":"workspace:one","goals":["goal:one","goal:one"]}})",
             "request:goals");
         (void)parse_goal_list_result(duplicate_goals, "workspace:one");
     });
+    const auto execution_response = parse_supervisory_response(
+        R"({"protocolVersion":"1.1","id":"request:execute","ok":true,"result":{"workspaceId":"workspace:one","goalId":"goal:one","callId":"call:one","tool":"add_numbers","result":{"sum":5},"reportArtifactId":"object:report","reportHash":"sha256:7777777777777777777777777777777777777777777777777777777777777777"}})",
+        "request:execute");
+    const auto execution = parse_tool_execution_result(
+        execution_response, "workspace:one", "goal:one", "add_numbers");
+    CHECK(execution.result.at("sum").as_integer() == 5);
 
     const auto failure = parse_supervisory_response(
-        R"({"protocolVersion":"1.0","id":"request:2","ok":false,"error":{"code":"GOAL_NOT_FOUND","message":"missing"}})",
+        R"({"protocolVersion":"1.1","id":"request:2","ok":false,"error":{"code":"GOAL_NOT_FOUND","message":"missing"}})",
         "request:2");
     CHECK(!failure.ok);
     CHECK(failure.error_code == "GOAL_NOT_FOUND");
@@ -108,12 +115,12 @@ void test_supervisory_response_parser() {
 
     check_supervisory_response_error([] {
         (void)parse_supervisory_response(
-            R"({"protocolVersion":"1.0","id":"other","ok":true,"result":null})",
+            R"({"protocolVersion":"1.1","id":"other","ok":true,"result":null})",
             "request:1");
     });
     check_supervisory_response_error([] {
         (void)parse_supervisory_response(
-            R"({"protocolVersion":"1.0","id":"request:1","ok":true,"result":null,"approval":true})",
+            R"({"protocolVersion":"1.1","id":"request:1","ok":true,"result":null,"approval":true})",
             "request:1");
     });
     check_supervisory_response_error([] {
@@ -123,12 +130,12 @@ void test_supervisory_response_parser() {
     });
     check_supervisory_response_error([] {
         (void)parse_supervisory_response(
-            R"({"protocolVersion":"1.0","id":"request:1","result":null})",
+            R"({"protocolVersion":"1.1","id":"request:1","result":null})",
             "request:1");
     });
 
     const auto inspection_response = parse_supervisory_response(
-        R"({"protocolVersion":"1.0","id":"request:3","ok":true,"result":{"workspaceId":"workspace:one","goalId":null,"currentPlan":null,"progress":null,"observations":[],"memory":{"compute":[],"working":[],"artifacts":[]},"tools":[],"resources":{},"candidates":[],"timeline":[],"controls":{}}})",
+        R"({"protocolVersion":"1.1","id":"request:3","ok":true,"result":{"workspaceId":"workspace:one","goalId":null,"currentPlan":null,"progress":null,"observations":[],"memory":{"compute":[],"working":[],"artifacts":[]},"tools":[],"resources":{},"candidates":[],"timeline":[],"controls":{}}})",
         "request:3");
     const auto inspection = parse_workspace_inspection_result(
         inspection_response, "workspace:one", std::nullopt);
@@ -141,7 +148,7 @@ void test_supervisory_response_parser() {
     });
     check_supervisory_response_error([] {
         const auto duplicate = parse_supervisory_response(
-            R"({"protocolVersion":"1.0","id":"request:4","ok":true,"result":{"workspaces":["workspace:one","workspace:one"]}})",
+            R"({"protocolVersion":"1.1","id":"request:4","ok":true,"result":{"workspaces":["workspace:one","workspace:one"]}})",
             "request:4");
         (void)parse_workspace_list_result(duplicate);
     });

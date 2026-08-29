@@ -7,7 +7,7 @@ import test from 'node:test'
 
 import {
   createLocalApprovedPlanReader, createLocalGoalProgressReader, createLocalMemoryProjectionReader,
-  contentHash, LocalMemoryStore, MemoryWorkflows,
+  contentHash, LocalGoalLifecycle, LocalMemoryStore, MemoryWorkflows,
   parseLocalSupervisoryProcessConfig,
 } from '../../dist/index.js'
 
@@ -20,7 +20,20 @@ test('local supervisory process composes durable state and Bridge discovery behi
   const stateRoot = join(root, 'state')
   const store = new LocalMemoryStore(join(stateRoot, 'memory'))
   store.createWorkspace('workspace:alpha')
-  store.close()
+  const workflows = new MemoryWorkflows(store)
+  const issued = new Date()
+  const invoke = (authority: 'model' | 'user', operation: 'working.propose' | 'working.approve') => ({
+    authority, context: { workspaceId: 'workspace:alpha', actorId: `actor:${authority}`, callId: `call:${authority}`, toolId: 'tool:test' },
+    capability: { protocolVersion: '1.0', capabilityId: `capability:${authority}`, workspaceId: 'workspace:alpha', actorId: `actor:${authority}`, toolId: 'tool:test', callId: `call:${authority}`, operations: [operation], issuedAt: issued.toISOString(), expiresAt: new Date(issued.getTime() + 60_000).toISOString(), nonce: authority },
+  }) as any
+  const proposal = workflows.proposeWorking(invoke('model', 'working.propose'), 'goal:one:plan', { goalId: 'goal:one', objective: 'Echo through the production host.', calls: [] })
+  workflows.approveWorking(invoke('user', 'working.approve'), proposal.id, { workspaceId: 'workspace:alpha', proposalId: proposal.id, proposalHash: proposal.hash, decision: 'approved' })
+  const lifecycle = new LocalGoalLifecycle(join(stateRoot, 'lifecycle.sqlite3'), {
+    approvedPlan: createLocalApprovedPlanReader(workflows, 'actor:local-host'),
+    async stopGoal() {}, async resumeGoal() {}, async revokeCapability() {}, async recoverWorkspace() {},
+  })
+  lifecycle.registerGoal('workspace:alpha', 'goal:one')
+  lifecycle.close(); workflows.close(); store.close()
   const configPath = join(root, 'config.json')
   writeFileSync(configPath, JSON.stringify({
     stateRoot,
@@ -37,16 +50,23 @@ test('local supervisory process composes durable state and Bridge discovery behi
   child.stdout.setEncoding('utf8'); child.stderr.setEncoding('utf8')
   child.stdout.on('data', (chunk: string) => { stdout += chunk })
   child.stderr.on('data', (chunk: string) => { stderr += chunk })
-  child.stdin.end('{"protocolVersion":"1.0","id":"process:1","operation":"list-workspaces"}\n')
+  child.stdin.end([
+    '{"protocolVersion":"1.1","id":"process:1","operation":"list-workspaces"}',
+    '{"protocolVersion":"1.1","id":"process:2","operation":"execute-tool","workspaceId":"workspace:alpha","goalId":"goal:one","tool":"echo_cpp","arguments":{"value":5}}',
+  ].join('\n') + '\n')
   const exitCode = await new Promise<number | null>((resolveExit, reject) => {
     child.once('error', reject)
     child.once('exit', resolveExit)
   })
   assert.equal(exitCode, 0, stderr)
-  assert.deepEqual(JSON.parse(stdout.trim()), {
-    protocolVersion: '1.0', id: 'process:1', ok: true,
+  const responses = stdout.trim().split(/\r?\n/).map((line) => JSON.parse(line))
+  assert.deepEqual(responses[0], {
+    protocolVersion: '1.1', id: 'process:1', ok: true,
     result: { workspaces: ['workspace:alpha'] },
   })
+  assert.equal(responses[1].id, 'process:2')
+  assert.deepEqual(responses[1].result.result, { tool: 'echo_cpp', arguments: { value: 5 } })
+  assert.match(responses[1].result.reportArtifactId, /^object:/)
   assert.doesNotMatch(stdout, /cpp-tool:/)
 })
 

@@ -8,6 +8,7 @@
 #include <QLabel>
 #include <QListWidget>
 #include <QPushButton>
+#include <QPlainTextEdit>
 #include <QVBoxLayout>
 
 #include <optional>
@@ -89,7 +90,7 @@ SupervisoryView::SupervisoryView(SupervisoryProcessLaunch launch,
     build_ui();
     try {
         client_.start(launch.program, launch.arguments, launch.working_directory);
-        connection_status_->setText("Connected (read-only)");
+        connection_status_->setText("Connected (supervised)");
         load_workspaces();
     } catch (const std::exception& error) {
         show_error(QString::fromUtf8(error.what()));
@@ -109,7 +110,7 @@ void SupervisoryView::build_ui() {
     heading->setFont(heading_font);
     page->addWidget(heading);
     page->addWidget(new QLabel(
-        "Read-only projection of host-verified workspace state. This view cannot approve, install, or mutate laboratory state.",
+        "Host-verified workspace state with a constrained pure-Tool command path. This view cannot approve, install, or grant memory authority.",
         this));
 
     auto* selection = new QHBoxLayout();
@@ -153,6 +154,27 @@ void SupervisoryView::build_ui() {
     plan_layout->addWidget(goal_progress_);
     page->addWidget(plan_group);
 
+    auto* execution_group = new QGroupBox("Execute existing side-effect-free Tool", this);
+    auto* execution_layout = new QGridLayout(execution_group);
+    execution_tool_selector_ = new QComboBox(execution_group);
+    execution_tool_selector_->setObjectName("executionToolSelector");
+    execution_arguments_ = new QPlainTextEdit("{}", execution_group);
+    execution_arguments_->setObjectName("executionArguments");
+    execution_arguments_->setMaximumHeight(90);
+    execute_button_ = new QPushButton("Execute", execution_group);
+    execute_button_->setObjectName("executeTool");
+    execution_result_ = new QLabel("Select a goal and a side-effect-free built-in Tool.", execution_group);
+    execution_result_->setObjectName("executionResult");
+    execution_result_->setWordWrap(true);
+    execution_result_->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    execution_layout->addWidget(new QLabel("Tool", execution_group), 0, 0);
+    execution_layout->addWidget(execution_tool_selector_, 0, 1);
+    execution_layout->addWidget(execute_button_, 0, 2);
+    execution_layout->addWidget(new QLabel("JSON arguments", execution_group), 1, 0);
+    execution_layout->addWidget(execution_arguments_, 1, 1, 1, 2);
+    execution_layout->addWidget(execution_result_, 2, 0, 1, 3);
+    page->addWidget(execution_group);
+
     auto* summaries = new QGridLayout();
     summaries->addWidget(list_group("Discovered Tools", &tools_, this), 0, 0);
     summaries->addWidget(list_group("Tool candidates", &candidates_, this), 0, 1);
@@ -178,6 +200,8 @@ void SupervisoryView::build_ui() {
             [this](int index) {
                 if (index >= 0 && !busy_) inspect_selected_workspace();
             });
+    connect(execute_button_, &QPushButton::clicked, this,
+            &SupervisoryView::execute_selected_tool);
 }
 
 void SupervisoryView::start_process() {
@@ -189,7 +213,7 @@ void SupervisoryView::start_process() {
     try {
         client_.start_local_supervisory_process(
             "node", repository_root_, config_path_);
-        connection_status_->setText("Connected (read-only)");
+        connection_status_->setText("Connected (supervised)");
         load_workspaces();
     } catch (const std::exception& error) {
         show_error(QString::fromUtf8(error.what()));
@@ -314,7 +338,7 @@ void SupervisoryView::inspect_selected_workspace() {
                             || (goal.has_value() && goal_selector_->currentText() == text(*goal)));
                     if (selection_matches) {
                         render(inspection);
-                        connection_status_->setText("Connected (read-only)");
+                        connection_status_->setText("Connected (supervised)");
                     }
                 } catch (const std::exception& decode_error) {
                     show_error(QString::fromUtf8(decode_error.what()));
@@ -324,6 +348,52 @@ void SupervisoryView::inspect_selected_workspace() {
     } catch (const std::exception& error) {
         show_error(QString::fromUtf8(error.what()));
         set_busy(false);
+    }
+}
+
+void SupervisoryView::execute_selected_tool() {
+    if (workspace_selector_->currentText().isEmpty() || goal_selector_->currentIndex() <= 0
+        || execution_tool_selector_->currentText().isEmpty()) {
+        show_error("Select a workspace, goal, and executable Tool first");
+        return;
+    }
+    Json arguments;
+    try {
+        arguments = Json::parse(execution_arguments_->toPlainText().toStdString());
+        if (!arguments.is_object()) throw SupervisoryResponseError("Tool arguments must be a JSON object");
+    } catch (const std::exception& error) {
+        show_error(QString("Invalid Tool arguments: ") + QString::fromUtf8(error.what()));
+        return;
+    }
+    const std::string workspace = workspace_selector_->currentText().toStdString();
+    const std::string goal = goal_selector_->currentText().toStdString();
+    const std::string tool = execution_tool_selector_->currentText().toStdString();
+    set_busy(true);
+    try {
+        (void)client_.execute_tool(workspace, goal, tool, std::move(arguments),
+            [this, workspace, goal, tool](const SupervisoryResponse* response,
+                                          const std::string* error) {
+                if (error != nullptr) {
+                    show_error(text(*error)); set_busy(false); return;
+                }
+                try {
+                    if (!response->ok) {
+                        throw SupervisoryResponseError(response->error_code + ": " + response->error_message);
+                    }
+                    const auto execution = parse_tool_execution_result(*response, workspace, goal, tool);
+                    execution_result_->setText(
+                        "Observed result: " + text(execution.result.dump()));
+                    execution_result_->setToolTip(
+                        "Call: " + text(execution.call_id) + "\nReport: "
+                        + text(execution.report_artifact_id) + "\nHash: " + text(execution.report_hash));
+                    set_busy(false);
+                    inspect_selected_workspace();
+                } catch (const std::exception& decode_error) {
+                    show_error(QString::fromUtf8(decode_error.what())); set_busy(false);
+                }
+            });
+    } catch (const std::exception& error) {
+        show_error(QString::fromUtf8(error.what())); set_busy(false);
     }
 }
 
@@ -386,11 +456,15 @@ void SupervisoryView::render(const SupervisoryWorkspaceInspection& inspection) {
         .arg(integer_field(inspection.resources, "corruptObjects")));
 
     tools_->clear();
+    execution_tool_selector_->clear();
     for (const Json& tool : inspection.tools.as_array()) {
         require_object(tool, "tool");
         const QString name = text(string_field(tool, "name"));
         const QString source = text(string_field(tool, "source"));
         auto* item = new QListWidgetItem(QString("%1  [%2]").arg(name, source), tools_);
+        if (source == "built-in" && !boolean_field(tool.at("descriptor"), "sideEffect")) {
+            execution_tool_selector_->addItem(name);
+        }
         const Json& evidence = tool.at("installationEvidenceHash");
         if (!evidence.is_null()) {
             if (!evidence.is_string()) throw SupervisoryResponseError(
@@ -514,6 +588,9 @@ void SupervisoryView::set_busy(bool busy) {
     refresh_button_->setEnabled(!busy && client_.is_running());
     workspace_selector_->setEnabled(!busy);
     goal_selector_->setEnabled(!busy);
+    execute_button_->setEnabled(!busy && client_.is_running()
+                                && goal_selector_->currentIndex() > 0
+                                && execution_tool_selector_->count() > 0);
 }
 
 } // namespace axiom_colab::gui

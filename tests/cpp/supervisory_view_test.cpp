@@ -6,6 +6,8 @@
 #include <QElapsedTimer>
 #include <QLabel>
 #include <QListWidget>
+#include <QPlainTextEdit>
+#include <QPushButton>
 #include <QThread>
 
 #include <iostream>
@@ -29,10 +31,17 @@ int main(int argc, char* argv[]) {
     auto* compute = view.findChild<QListWidget*>("computeMemory");
     auto* working = view.findChild<QListWidget*>("workingMemory");
     auto* artifacts = view.findChild<QListWidget*>("artifactLineage");
+    auto* execute = view.findChild<QPushButton*>("executeTool");
+    auto* arguments = view.findChild<QPlainTextEdit*>("executionArguments");
+    auto* execution_result = view.findChild<QLabel*>("executionResult");
     if (workspaces == nullptr || goals == nullptr || resources == nullptr
         || plan == nullptr || status == nullptr || compute == nullptr
         || working == nullptr || artifacts == nullptr) {
         std::cerr << "[FAIL] supervisory widgets are not inspectable\n";
+        return 1;
+    }
+    if (execute == nullptr || arguments == nullptr || execution_result == nullptr) {
+        std::cerr << "[FAIL] Tool execution widgets are not inspectable\n";
         return 1;
     }
 
@@ -72,7 +81,7 @@ int main(int argc, char* argv[]) {
         std::cerr << "[FAIL] approved plan did not render for the selected goal\n";
         return 1;
     }
-    if (status->text() != "Connected (read-only)") {
+    if (status->text() != "Connected (supervised)") {
         std::cerr << "[FAIL] supervisory view did not remain connected\n";
         return 1;
     }
@@ -80,6 +89,18 @@ int main(int argc, char* argv[]) {
         || !artifacts->item(0)->text().contains("object:artifact")
         || !artifacts->item(0)->toolTip().contains("Schema hash")) {
         std::cerr << "[FAIL] memory and artifact lineage did not render\n";
+        return 1;
+    }
+    arguments->setPlainText(R"({"left":2,"right":3})");
+    execute->click();
+    timer.restart();
+    while (timer.elapsed() < 5000 && !execution_result->text().contains("\"sum\":5")) {
+        application.processEvents();
+        QThread::msleep(10);
+    }
+    if (!execution_result->text().contains("\"sum\":5")
+        || !execution_result->toolTip().contains("object:report")) {
+        std::cerr << "[FAIL] observed Tool execution did not render\n";
         return 1;
     }
     std::cout << "[PASS] supervisory view renders workspace resources\n";

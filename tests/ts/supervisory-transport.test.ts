@@ -17,15 +17,21 @@ test('supervisory transport lists workspaces and correlates immutable inspection
     workspaces: () => ['workspace:alpha', 'workspace:beta'] as const,
     goals: (workspaceId: string) => workspaceId === 'workspace:alpha' ? ['goal:one'] as const : [],
     async inspect(workspaceId: 'workspace:alpha' | 'workspace:beta') { return snapshot(workspaceId) },
+    async executeTool(workspaceId: string, goalId: string, tool: string, args: unknown) {
+      return { workspaceId, goalId, callId: 'call:one', tool, result: args, reportArtifactId: 'object:report', reportHash: `sha256:${'1'.repeat(64)}` }
+    },
   }
   const transport = new SupervisoryTransport(host as any)
-  const listed = JSON.parse(await transport.handle(JSON.stringify({ protocolVersion: '1.0', id: 'one', operation: 'list-workspaces' })))
-  assert.deepEqual(listed, { protocolVersion: '1.0', id: 'one', ok: true, result: { workspaces: ['workspace:alpha', 'workspace:beta'] } })
-  const goals = JSON.parse(await transport.handle(JSON.stringify({ protocolVersion: '1.0', id: 'goals', operation: 'list-goals', workspaceId: 'workspace:alpha' })))
+  const listed = JSON.parse(await transport.handle(JSON.stringify({ protocolVersion: '1.1', id: 'one', operation: 'list-workspaces' })))
+  assert.deepEqual(listed, { protocolVersion: '1.1', id: 'one', ok: true, result: { workspaces: ['workspace:alpha', 'workspace:beta'] } })
+  const goals = JSON.parse(await transport.handle(JSON.stringify({ protocolVersion: '1.1', id: 'goals', operation: 'list-goals', workspaceId: 'workspace:alpha' })))
   assert.deepEqual(goals.result, { workspaceId: 'workspace:alpha', goals: ['goal:one'] })
-  const inspected = JSON.parse(await transport.handle(JSON.stringify({ protocolVersion: '1.0', id: 'two', operation: 'inspect', workspaceId: 'workspace:beta', goalId: null })))
+  const inspected = JSON.parse(await transport.handle(JSON.stringify({ protocolVersion: '1.1', id: 'two', operation: 'inspect', workspaceId: 'workspace:beta', goalId: null })))
   assert.equal(inspected.id, 'two')
   assert.equal(inspected.result.workspaceId, 'workspace:beta')
+  const executed = JSON.parse(await transport.handle(JSON.stringify({ protocolVersion: '1.1', id: 'three', operation: 'execute-tool', workspaceId: 'workspace:alpha', goalId: 'goal:one', tool: 'add_numbers', arguments: { left: 2, right: 3 } })))
+  assert.equal(executed.result.callId, 'call:one')
+  assert.deepEqual(executed.result.result, { left: 2, right: 3 })
 })
 
 test('supervisory transport rejects malformed, oversized, and authority-changing requests', async () => {
@@ -34,14 +40,16 @@ test('supervisory transport rejects malformed, oversized, and authority-changing
   assert.equal(malformed.id, null)
   assert.equal(malformed.error.code, 'MALFORMED_REQUEST')
 
-  const mutation = JSON.parse(await transport.handle(JSON.stringify({ protocolVersion: '1.0', id: 'mutate', operation: 'approve', proposalId: 'proposal:x' })))
+  const mutation = JSON.parse(await transport.handle(JSON.stringify({ protocolVersion: '1.1', id: 'mutate', operation: 'approve', proposalId: 'proposal:x' })))
   assert.equal(mutation.error.code, 'UNKNOWN_OPERATION')
-  const unknown = JSON.parse(await transport.handle(JSON.stringify({ protocolVersion: '1.0', id: 'extra', operation: 'list-workspaces', approval: true })))
+  const unknown = JSON.parse(await transport.handle(JSON.stringify({ protocolVersion: '1.1', id: 'extra', operation: 'list-workspaces', approval: true })))
   assert.equal(unknown.error.code, 'INVALID_REQUEST')
-  const malformedWorkspace = JSON.parse(await transport.handle(JSON.stringify({ protocolVersion: '1.0', id: 'goals', operation: 'list-goals', workspaceId: 'goal:wrong-kind' })))
+  const malformedWorkspace = JSON.parse(await transport.handle(JSON.stringify({ protocolVersion: '1.1', id: 'goals', operation: 'list-goals', workspaceId: 'goal:wrong-kind' })))
   assert.equal(malformedWorkspace.error.code, 'INVALID_WORKSPACE_ID')
   const oversized = JSON.parse(await transport.handle(' '.repeat(257)))
   assert.equal(oversized.error.code, 'REQUEST_TOO_LARGE')
+  const invalidArguments = JSON.parse(await transport.handle(JSON.stringify({ protocolVersion: '1.1', id: 'execute', operation: 'execute-tool', workspaceId: 'workspace:alpha', goalId: 'goal:one', tool: 'add_numbers', arguments: [] })))
+  assert.equal(invalidArguments.error.code, 'INVALID_TOOL_ARGUMENTS')
 })
 
 test('supervisory transport preserves deterministic host failure codes', async () => {
@@ -50,6 +58,6 @@ test('supervisory transport preserves deterministic host failure codes', async (
     goals: () => [],
     async inspect() { throw Object.assign(new Error('not visible'), { code: 'WORKSPACE_NOT_FOUND' }) },
   } as any)
-  const response = JSON.parse(await transport.handle(JSON.stringify({ protocolVersion: '1.0', id: 'missing', operation: 'inspect', workspaceId: 'workspace:missing', goalId: null })))
+  const response = JSON.parse(await transport.handle(JSON.stringify({ protocolVersion: '1.1', id: 'missing', operation: 'inspect', workspaceId: 'workspace:missing', goalId: null })))
   assert.deepEqual(response.error, { code: 'WORKSPACE_NOT_FOUND', message: 'not visible' })
 })

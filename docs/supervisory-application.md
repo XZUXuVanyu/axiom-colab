@@ -87,12 +87,18 @@ The Qt layer consumes serialized supervisory projections through a long-lived,
 shell-free child process and does not open SQLite databases or installed-Tool
 directories itself.
 
-`SupervisoryTransport` defines the initial versioned JSON read boundary. It
-accepts only `list-workspaces`, `list-goals`, and `inspect`, uses strict exact-field parsing,
+`SupervisoryTransport` version `1.1` defines the local supervisory JSON
+boundary. It accepts `list-workspaces`, `list-goals`, `inspect`, and the
+constrained `execute-tool` command, uses strict exact-field parsing,
 validates workspace and goal identities, bounds request bytes, correlates every
-valid request ID, and returns structured deterministic failures. There are no
-approval, installation, mutation, or lifecycle commands in this transport
-version. Host inspection bypasses mutable UI selection, so concurrent clients
+valid request ID, and returns structured deterministic failures. Tool execution
+requires a registered goal with its exact current approved plan and is limited
+to Adapter-discovered descriptors that declare no side effects. The host
+generates the call identity, invokes the Adapter, and seals the actual ledger
+record and result into a hash-verified immutable goal-session-report artifact
+before returning success. Memory-dependent, installed-candidate, approval,
+installation, and lifecycle commands remain absent until their separate host
+policies exist. Host inspection bypasses mutable UI selection, so concurrent clients
 cannot redirect one another's workspace or goal request.
 
 `runSupervisoryTransportServer` supplies the shell-free JSON-lines process

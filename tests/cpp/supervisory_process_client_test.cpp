@@ -40,7 +40,7 @@ int main(int argc, char* argv[]) {
                     failure = "list-workspaces returned unexpected content";
                 }
             }
-            if (++received == 3) loop.quit();
+            if (++received == 4) loop.quit();
         });
     const std::string goals_id = client.list_goals(
         "workspace:alpha",
@@ -57,7 +57,7 @@ int main(int argc, char* argv[]) {
                     failure = "list-goals returned unexpected content";
                 }
             }
-            if (++received == 3) loop.quit();
+            if (++received == 4) loop.quit();
         });
     const std::string inspect_id = client.inspect(
         "workspace:alpha", std::nullopt,
@@ -76,17 +76,35 @@ int main(int argc, char* argv[]) {
                     failure = "inspect did not return the selected workspace";
                 }
             }
-            if (++received == 3) loop.quit();
+            if (++received == 4) loop.quit();
+        });
+    const std::string execute_id = client.execute_tool(
+        "workspace:alpha", "goal:one", "add_numbers",
+        cpp_adapter::Json::object({{"left", 2}, {"right", 3}}),
+        [&](const axiom_colab::gui::SupervisoryResponse* response,
+            const std::string* error) {
+            if (error != nullptr) failure = *error;
+            else if (response == nullptr || !response->ok) failure = "execute-tool did not return success";
+            else {
+                const auto execution = axiom_colab::gui::parse_tool_execution_result(
+                    *response, "workspace:alpha", "goal:one", "add_numbers");
+                if (execution.result.at("sum").as_integer() != 5
+                    || execution.report_artifact_id != "object:report") {
+                    failure = "execute-tool returned unexpected evidence";
+                }
+            }
+            if (++received == 4) loop.quit();
         });
 
     timeout.start(5000);
     loop.exec();
     client.stop();
 
-    if (received != 3) failure = "timed out waiting for supervisory responses";
+    if (received != 4) failure = "timed out waiting for supervisory responses";
     if (request_id != "qt:1") failure = "request ID sequence is not deterministic";
     if (goals_id != "qt:2") failure = "goal request ID sequence is not deterministic";
     if (inspect_id != "qt:3") failure = "inspect request ID sequence is not deterministic";
+    if (execute_id != "qt:4") failure = "execute request ID sequence is not deterministic";
     if (!failure.empty()) {
         std::cerr << "[FAIL] " << failure << '\n';
         return 1;

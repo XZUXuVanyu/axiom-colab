@@ -1,14 +1,19 @@
 # Qt supervisory and Tool-authoring GUI
 
-The Stage 8 read path is available in the **Laboratory** tab. It starts
+The Stage 8 supervisory path is available in the **Laboratory** tab. It starts
 the known local supervisory Node process, lists host-visible workspaces, and
 enumerates only goals whose stored lifecycle binding still matches an exact
 approved working-memory plan. Workspace and goal selectors render the approved
-objective, revision identity, and hash beside read-only resource, Tool,
+objective, revision identity, and hash beside host-projected resource, Tool,
 candidate, and immutable timeline summaries.
 Candidate rows keep model claims, validator outcomes, user decisions, and
 verified installation state visibly separate. No approval, installation,
-memory, or lifecycle mutation operation is present in this transport or view.
+memory-authority, or lifecycle mutation operation is present. A selected goal
+may execute an Adapter-discovered, side-effect-free built-in with JSON object
+arguments. The host creates the call identity, seals the actual result in an
+immutable session-report artifact, and the view refreshes inspection. Tools
+that require memory policy and rediscovered installed Tools are not executable
+through this initial command.
 
 Create the explicit process config outside the authoritative state directory:
 
@@ -22,8 +27,8 @@ powershell.exe -ExecutionPolicy Bypass `
 
 Then launch the GUI with
 `cpp-adapter-gui.exe --supervisory-config D:\Axiom\config\supervisory.json`.
-The Qt process receives projections only through `list-workspaces` and
-workspace-level `inspect`; it does not open SQLite or installed directories.
+The Qt process receives projections and constrained command results through
+supervisory protocol `1.1`; it does not open SQLite or installed directories.
 Malformed, stale, or cross-workspace goal/plan bindings fail closed instead of
 being rendered.
 
@@ -70,7 +75,7 @@ This first GUI slice intentionally does not:
 - infer or register dependencies;
 - recursively reproduce arbitrary source directory trees;
 - edit CMake for external source trees;
-- invoke a Tool interactively.
+- execute memory-dependent or installed candidate Tools.
 
 Those features can be layered onto the same C++-authoritative workflow later.
 Imported code must currently conform to the contract in

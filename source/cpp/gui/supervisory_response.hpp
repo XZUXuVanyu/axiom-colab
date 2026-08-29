@@ -41,6 +41,16 @@ struct SupervisoryGoalList final {
     std::vector<std::string> goals;
 };
 
+struct SupervisoryToolExecution final {
+    std::string workspace_id;
+    std::string goal_id;
+    std::string call_id;
+    std::string tool;
+    cpp_adapter::Json result;
+    std::string report_artifact_id;
+    std::string report_hash;
+};
+
 [[nodiscard]] SupervisoryResponse parse_supervisory_response(
     std::string_view text, std::string_view expected_request_id);
 [[nodiscard]] std::vector<std::string> parse_workspace_list_result(
@@ -51,5 +61,8 @@ struct SupervisoryGoalList final {
 [[nodiscard]] SupervisoryWorkspaceInspection parse_workspace_inspection_result(
     const SupervisoryResponse& response, std::string_view expected_workspace_id,
     std::optional<std::string_view> expected_goal_id);
+[[nodiscard]] SupervisoryToolExecution parse_tool_execution_result(
+    const SupervisoryResponse& response, std::string_view expected_workspace_id,
+    std::string_view expected_goal_id, std::string_view expected_tool);
 
 } // namespace axiom_colab::gui

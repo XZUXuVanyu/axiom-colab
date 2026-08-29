@@ -1,19 +1,21 @@
 import type { JsonValue } from './harness-types.js'
 import type { LaboratoryId } from './laboratory-contract.js'
-import type { SupervisoryWorkspaceSnapshot } from './supervisory-application.js'
+import type { SupervisoryToolExecution, SupervisoryWorkspaceSnapshot } from './supervisory-application.js'
 
-export const SUPERVISORY_TRANSPORT_VERSION = '1.0' as const
+export const SUPERVISORY_TRANSPORT_VERSION = '1.1' as const
 
 export interface SupervisoryTransportHost {
   workspaces(): readonly LaboratoryId<'workspace'>[]
   goals(workspaceId: LaboratoryId<'workspace'>): readonly LaboratoryId<'goal'>[]
   inspect(workspaceId: LaboratoryId<'workspace'>, goalId: LaboratoryId<'goal'> | null): Promise<SupervisoryWorkspaceSnapshot>
+  executeTool(workspaceId: LaboratoryId<'workspace'>, goalId: LaboratoryId<'goal'>, tool: string, args: Record<string, JsonValue>): Promise<SupervisoryToolExecution>
 }
 
 type Request =
   | { readonly protocolVersion: typeof SUPERVISORY_TRANSPORT_VERSION; readonly id: string; readonly operation: 'list-workspaces' }
   | { readonly protocolVersion: typeof SUPERVISORY_TRANSPORT_VERSION; readonly id: string; readonly operation: 'list-goals'; readonly workspaceId: LaboratoryId<'workspace'> }
   | { readonly protocolVersion: typeof SUPERVISORY_TRANSPORT_VERSION; readonly id: string; readonly operation: 'inspect'; readonly workspaceId: LaboratoryId<'workspace'>; readonly goalId: LaboratoryId<'goal'> | null }
+  | { readonly protocolVersion: typeof SUPERVISORY_TRANSPORT_VERSION; readonly id: string; readonly operation: 'execute-tool'; readonly workspaceId: LaboratoryId<'workspace'>; readonly goalId: LaboratoryId<'goal'>; readonly tool: string; readonly arguments: Record<string, JsonValue> }
 
 interface ErrorPayload { readonly code: string; readonly message: string }
 type Response =
@@ -58,6 +60,14 @@ function parseRequest(text: string, maxBytes: number): Request {
     if (value.goalId !== null && (typeof value.goalId !== 'string' || !/^goal:[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(value.goalId))) fail('INVALID_GOAL_ID', 'goal identity is malformed')
     return value as unknown as Request
   }
+  if (value.operation === 'execute-tool') {
+    exact(value, ['protocolVersion', 'id', 'operation', 'workspaceId', 'goalId', 'tool', 'arguments'])
+    if (typeof value.workspaceId !== 'string' || !/^workspace:[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(value.workspaceId)) fail('INVALID_WORKSPACE_ID', 'workspace identity is malformed')
+    if (typeof value.goalId !== 'string' || !/^goal:[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(value.goalId)) fail('INVALID_GOAL_ID', 'goal identity is malformed')
+    if (typeof value.tool !== 'string' || !/^[a-z][a-z0-9_]{0,127}$/.test(value.tool)) fail('INVALID_TOOL_NAME', 'Tool name is malformed')
+    if (!record(value.arguments)) fail('INVALID_TOOL_ARGUMENTS', 'Tool arguments must be an object')
+    return value as unknown as Request
+  }
   fail('UNKNOWN_OPERATION', 'supervisory operation is unknown')
 }
 
@@ -88,7 +98,9 @@ export class SupervisoryTransport {
         ? { workspaces: [...this.host.workspaces()] }
         : request.operation === 'list-goals'
           ? { workspaceId: request.workspaceId, goals: [...this.host.goals(request.workspaceId)] }
-          : await this.host.inspect(request.workspaceId, request.goalId)
+          : request.operation === 'inspect'
+            ? await this.host.inspect(request.workspaceId, request.goalId)
+            : await this.host.executeTool(request.workspaceId, request.goalId, request.tool, request.arguments)
       const response: Response = { protocolVersion: SUPERVISORY_TRANSPORT_VERSION, id: request.id, ok: true, result: result as JsonValue }
       return JSON.stringify(response)
     } catch (error) {
