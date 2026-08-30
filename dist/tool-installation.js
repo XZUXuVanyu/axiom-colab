@@ -141,6 +141,11 @@ export class ToolInstallationService {
                 installationId,
                 candidateId: bound.revision.candidateId,
                 candidateHash: bound.revision.candidateHash,
+                descriptorHash: bound.revision.descriptorHash,
+                sourceHash: bound.revision.sourceHash,
+                sources: bound.revision.sources.map((source)=>({
+                        ...source
+                    })),
                 publicName: bound.specification.publicName,
                 descriptor: bound.materialized.descriptor,
                 requestedPermissions: [
@@ -196,6 +201,11 @@ export class ToolInstallationService {
                     installationId: evidence.installationId,
                     candidateId: evidence.candidateId,
                     candidateHash: evidence.candidateHash,
+                    descriptorHash: evidence.descriptorHash,
+                    sourceHash: evidence.sourceHash,
+                    sources: materialized.revision.sources.map((source)=>({
+                            ...source
+                        })),
                     publicName: evidence.publicName,
                     descriptor: materialized.descriptor,
                     requestedPermissions: [

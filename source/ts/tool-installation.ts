@@ -80,6 +80,9 @@ export interface InstalledToolRegistration {
   readonly installationId: LaboratoryId<'evidence'>
   readonly candidateId: LaboratoryId<'tool'>
   readonly candidateHash: `sha256:${string}`
+  readonly descriptorHash: `sha256:${string}`
+  readonly sourceHash: `sha256:${string}`
+  readonly sources: readonly CandidateFile['binding'][]
   readonly publicName: string
   readonly descriptor: unknown
   readonly requestedPermissions: readonly string[]
@@ -238,6 +241,9 @@ export class ToolInstallationService {
         installationId,
         candidateId: bound.revision.candidateId,
         candidateHash: bound.revision.candidateHash,
+        descriptorHash: bound.revision.descriptorHash,
+        sourceHash: bound.revision.sourceHash,
+        sources: bound.revision.sources.map((source) => ({ ...source })),
         publicName: bound.specification.publicName,
         descriptor: bound.materialized.descriptor,
         requestedPermissions: [...bound.proposal.requestedPermissions],
@@ -282,6 +288,9 @@ export class ToolInstallationService {
           installationId: evidence.installationId,
           candidateId: evidence.candidateId,
           candidateHash: evidence.candidateHash,
+          descriptorHash: evidence.descriptorHash,
+          sourceHash: evidence.sourceHash,
+          sources: materialized.revision.sources.map((source) => ({ ...source })),
           publicName: evidence.publicName,
           descriptor: materialized.descriptor,
           requestedPermissions: [...evidence.requestedPermissions],

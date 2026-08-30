@@ -4,6 +4,20 @@ Last updated: 2026-08-30
 
 ## Current state
 
+- Stage 8 now has a UI-independent installed-executable loading boundary, but
+  production composition does not yet issue executable evidence or invoke an
+  installed Tool. Source-only installations therefore remain non-executable.
+- `InstalledExecutableLoader` accepts only evidence authenticated by an
+  independently trusted build authority and bound to the exact workspace,
+  installation/evidence hash, candidate, descriptor, source manifest, public
+  name, and executable-byte hash. It re-reads installed descriptor, source,
+  and executable bytes on every load and returns an immutable binding carrying
+  all identities and hashes required by a later call.
+- Installed registrations now retain descriptor/source hashes and the exact
+  source manifest. Forged evidence, cross-installation replay, path escape,
+  changed source/descriptor bytes, and changed executable bytes fail closed;
+  the loader never builds from mutable source or modifies the shared Bridge.
+
 - Qt now exposes one explicit installation action only for a selected approved,
   not-yet-installed candidate. The request echoes the exact proposal, approval,
   candidate, validation record/snapshot, and permission hashes projected by
@@ -942,12 +956,13 @@ installation controls:
 
 ## Exact next work
 
-Define and implement the installed-candidate executable loading boundary. A
-loaded executable must be produced from or cryptographically bound to the exact
-installed candidate bytes, descriptor hash, candidate hash, and installation-
-evidence hash; registration and every call must retain those bindings. Do not
-make the current source-only installed projection executable or silently rebuild
-the shared production Bridge from mutable later source.
+Compose the trusted executable-build authority and restart-safe evidence store
+that can produce/authenticate `InstalledExecutableEvidence` from the exact
+installed candidate. Then give each loaded executable its own Adapter instance
+and require every installed-Tool call/result record to retain workspace,
+installation/evidence, candidate, descriptor, source, and executable hashes.
+Do not make source-only installations executable, accept caller-authored build
+evidence, or rebuild the shared production Bridge from mutable later source.
 
 Keep the WSL integration suite opt-in for portable CI, and run it explicitly on
 the supported Windows/Ubuntu composition before changing its confinement

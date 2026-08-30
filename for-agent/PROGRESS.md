@@ -4,6 +4,32 @@ Entries are chronological. Each entry corresponds to one logical Git commit and
 records its exact subject, purpose, material changes, and validation actually
 performed.
 
+## 2026-08-30 - feat(adapter): bind installed executable loading
+
+Purpose: begin the final Stage 8 installed-Tool execution path with a narrow
+loading contract before composing a build authority or exposing GUI calls.
+
+Material changes:
+
+- Added authenticated executable evidence binding the exact workspace,
+  installation/evidence hash, candidate, descriptor, source manifest, public
+  name, executable path, and executable-byte hash.
+- Added a loader that re-verifies installed descriptor/source bytes and the
+  executable artifact on every load, then returns an immutable binding for use
+  by every later call.
+- Extended verified installed registrations with descriptor/source hashes and
+  the exact source manifest needed for load-time reinspection.
+- Kept source-only installations non-executable and added adversarial coverage
+  for forged evidence, cross-installation replay, path escape, and mutable
+  source or executable bytes.
+
+Validation actually run:
+
+- `pnpm.cmd test`: all 92 TypeScript tests passed and regenerated `dist/`.
+- `pnpm.cmd run test:integration`: five real Bridge/production-host tests
+  passed; the three opt-in WSL confinement tests skipped.
+- `git diff --check`: passed with newline-conversion notices only.
+
 ## 2026-08-30 - feat(gui): install exact approved candidates
 
 Purpose: continue the Stage 8 new-Tool path through the existing trusted
