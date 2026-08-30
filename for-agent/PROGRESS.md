@@ -4,6 +4,37 @@ Entries are chronological. Each entry corresponds to one logical Git commit and
 records its exact subject, purpose, material changes, and validation actually
 performed.
 
+## 2026-08-30 - feat(gui): create initial candidates through the workshop
+
+Purpose: complete the Stage 8 workspace-level path from a new structured Tool
+specification to its first immutable candidate without moving repository
+authority into Qt.
+
+Material changes:
+
+- Added strict `create-candidate` transport and host operations that accept one
+  complete specification, descriptor, and canonical-base64 source set.
+- Delegated specification and revision persistence to the repository-backed
+  `ToolWorkshop` under trusted-host identity; the returned candidate is the
+  initial parentless revision bound to the exact specification identity/hash.
+- Added a Qt authoring form that clears submitted source-bearing JSON
+  immediately, strictly decodes the binding, and refreshes authoritative
+  inspection.
+- Extended host, transport, real-process, and offscreen Widgets coverage for
+  persistence, malformed input, source clearing, and exact result rendering.
+
+Validation actually run:
+
+- `pnpm.cmd test`: passed all 86 TypeScript tests.
+- `pnpm.cmd run test:integration`: passed 5 portable real-Bridge cases; 3
+  opt-in WSL confinement cases retained their skip gate.
+- Qt 6.12.0/MSVC 19.51 Ninja Release built all affected targets with warnings
+  as errors; all 3 CTest targets passed.
+- Initial attempts through the stale Qt 6.11.2 MSBuild tree failed on its
+  damaged `QApplication` header, and an uninitialized direct Ninja invocation
+  lacked standard-library includes. The recorded passing run initialized the
+  Visual Studio 2026 Developer Command Prompt and used `build/qt612`.
+
 ## 2026-08-30 - feat(gui): revise candidates through the workshop
 
 Purpose: complete the Qt side of exact-parent candidate revision authoring.

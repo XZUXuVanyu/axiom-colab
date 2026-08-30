@@ -6,6 +6,7 @@ import type { JsonValue } from './harness-types.js'
 import type {
   CandidateFile, CandidateValidationRequest, CandidateValidationResult, ValidationCommand,
 } from './candidate-validation.js'
+import { captureCandidateFiles } from './candidate-content.js'
 import { contentHash } from './laboratory-contract.js'
 import type { LocalCandidateRepository } from './candidate-repository.js'
 import type { LaboratoryId } from './laboratory-contract.js'
@@ -25,7 +26,7 @@ import type {
 import type { ValidationPromotionAuthority } from './tool-installation-proposal.js'
 import type { ToolInstallationProposalService } from './tool-installation-proposal.js'
 import type { ProductionValidationProfile } from './production-validation-profile.js'
-import type { CandidateRevision, ToolWorkshop } from './tool-workshop.js'
+import type { CandidateRevision, ToolSpecification, ToolSpecificationInput, ToolWorkshop } from './tool-workshop.js'
 
 export interface HiddenChallengeValidationResult {
   readonly workspaceId: LaboratoryId<'workspace'>
@@ -239,6 +240,30 @@ export class LocalApplicationHost {
       { workspaceId, actorId, authority: 'trusted-host' },
       { specificationId: parent.specificationId, parentRevisionId, descriptor, sources },
     )
+  }
+
+  createCandidate(
+    workspaceId: LaboratoryId<'workspace'>,
+    specificationInput: ToolSpecificationInput,
+    descriptor: unknown,
+    sources: readonly CandidateFile[],
+  ): { readonly specification: ToolSpecification; readonly candidate: CandidateRevision } {
+    this.ensureReady()
+    this.options.store.reopenWorkspace(workspaceId)
+    const workshop = this.options.workshop
+    const actorId = this.options.workshopActorId
+    if (workshop === undefined || actorId === undefined) fail('OPERATION_NOT_AVAILABLE', 'candidate authoring is not composed')
+    if (typeof descriptor !== 'object' || descriptor === null || Array.isArray(descriptor)
+        || (descriptor as { name?: unknown }).name !== specificationInput.publicName) {
+      fail('DESCRIPTOR_NAME_MISMATCH', 'candidate descriptor name must match the new specification public name')
+    }
+    captureCandidateFiles(sources)
+    const context = { workspaceId, actorId, authority: 'trusted-host' as const }
+    const specification = workshop.defineSpecification(context, specificationInput)
+    const candidate = workshop.createCandidateRevision(context, {
+      specificationId: specification.specificationId, descriptor, sources,
+    })
+    return { specification, candidate }
   }
 
   async executeTool(

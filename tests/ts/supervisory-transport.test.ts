@@ -37,6 +37,15 @@ test('supervisory transport lists workspaces and correlates immutable inspection
       assert.equal(Buffer.from(sources[0].content).toString(), 'revised source')
       return { protocolVersion: '1.0', workspaceId, revisionId: 'evidence:revised', candidateId: 'tool:one', specificationId: 'proposal:spec', specificationHash: `sha256:${'1'.repeat(64)}`, revision: 2, parentRevisionId, parentCandidateHash, descriptorHash: `sha256:${'2'.repeat(64)}`, sourceHash: `sha256:${'3'.repeat(64)}`, sources: [], candidateHash: `sha256:${'4'.repeat(64)}`, state: 'current', createdAt: '2026-08-30T00:00:00.000Z', createdBy: 'actor:host' }
     },
+    createCandidate(workspaceId: string, specification: any, descriptor: any, sources: any[]) {
+      assert.equal(specification.publicName, 'new_tool')
+      assert.equal(descriptor.name, 'new_tool')
+      assert.equal(Buffer.from(sources[0].content).toString(), 'initial source')
+      return {
+        specification: { protocolVersion: '1.0', specificationId: 'proposal:new', workspaceId, createdAt: '2026-08-30T01:00:00.000Z', createdBy: 'actor:host', ...specification, constraints: [], specificationHash: `sha256:${'6'.repeat(64)}` },
+        candidate: { protocolVersion: '1.0', workspaceId, revisionId: 'evidence:initial', candidateId: 'tool:new', specificationId: 'proposal:new', specificationHash: `sha256:${'6'.repeat(64)}`, revision: 1, parentRevisionId: null, parentCandidateHash: null, descriptorHash: `sha256:${'7'.repeat(64)}`, sourceHash: `sha256:${'8'.repeat(64)}`, sources: [], candidateHash: `sha256:${'9'.repeat(64)}`, state: 'current', createdAt: '2026-08-30T01:00:00.000Z', createdBy: 'actor:host' },
+      }
+    },
   }
   const transport = new SupervisoryTransport(host as any)
   const listed = JSON.parse(await transport.handle(JSON.stringify({ protocolVersion: '1.1', id: 'one', operation: 'list-workspaces' })))
@@ -66,6 +75,14 @@ test('supervisory transport lists workspaces and correlates immutable inspection
     sources: [{ path: 'src/tool.cpp', contentBase64: Buffer.from('revised source').toString('base64') }],
   })))
   assert.equal(revised.result.revision, 2)
+  const created = JSON.parse(await transport.handle(JSON.stringify({
+    protocolVersion: '1.1', id: 'seven', operation: 'create-candidate', workspaceId: 'workspace:alpha',
+    specification: { problem: 'Need a Tool.', publicName: 'new_tool', description: 'New Tool.', inputSchema: { type: 'object' }, outputSchema: { type: 'object' }, requestedPermissions: [], acceptanceCriteria: ['It works.'] },
+    descriptor: { name: 'new_tool' },
+    sources: [{ path: 'src/tool.cpp', contentBase64: Buffer.from('initial source').toString('base64') }],
+  })))
+  assert.equal(created.result.candidate.revision, 1)
+  assert.equal(created.result.candidate.specificationId, created.result.specification.specificationId)
 })
 
 test('supervisory transport rejects malformed, oversized, and authority-changing requests', async () => {
@@ -89,6 +106,8 @@ test('supervisory transport rejects malformed, oversized, and authority-changing
   const challengeTransport = new SupervisoryTransport({ workspaces: () => [], goals: () => [], async inspect() { throw new Error('unused') } } as any)
   const invalidChallenge = JSON.parse(await challengeTransport.handle(JSON.stringify({ protocolVersion: '1.1', id: 'challenge', operation: 'submit-hidden-challenge', workspaceId: 'workspace:alpha', revisionId: 'evidence:one', candidateHash: `sha256:${'2'.repeat(64)}`, fixtures: [{ path: 'secret', contentBase64: 'not base64' }], commands: [] })))
   assert.equal(invalidChallenge.error.code, 'INVALID_HIDDEN_CHALLENGE')
+  const invalidSpecification = JSON.parse(await challengeTransport.handle(JSON.stringify({ protocolVersion: '1.1', id: 'candidate', operation: 'create-candidate', workspaceId: 'workspace:alpha', specification: { publicName: 'incomplete' }, descriptor: { name: 'incomplete' }, sources: [{ path: 'tool.cpp', contentBase64: '' }] })))
+  assert.equal(invalidSpecification.error.code, 'INVALID_REQUEST')
 })
 
 test('supervisory transport preserves deterministic host failure codes', async () => {

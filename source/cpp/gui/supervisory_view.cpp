@@ -196,6 +196,24 @@ void SupervisoryView::build_ui() {
     summaries->addWidget(list_group("Artifact lineage and provenance", &artifacts_, this), 3, 0, 1, 2);
     auto* candidate_evidence = new QGroupBox("Selected candidate source manifest and validation evidence", this);
     auto* candidate_evidence_layout = new QVBoxLayout(candidate_evidence);
+    initial_candidate_input_ = new QPlainTextEdit(candidate_evidence);
+    initial_candidate_input_->setObjectName("initialCandidateInput");
+    initial_candidate_input_->setPlaceholderText(
+        R"({"specification":{"problem":"...","publicName":"candidate_tool","description":"...","inputSchema":{"type":"object"},"outputSchema":{"type":"object"},"requestedPermissions":[],"acceptanceCriteria":["..."]},"descriptor":{"name":"candidate_tool"},"sources":[{"path":"src/tool.cpp","contentBase64":"..."}]})");
+    initial_candidate_input_->setMaximumHeight(130);
+    candidate_evidence_layout->addWidget(new QLabel(
+        "New specification and initial candidate JSON (source bytes are cleared after submission)", candidate_evidence));
+    candidate_evidence_layout->addWidget(initial_candidate_input_);
+    create_candidate_ = new QPushButton("Create specification and initial candidate", candidate_evidence);
+    create_candidate_->setObjectName("createCandidate");
+    create_candidate_->setEnabled(false);
+    candidate_evidence_layout->addWidget(create_candidate_);
+    initial_candidate_result_ = new QLabel(
+        "Select a workspace to author through the host workshop.", candidate_evidence);
+    initial_candidate_result_->setObjectName("initialCandidateResult");
+    initial_candidate_result_->setWordWrap(true);
+    initial_candidate_result_->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    candidate_evidence_layout->addWidget(initial_candidate_result_);
     auto* candidate_actions = new QHBoxLayout();
     approve_candidate_ = new QPushButton("Approve exact proposal", candidate_evidence);
     approve_candidate_->setObjectName("approveCandidate");
@@ -290,6 +308,8 @@ void SupervisoryView::build_ui() {
             &SupervisoryView::submit_selected_hidden_challenge);
     connect(revise_candidate_, &QPushButton::clicked, this,
             &SupervisoryView::revise_selected_candidate);
+    connect(create_candidate_, &QPushButton::clicked, this,
+            &SupervisoryView::create_initial_candidate);
 }
 
 void SupervisoryView::start_process() {
@@ -636,6 +656,58 @@ void SupervisoryView::revise_selected_candidate() {
     }
 }
 
+void SupervisoryView::create_initial_candidate() {
+    if (workspace_selector_->currentText().isEmpty()) {
+        show_error("Select a workspace first"); return;
+    }
+    Json payload;
+    try {
+        payload = Json::parse(initial_candidate_input_->toPlainText().toStdString());
+        const auto& object = require_object(payload, "initial candidate input");
+        exact_fields(object, {"specification", "descriptor", "sources"}, "initial candidate input");
+        if (!payload.at("specification").is_object() || !payload.at("descriptor").is_object()
+            || !payload.at("sources").is_array() || payload.at("sources").as_array().empty()) {
+            throw SupervisoryResponseError("specification and descriptor must be objects and sources must be a non-empty array");
+        }
+    } catch (const std::exception& error) {
+        show_error(QString("Invalid initial candidate: ") + QString::fromUtf8(error.what())); return;
+    }
+    const std::string workspace = workspace_selector_->currentText().toStdString();
+    Json specification = payload.at("specification");
+    Json descriptor = payload.at("descriptor");
+    Json sources = payload.at("sources");
+    initial_candidate_input_->clear();
+    initial_candidate_input_->setPlaceholderText("Submitted source bytes cleared.");
+    initial_candidate_result_->setText("Creating specification and immutable candidate through the host workshop...");
+    initial_candidate_result_->setToolTip({});
+    set_busy(true);
+    try {
+        (void)client_.create_candidate(workspace, std::move(specification),
+            std::move(descriptor), std::move(sources),
+            [this, workspace](const SupervisoryResponse* response, const std::string* error) {
+                initial_candidate_input_->clear();
+                if (error != nullptr) { show_error(text(*error)); set_busy(false); return; }
+                try {
+                    if (!response->ok) throw SupervisoryResponseError(response->error_code + ": " + response->error_message);
+                    const auto created = parse_initial_candidate_result(*response, workspace);
+                    initial_candidate_result_->setText(
+                        "Created a new specification and immutable candidate revision 1. Validation is still required.");
+                    initial_candidate_result_->setToolTip(
+                        "Specification: " + text(created.specification_id)
+                        + "\nSpecification hash: " + text(created.specification_hash)
+                        + "\nRevision: " + text(created.revision_id)
+                        + "\nCandidate: " + text(created.candidate_id)
+                        + "\nCandidate hash: " + text(created.candidate_hash));
+                    set_busy(false); inspect_selected_workspace();
+                } catch (const std::exception& decode_error) {
+                    show_error(QString::fromUtf8(decode_error.what())); set_busy(false);
+                }
+            });
+    } catch (const std::exception& error) {
+        initial_candidate_input_->clear(); show_error(QString::fromUtf8(error.what())); set_busy(false);
+    }
+}
+
 void SupervisoryView::render(const SupervisoryWorkspaceInspection& inspection) {
     if (inspection.current_plan.is_null()) {
         if (inspection.goal_id.has_value()) {
@@ -923,6 +995,8 @@ void SupervisoryView::set_busy(bool busy) {
     submit_hidden_challenge_->setEnabled(
         !busy && current_candidate && client_.is_running());
     revise_candidate_->setEnabled(!busy && current_candidate && client_.is_running());
+    create_candidate_->setEnabled(!busy && !workspace_selector_->currentText().isEmpty()
+        && client_.is_running());
 }
 
 } // namespace axiom_colab::gui

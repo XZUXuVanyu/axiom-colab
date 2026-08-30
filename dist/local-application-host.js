@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { captureCandidateFiles } from './candidate-content.js';
 import { contentHash } from './laboratory-contract.js';
 import { LocalSupervisoryBackend } from './local-supervisory-backend.js';
 import { SupervisoryApplicationModel } from './supervisory-application.js';
@@ -165,6 +166,32 @@ export class LocalApplicationHost {
             descriptor,
             sources
         });
+    }
+    createCandidate(workspaceId, specificationInput, descriptor, sources) {
+        this.ensureReady();
+        this.options.store.reopenWorkspace(workspaceId);
+        const workshop = this.options.workshop;
+        const actorId = this.options.workshopActorId;
+        if (workshop === undefined || actorId === undefined) fail('OPERATION_NOT_AVAILABLE', 'candidate authoring is not composed');
+        if (typeof descriptor !== 'object' || descriptor === null || Array.isArray(descriptor) || descriptor.name !== specificationInput.publicName) {
+            fail('DESCRIPTOR_NAME_MISMATCH', 'candidate descriptor name must match the new specification public name');
+        }
+        captureCandidateFiles(sources);
+        const context = {
+            workspaceId,
+            actorId,
+            authority: 'trusted-host'
+        };
+        const specification = workshop.defineSpecification(context, specificationInput);
+        const candidate = workshop.createCandidateRevision(context, {
+            specificationId: specification.specificationId,
+            descriptor,
+            sources
+        });
+        return {
+            specification,
+            candidate
+        };
     }
     async executeTool(workspaceId, goalId, toolName, args, signal = new AbortController().signal) {
         this.ensureReady();

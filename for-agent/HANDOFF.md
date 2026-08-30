@@ -4,6 +4,16 @@ Last updated: 2026-08-30
 
 ## Current state
 
+- Qt now creates a new structured Tool specification and its initial immutable
+  candidate through one narrow host-owned workshop operation. The workspace-
+  level form accepts the full specification, descriptor, and canonical-base64
+  source set, clears submitted bytes immediately, and refreshes authoritative
+  candidate inspection.
+- The strict C++ decoder requires revision 1 with null parents and verifies the
+  exact workspace/specification identity and hash binding before displaying
+  candidate identities or hashes. Qt never receives repository paths or writes
+  specification/candidate rows directly.
+
 - Qt now exposes exact-parent candidate revision authoring for the selected
   current candidate. The editor accepts a descriptor and canonical-base64
   sources, clears submitted bytes immediately, and delegates through the host
@@ -890,11 +900,11 @@ installation controls:
 
 ## Exact next work
 
-Add new specification and initial candidate creation through the same narrow
-repository-backed workshop boundary, with a Qt form that clears submitted source
-bytes and refreshes authoritative inspection. Qt must not write repository rows
-or candidate files directly. Then expose lifecycle controls through existing
-host-owned stop/revoke/resume/recovery services.
+Expose lifecycle controls through existing host-owned
+stop/revoke/resume/recovery services. Bind every request to the exact visible
+workspace, goal, approved-plan state, or capability identity as applicable;
+refresh authoritative inspection after each result and do not reproduce
+lifecycle authority in Qt.
 Keep installed-candidate execution absent until the executable loading strategy
 preserves its exact candidate and installation evidence hashes.
 

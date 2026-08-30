@@ -262,6 +262,14 @@ test('application host binds hidden challenges to the exact current candidate an
     workshopActorId: 'actor:host',
   } as any)
   await host.initialize()
+  const created = host.createCandidate('workspace:alpha', {
+    problem: 'Add a new candidate.', publicName: 'new_tool', description: 'New Tool.',
+    inputSchema: { type: 'object' }, outputSchema: { type: 'object' },
+    requestedPermissions: [], acceptanceCriteria: ['Returns a deterministic value.'],
+  }, { name: 'new_tool' }, [{ path: 'src/tool.cpp', content: 'initial source' }])
+  assert.equal(created.candidate.revision, 1)
+  assert.equal(created.candidate.specificationId, created.specification.specificationId)
+  assert.equal(value.candidates.materializeRevision('workspace:alpha', created.candidate.revisionId)?.sources[0]?.content.toString(), 'initial source')
   await assert.rejects(
     host.submitHiddenChallenge('workspace:alpha', revision.revisionId, `sha256:${'f'.repeat(64)}`, [{ path: 'private/input.txt', content: 'secret' }], [{ commandId: 'hidden', executable: '/usr/bin/ctest', args: [], cwd: 'candidate' }]),
     (error: unknown) => (error as any).code === 'STALE_CANDIDATE_REVISION',

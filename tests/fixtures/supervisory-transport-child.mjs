@@ -64,6 +64,30 @@ const host = {
       state: 'current', createdAt: '2026-08-30T08:00:00.000Z', createdBy: 'actor:host',
     }
   },
+  createCandidate(workspaceId, specification, descriptor, sources) {
+    if (specification.publicName !== 'new_tool' || descriptor.name !== 'new_tool'
+        || sources[0]?.path !== 'src/new_tool.cpp') throw Object.assign(new Error('invalid initial candidate'), { code: 'INVALID_CANDIDATE_SOURCE' })
+    candidate.revisionId = 'evidence:initial'
+    candidate.candidateId = 'tool:new'
+    candidate.revision = 1
+    candidate.candidateHash = hash('9')
+    candidate.validation = null
+    candidate.proposal = null
+    return {
+      specification: {
+        protocolVersion: '1.0', specificationId: 'proposal:new', workspaceId,
+        createdAt: '2026-08-30T09:00:00.000Z', createdBy: 'actor:host',
+        ...specification, constraints: specification.constraints ?? [], specificationHash: hash('6'),
+      },
+      candidate: {
+        protocolVersion: '1.0', revisionId: candidate.revisionId, candidateId: candidate.candidateId,
+        workspaceId, specificationId: 'proposal:new', specificationHash: hash('6'), revision: 1,
+        parentRevisionId: null, parentCandidateHash: null, descriptorHash: hash('7'), sourceHash: hash('8'),
+        sources: [{ path: 'src/new_tool.cpp', size: 14, hash: hash('5') }], candidateHash: candidate.candidateHash,
+        state: 'current', createdAt: '2026-08-30T09:00:00.000Z', createdBy: 'actor:host',
+      },
+    }
+  },
   async inspect(workspaceId, goalId) {
     if (workspaceId === 'workspace:missing') throw Object.assign(new Error('workspace is not visible'), { code: 'WORKSPACE_NOT_FOUND' })
     return {

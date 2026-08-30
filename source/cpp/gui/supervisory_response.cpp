@@ -328,4 +328,54 @@ SupervisoryCandidateRevisionResult parse_candidate_revision_result(
         .revision = revision.as_integer()};
 }
 
+SupervisoryInitialCandidateResult parse_initial_candidate_result(
+    const SupervisoryResponse& response, std::string_view expected_workspace_id) {
+    if (!response.ok) fail("cannot decode initial candidate from an error response");
+    const auto& result = require_object(response.result, "initial candidate result");
+    require_exact_fields(result, {"specification", "candidate"});
+    const auto& specification = require_object(response.result.at("specification"), "Tool specification");
+    require_exact_fields(specification, {"protocolVersion", "specificationId", "workspaceId",
+        "createdAt", "createdBy", "problem", "publicName", "description", "inputSchema",
+        "outputSchema", "requestedPermissions", "acceptanceCriteria", "constraints", "specificationHash"});
+    const auto& candidate = require_object(response.result.at("candidate"), "initial candidate");
+    require_exact_fields(candidate, {"protocolVersion", "revisionId", "candidateId", "workspaceId",
+        "specificationId", "specificationHash", "revision", "parentRevisionId",
+        "parentCandidateHash", "descriptorHash", "sourceHash", "sources", "candidateHash",
+        "state", "createdAt", "createdBy"});
+    const auto& workspace_id = require_string(response.result.at("specification").at("workspaceId"), "workspaceId");
+    const auto& candidate_workspace = require_string(response.result.at("candidate").at("workspaceId"), "candidate workspaceId");
+    const auto& specification_id = require_string(response.result.at("specification").at("specificationId"), "specificationId");
+    const auto& candidate_specification_id = require_string(response.result.at("candidate").at("specificationId"), "candidate specificationId");
+    const auto& specification_hash = require_string(response.result.at("specification").at("specificationHash"), "specificationHash");
+    const auto& candidate_specification_hash = require_string(response.result.at("candidate").at("specificationHash"), "candidate specificationHash");
+    const auto& revision_id = require_string(response.result.at("candidate").at("revisionId"), "revisionId");
+    const auto& candidate_id = require_string(response.result.at("candidate").at("candidateId"), "candidateId");
+    const auto& candidate_hash = require_string(response.result.at("candidate").at("candidateHash"), "candidateHash");
+    const auto& descriptor_hash = require_string(response.result.at("candidate").at("descriptorHash"), "descriptorHash");
+    const auto& source_hash = require_string(response.result.at("candidate").at("sourceHash"), "sourceHash");
+    const auto valid_hash = [](std::string_view value) { return value.starts_with("sha256:") && value.size() == 71; };
+    if (workspace_id != expected_workspace_id || candidate_workspace != workspace_id
+        || !valid_identity(workspace_id, "workspace:") || !valid_identity(specification_id, "proposal:")
+        || candidate_specification_id != specification_id || specification_hash != candidate_specification_hash
+        || !valid_hash(specification_hash) || !valid_identity(revision_id, "evidence:")
+        || !valid_identity(candidate_id, "tool:") || !valid_hash(candidate_hash)
+        || !valid_hash(descriptor_hash) || !valid_hash(source_hash)
+        || require_string(response.result.at("specification").at("protocolVersion"), "protocolVersion") != "1.0"
+        || require_string(response.result.at("candidate").at("protocolVersion"), "protocolVersion") != "1.0"
+        || !response.result.at("candidate").at("revision").is_integer()
+        || response.result.at("candidate").at("revision").as_integer() != 1
+        || !response.result.at("candidate").at("parentRevisionId").is_null()
+        || !response.result.at("candidate").at("parentCandidateHash").is_null()
+        || !response.result.at("candidate").at("sources").is_array()
+        || !response.result.at("specification").at("requestedPermissions").is_array()
+        || !response.result.at("specification").at("acceptanceCriteria").is_array()
+        || !response.result.at("specification").at("constraints").is_array()
+        || require_string(response.result.at("candidate").at("state"), "state") != "current") {
+        fail("initial candidate result does not preserve its exact specification binding");
+    }
+    return {.workspace_id = workspace_id, .specification_id = specification_id,
+        .specification_hash = specification_hash, .revision_id = revision_id,
+        .candidate_id = candidate_id, .candidate_hash = candidate_hash};
+}
+
 } // namespace axiom_colab::gui

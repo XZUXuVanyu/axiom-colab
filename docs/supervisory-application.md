@@ -89,7 +89,8 @@ directories itself.
 
 `SupervisoryTransport` version `1.1` defines the local supervisory JSON
 boundary. It accepts `list-workspaces`, `list-goals`, `inspect`, constrained
-`execute-tool`, exact-hash `decide-installation`, and host-owned
+`execute-tool`, exact-hash `decide-installation`, workspace-level
+`create-candidate`, exact-parent `revise-candidate`, and host-owned
 `submit-hidden-challenge`, using strict exact-field parsing,
 validates workspace and goal identities, bounds request bytes, correlates every
 valid request ID, and returns structured deterministic failures. Tool execution

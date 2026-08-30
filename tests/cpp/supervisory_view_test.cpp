@@ -42,6 +42,9 @@ int main(int argc, char* argv[]) {
     auto* revision_input = view.findChild<QPlainTextEdit*>("candidateRevisionInput");
     auto* revise_candidate = view.findChild<QPushButton*>("reviseCandidate");
     auto* revision_result = view.findChild<QLabel*>("candidateRevisionResult");
+    auto* initial_input = view.findChild<QPlainTextEdit*>("initialCandidateInput");
+    auto* create_candidate = view.findChild<QPushButton*>("createCandidate");
+    auto* initial_result = view.findChild<QLabel*>("initialCandidateResult");
     if (workspaces == nullptr || goals == nullptr || resources == nullptr
         || plan == nullptr || status == nullptr || compute == nullptr
         || working == nullptr || artifacts == nullptr) {
@@ -52,7 +55,9 @@ int main(int argc, char* argv[]) {
         || candidate_details == nullptr || reject_candidate == nullptr
         || challenge_input == nullptr || submit_challenge == nullptr
         || challenge_result == nullptr || revision_input == nullptr
-        || revise_candidate == nullptr || revision_result == nullptr) {
+        || revise_candidate == nullptr || revision_result == nullptr
+        || initial_input == nullptr || create_candidate == nullptr
+        || initial_result == nullptr) {
         std::cerr << "[FAIL] Tool execution widgets are not inspectable\n";
         return 1;
     }
@@ -175,6 +180,28 @@ int main(int argc, char* argv[]) {
         || !revision_result->toolTip().contains("evidence:revised")
         || !revision_input->toPlainText().isEmpty()) {
         std::cerr << "[FAIL] immutable candidate revision did not render or clear source input\n";
+        return 1;
+    }
+    timer.restart();
+    while (timer.elapsed() < 5000 && !create_candidate->isEnabled()) {
+        application.processEvents(); QThread::msleep(10);
+    }
+    initial_input->setPlainText(R"({"specification":{"problem":"Need a Tool.","publicName":"new_tool","description":"New Tool.","inputSchema":{"type":"object"},"outputSchema":{"type":"object"},"requestedPermissions":[],"acceptanceCriteria":["It works."]},"descriptor":{"name":"new_tool"},"sources":[{"path":"src/new_tool.cpp","contentBase64":"aW5pdGlhbCBzb3VyY2U="}]})");
+    create_candidate->click();
+    if (!initial_input->toPlainText().isEmpty()) {
+        std::cerr << "[FAIL] submitted initial candidate source remained in widget state\n";
+        return 1;
+    }
+    timer.restart();
+    while (timer.elapsed() < 5000
+           && !initial_result->text().contains("immutable candidate revision 1")) {
+        application.processEvents(); QThread::msleep(10);
+    }
+    if (!initial_result->text().contains("Validation is still required")
+        || !initial_result->toolTip().contains("proposal:new")
+        || !initial_result->toolTip().contains("evidence:initial")
+        || !initial_input->toPlainText().isEmpty()) {
+        std::cerr << "[FAIL] initial candidate creation did not render or clear source input\n";
         return 1;
     }
     std::cout << "[PASS] supervisory view renders workspace resources\n";

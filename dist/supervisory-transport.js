@@ -53,6 +53,27 @@ function parseCandidateSources(value) {
         };
     });
 }
+function parseSpecification(value) {
+    if (!record(value)) fail('INVALID_TOOL_SPECIFICATION', 'Tool specification must be an object');
+    const required = [
+        'problem',
+        'publicName',
+        'description',
+        'inputSchema',
+        'outputSchema',
+        'requestedPermissions',
+        'acceptanceCriteria'
+    ];
+    const fields = 'constraints' in value ? [
+        ...required,
+        'constraints'
+    ] : required;
+    exact(value, fields);
+    if (typeof value.problem !== 'string' || typeof value.publicName !== 'string' || typeof value.description !== 'string' || !Array.isArray(value.requestedPermissions) || !value.requestedPermissions.every((item)=>typeof item === 'string') || !Array.isArray(value.acceptanceCriteria) || !value.acceptanceCriteria.every((item)=>typeof item === 'string') || 'constraints' in value && (!Array.isArray(value.constraints) || !value.constraints.every((item)=>typeof item === 'string'))) {
+        fail('INVALID_TOOL_SPECIFICATION', 'Tool specification fields are malformed');
+    }
+    return value;
+}
 function parseHiddenCommands(value) {
     if (!Array.isArray(value) || value.length === 0) fail('INVALID_HIDDEN_CHALLENGE', 'hidden challenge commands must not be empty');
     return value.map((item, index)=>{
@@ -187,6 +208,24 @@ function parseRequest(text, maxBytes) {
             sources: parseCandidateSources(value.sources)
         };
     }
+    if (value.operation === 'create-candidate') {
+        exact(value, [
+            'protocolVersion',
+            'id',
+            'operation',
+            'workspaceId',
+            'specification',
+            'descriptor',
+            'sources'
+        ]);
+        if (typeof value.workspaceId !== 'string' || !/^workspace:[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(value.workspaceId)) fail('INVALID_WORKSPACE_ID', 'workspace identity is malformed');
+        if (!record(value.descriptor)) fail('INVALID_CANDIDATE_DESCRIPTOR', 'candidate descriptor must be an object');
+        return {
+            ...value,
+            specification: parseSpecification(value.specification),
+            sources: parseCandidateSources(value.sources)
+        };
+    }
     fail('UNKNOWN_OPERATION', 'supervisory operation is unknown');
 }
 function code(error) {
@@ -225,7 +264,7 @@ export class SupervisoryTransport {
                 goals: [
                     ...this.host.goals(request.workspaceId)
                 ]
-            } : request.operation === 'inspect' ? await this.host.inspect(request.workspaceId, request.goalId) : request.operation === 'execute-tool' ? await this.host.executeTool(request.workspaceId, request.goalId, request.tool, request.arguments) : request.operation === 'decide-installation' ? await this.host.decideInstallation(request.workspaceId, request.proposalId, request.proposalHash, request.decision) : request.operation === 'submit-hidden-challenge' ? await this.host.submitHiddenChallenge(request.workspaceId, request.revisionId, request.candidateHash, request.fixtures, request.commands) : this.host.reviseCandidate(request.workspaceId, request.parentRevisionId, request.parentCandidateHash, request.descriptor, request.sources);
+            } : request.operation === 'inspect' ? await this.host.inspect(request.workspaceId, request.goalId) : request.operation === 'execute-tool' ? await this.host.executeTool(request.workspaceId, request.goalId, request.tool, request.arguments) : request.operation === 'decide-installation' ? await this.host.decideInstallation(request.workspaceId, request.proposalId, request.proposalHash, request.decision) : request.operation === 'submit-hidden-challenge' ? await this.host.submitHiddenChallenge(request.workspaceId, request.revisionId, request.candidateHash, request.fixtures, request.commands) : request.operation === 'revise-candidate' ? this.host.reviseCandidate(request.workspaceId, request.parentRevisionId, request.parentCandidateHash, request.descriptor, request.sources) : this.host.createCandidate(request.workspaceId, request.specification, request.descriptor, request.sources);
             const response = {
                 protocolVersion: SUPERVISORY_TRANSPORT_VERSION,
                 id: request.id,

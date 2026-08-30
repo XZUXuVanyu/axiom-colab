@@ -224,6 +224,22 @@ std::string SupervisoryProcessClient::revise_candidate(
     }), std::move(handler));
 }
 
+std::string SupervisoryProcessClient::create_candidate(
+    std::string_view workspace_id, Json specification, Json descriptor,
+    Json sources, ResponseHandler handler) {
+    if (!valid_identity(workspace_id, "workspace:") || !specification.is_object()
+        || !descriptor.is_object() || !sources.is_array()
+        || sources.as_array().empty()) {
+        throw std::invalid_argument("initial candidate input is malformed");
+    }
+    return send_request(Json::object({
+        {"protocolVersion", "1.1"}, {"operation", "create-candidate"},
+        {"workspaceId", std::string(workspace_id)},
+        {"specification", std::move(specification)},
+        {"descriptor", std::move(descriptor)}, {"sources", std::move(sources)},
+    }), std::move(handler));
+}
+
 std::string SupervisoryProcessClient::send_request(Json request,
                                                    ResponseHandler handler) {
     if (!is_running()) {

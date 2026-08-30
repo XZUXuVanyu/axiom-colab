@@ -81,6 +81,15 @@ struct SupervisoryCandidateRevisionResult final {
     std::int64_t revision{};
 };
 
+struct SupervisoryInitialCandidateResult final {
+    std::string workspace_id;
+    std::string specification_id;
+    std::string specification_hash;
+    std::string revision_id;
+    std::string candidate_id;
+    std::string candidate_hash;
+};
+
 [[nodiscard]] SupervisoryResponse parse_supervisory_response(
     std::string_view text, std::string_view expected_request_id);
 [[nodiscard]] std::vector<std::string> parse_workspace_list_result(
@@ -105,5 +114,7 @@ struct SupervisoryCandidateRevisionResult final {
     const SupervisoryResponse& response, std::string_view expected_workspace_id,
     std::string_view expected_parent_revision_id,
     std::string_view expected_parent_candidate_hash);
+[[nodiscard]] SupervisoryInitialCandidateResult parse_initial_candidate_result(
+    const SupervisoryResponse& response, std::string_view expected_workspace_id);
 
 } // namespace axiom_colab::gui

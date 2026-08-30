@@ -38,6 +38,13 @@ repository-backed Tool workshop, and refreshes inspection. The result identifies
 the hash-chained child and explicitly warns that prior validation and proposal
 bindings are stale; repository paths and direct storage mutation remain absent.
 
+A workspace-level authoring form creates a structured Tool specification and
+its initial immutable candidate in one host operation. It accepts the complete
+specification, descriptor, and canonical-base64 source set, clears submitted
+bytes immediately, and delegates both records to the repository-backed
+workshop. The returned revision must be revision 1 with no parent and must bind
+the exact returned specification identity and hash before Qt displays it.
+
 Create the explicit process config outside the authoritative state directory:
 
 ```powershell
