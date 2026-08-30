@@ -14,6 +14,7 @@ import type { LocalGoalLifecycle } from './local-goal-lifecycle.js'
 import { LocalSupervisoryBackend } from './local-supervisory-backend.js'
 import type { LocalMemoryStore } from './local-memory-store.js'
 import type { MemoryWorkflows } from './memory-workflows.js'
+import type { WorkflowInvocation, WorkingRevision } from './memory-workflows.js'
 import type { ToolDescriptor } from './protocol.js'
 import { SupervisoryApplicationModel } from './supervisory-application.js'
 import type {
@@ -44,6 +45,14 @@ export interface HiddenChallengeValidationResult {
     readonly commandCount: number
     readonly hidden: boolean
   }[]
+}
+
+export interface GoalCreationResult {
+  readonly workspaceId: LaboratoryId<'workspace'>
+  readonly goalId: LaboratoryId<'goal'>
+  readonly objective: string
+  readonly planRevisionId: LaboratoryId<'object'>
+  readonly planHash: `sha256:${string}`
 }
 
 export interface InstalledToolRediscovery {
@@ -145,6 +154,51 @@ export class LocalApplicationHost {
     this.ensureReady()
     this.options.store.reopenWorkspace(workspaceId)
     return this.options.lifecycle.listGoals(workspaceId)
+  }
+
+  createWorkspace(workspaceId: LaboratoryId<'workspace'>): { readonly workspaceId: LaboratoryId<'workspace'> } {
+    this.ensureReady()
+    this.options.store.createWorkspace(workspaceId)
+    return { workspaceId }
+  }
+
+  createGoal(
+    workspaceId: LaboratoryId<'workspace'>,
+    goalId: LaboratoryId<'goal'>,
+    objective: string,
+  ): GoalCreationResult {
+    this.ensureReady()
+    this.options.store.reopenWorkspace(workspaceId)
+    if (objective.length === 0 || objective.length > 16_384) {
+      fail('INVALID_GOAL_OBJECTIVE', 'goal objective must contain 1..16384 characters')
+    }
+    if (this.options.lifecycle.inspectGoal(workspaceId, goalId) !== null) {
+      fail('GOAL_ALREADY_REGISTERED', 'goal is already registered in this workspace')
+    }
+    const key = `${goalId}:plan`
+    const existing = this.options.workflows.readWorking<{ readonly goalId: LaboratoryId<'goal'>; readonly objective: string }>(
+      this.workflowInvocation(workspaceId, this.options.hostActorId, 'trusted-host', ['working.read']), key,
+    )
+    let plan: WorkingRevision<{ readonly goalId: LaboratoryId<'goal'>; readonly objective: string }>
+    if (existing !== null) {
+      if (existing.value.goalId !== goalId || existing.value.objective !== objective) {
+        fail('GOAL_PLAN_ALREADY_EXISTS', 'an approved plan already exists for this goal identity')
+      }
+      plan = existing
+    } else {
+      if (this.options.userActorId === undefined) fail('OPERATION_NOT_AVAILABLE', 'user plan approval is not composed')
+      const proposal = this.options.workflows.proposeWorking(
+        this.workflowInvocation(workspaceId, this.options.hostActorId, 'trusted-host', ['working.propose']),
+        key, { goalId, objective },
+      )
+      plan = this.options.workflows.approveWorking(
+        this.workflowInvocation(workspaceId, this.options.userActorId, 'user', ['working.approve']),
+        proposal.id,
+        { workspaceId, proposalId: proposal.id, proposalHash: proposal.hash, decision: 'approved' },
+      )
+    }
+    this.options.lifecycle.registerGoal(workspaceId, goalId)
+    return { workspaceId, goalId, objective, planRevisionId: plan.id, planHash: plan.hash }
   }
 
   installedRegistrations(workspaceId: LaboratoryId<'workspace'>): readonly InstalledToolRegistration[] {
@@ -389,5 +443,23 @@ export class LocalApplicationHost {
   private ensureReady(): void {
     if (this.closed) fail('HOST_CLOSED', 'application host is closed')
     if (!this.initialized) fail('HOST_NOT_INITIALIZED', 'application host is not initialized')
+  }
+
+  private workflowInvocation(
+    workspaceId: LaboratoryId<'workspace'>, actorId: LaboratoryId<'actor'>,
+    authority: 'trusted-host' | 'user', operations: WorkflowInvocation['capability']['operations'],
+  ): WorkflowInvocation {
+    const issued = new Date()
+    const callId = `call:${randomUUID()}` as LaboratoryId<'call'>
+    const toolId = 'tool:supervisory-host' as LaboratoryId<'tool'>
+    return {
+      authority, context: { workspaceId, actorId, callId, toolId },
+      capability: {
+        protocolVersion: '1.0', capabilityId: `capability:${randomUUID()}`,
+        workspaceId, actorId, toolId, callId, operations,
+        issuedAt: issued.toISOString(), expiresAt: new Date(issued.getTime() + 60_000).toISOString(),
+        nonce: randomUUID(),
+      },
+    }
   }
 }

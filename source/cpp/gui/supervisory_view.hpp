@@ -8,6 +8,7 @@
 
 class QComboBox;
 class QLabel;
+class QLineEdit;
 class QListWidget;
 class QPushButton;
 class QPlainTextEdit;
@@ -34,6 +35,8 @@ private:
     void start_process();
     void load_workspaces();
     void load_goals();
+    void create_workspace();
+    void create_goal();
     void inspect_selected_workspace();
     void execute_selected_tool();
     void decide_selected_installation(bool approve);
@@ -54,6 +57,12 @@ private:
     QComboBox* workspace_selector_{};
     QComboBox* goal_selector_{};
     QPushButton* refresh_button_{};
+    QLineEdit* new_workspace_id_{};
+    QPushButton* create_workspace_{};
+    QLineEdit* new_goal_id_{};
+    QPlainTextEdit* new_goal_objective_{};
+    QPushButton* create_goal_{};
+    QLabel* creation_result_{};
     QLabel* resources_{};
     QLabel* approved_plan_{};
     QLabel* goal_progress_{};

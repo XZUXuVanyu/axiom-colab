@@ -8,6 +8,7 @@ import {
   LocalApplicationHost, LocalApplicationHostError, LocalCandidateRepository,
   InvocationLedger, LocalGoalLifecycle, LocalMemoryStore, MemoryWorkflows,
   contentHash, installationProposalBinding,
+  createLocalApprovedPlanReader,
 } from '../../dist/index.js'
 import { ToolWorkshop } from '../../dist/tool-workshop.js'
 
@@ -59,6 +60,32 @@ test('application host initializes discovery, enumerates workspaces, and owns sh
     () => host.workspaces(),
     (error: unknown) => error instanceof LocalApplicationHostError && error.code === 'HOST_CLOSED',
   )
+})
+
+test('application host creates workspaces and registers goals only after exact user plan approval', async () => {
+  const value = fixture()
+  value.lifecycle.close()
+  const approvedPlan = createLocalApprovedPlanReader(value.workflows, 'actor:host')
+  const lifecycle = new LocalGoalLifecycle(join(value.root, 'creation-lifecycle.sqlite3'), {
+    approvedPlan, async stopGoal() {}, async resumeGoal() {}, async revokeCapability() {}, async recoverWorkspace() {},
+  })
+  const host = new LocalApplicationHost({
+    ...value, lifecycle, validator: { isPromotionEligible: () => false },
+    hostActorId: 'actor:host', userActorId: 'actor:local-user',
+    createInstallation: () => ({ rediscover: () => [] }),
+  } as any)
+  await host.initialize()
+  assert.deepEqual(host.createWorkspace('workspace:new'), { workspaceId: 'workspace:new' })
+  const created = host.createGoal('workspace:new', 'goal:new', 'Inspect exact evidence.')
+  assert.equal(created.objective, 'Inspect exact evidence.')
+  assert.match(created.planRevisionId, /^object:/)
+  assert.match(created.planHash, /^sha256:[0-9a-f]{64}$/)
+  assert.deepEqual(host.goals('workspace:new'), ['goal:new'])
+  const plan = approvedPlan('workspace:new', 'goal:new')
+  assert.equal(plan?.value.objective, 'Inspect exact evidence.')
+  assert.equal(plan?.id, created.planRevisionId)
+  assert.throws(() => host.createGoal('workspace:new', 'goal:new', 'Changed objective.'), (error: unknown) => (error as any).code === 'GOAL_ALREADY_REGISTERED')
+  host.close()
 })
 
 test('application host rolls back startup registration when rediscovery fails', async () => {

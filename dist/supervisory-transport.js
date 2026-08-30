@@ -124,6 +124,30 @@ function parseRequest(text, maxBytes) {
         if (typeof value.workspaceId !== 'string' || !/^workspace:[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(value.workspaceId)) fail('INVALID_WORKSPACE_ID', 'workspace identity is malformed');
         return value;
     }
+    if (value.operation === 'create-workspace') {
+        exact(value, [
+            'protocolVersion',
+            'id',
+            'operation',
+            'workspaceId'
+        ]);
+        if (typeof value.workspaceId !== 'string' || !/^workspace:[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(value.workspaceId)) fail('INVALID_WORKSPACE_ID', 'workspace identity is malformed');
+        return value;
+    }
+    if (value.operation === 'create-goal') {
+        exact(value, [
+            'protocolVersion',
+            'id',
+            'operation',
+            'workspaceId',
+            'goalId',
+            'objective'
+        ]);
+        if (typeof value.workspaceId !== 'string' || !/^workspace:[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(value.workspaceId)) fail('INVALID_WORKSPACE_ID', 'workspace identity is malformed');
+        if (typeof value.goalId !== 'string' || !/^goal:[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(value.goalId)) fail('INVALID_GOAL_ID', 'goal identity is malformed');
+        if (typeof value.objective !== 'string' || value.objective.length === 0 || value.objective.length > 16_384) fail('INVALID_GOAL_OBJECTIVE', 'goal objective must contain 1..16384 characters');
+        return value;
+    }
     if (value.operation === 'inspect') {
         exact(value, [
             'protocolVersion',
@@ -304,7 +328,7 @@ export class SupervisoryTransport {
                 goals: [
                     ...this.host.goals(request.workspaceId)
                 ]
-            } : request.operation === 'inspect' ? await this.host.inspect(request.workspaceId, request.goalId) : request.operation === 'execute-tool' ? await this.host.executeTool(request.workspaceId, request.goalId, request.tool, request.arguments) : request.operation === 'decide-installation' ? await this.host.decideInstallation(request.workspaceId, request.proposalId, request.proposalHash, request.decision) : request.operation === 'submit-hidden-challenge' ? await this.host.submitHiddenChallenge(request.workspaceId, request.revisionId, request.candidateHash, request.fixtures, request.commands) : request.operation === 'revise-candidate' ? this.host.reviseCandidate(request.workspaceId, request.parentRevisionId, request.parentCandidateHash, request.descriptor, request.sources) : request.operation === 'create-candidate' ? this.host.createCandidate(request.workspaceId, request.specification, request.descriptor, request.sources) : request.operation === 'stop-goal' ? (await this.host.stopGoal(request.workspaceId, request.goalId, request.planRevisionId, request.planHash), {
+            } : request.operation === 'create-workspace' ? this.host.createWorkspace(request.workspaceId) : request.operation === 'create-goal' ? this.host.createGoal(request.workspaceId, request.goalId, request.objective) : request.operation === 'inspect' ? await this.host.inspect(request.workspaceId, request.goalId) : request.operation === 'execute-tool' ? await this.host.executeTool(request.workspaceId, request.goalId, request.tool, request.arguments) : request.operation === 'decide-installation' ? await this.host.decideInstallation(request.workspaceId, request.proposalId, request.proposalHash, request.decision) : request.operation === 'submit-hidden-challenge' ? await this.host.submitHiddenChallenge(request.workspaceId, request.revisionId, request.candidateHash, request.fixtures, request.commands) : request.operation === 'revise-candidate' ? this.host.reviseCandidate(request.workspaceId, request.parentRevisionId, request.parentCandidateHash, request.descriptor, request.sources) : request.operation === 'create-candidate' ? this.host.createCandidate(request.workspaceId, request.specification, request.descriptor, request.sources) : request.operation === 'stop-goal' ? (await this.host.stopGoal(request.workspaceId, request.goalId, request.planRevisionId, request.planHash), {
                 workspaceId: request.workspaceId,
                 goalId: request.goalId,
                 action: 'stopped'

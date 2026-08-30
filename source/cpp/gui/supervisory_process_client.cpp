@@ -120,6 +120,32 @@ std::string SupervisoryProcessClient::list_goals(
     }), std::move(handler));
 }
 
+std::string SupervisoryProcessClient::create_workspace(
+    std::string_view workspace_id, ResponseHandler handler) {
+    if (!valid_identity(workspace_id, "workspace:")) {
+        throw std::invalid_argument("workspace identity is malformed");
+    }
+    return send_request(Json::object({
+        {"protocolVersion", "1.1"}, {"operation", "create-workspace"},
+        {"workspaceId", std::string(workspace_id)},
+    }), std::move(handler));
+}
+
+std::string SupervisoryProcessClient::create_goal(
+    std::string_view workspace_id, std::string_view goal_id,
+    std::string_view objective, ResponseHandler handler) {
+    if (!valid_identity(workspace_id, "workspace:")
+        || !valid_identity(goal_id, "goal:") || objective.empty()
+        || objective.size() > 16 * 1024) {
+        throw std::invalid_argument("goal creation input is malformed");
+    }
+    return send_request(Json::object({
+        {"protocolVersion", "1.1"}, {"operation", "create-goal"},
+        {"workspaceId", std::string(workspace_id)},
+        {"goalId", std::string(goal_id)}, {"objective", std::string(objective)},
+    }), std::move(handler));
+}
+
 std::string SupervisoryProcessClient::inspect(
     std::string_view workspace_id, std::optional<std::string_view> goal_id,
     ResponseHandler handler) {

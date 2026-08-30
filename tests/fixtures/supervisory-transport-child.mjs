@@ -28,10 +28,24 @@ const candidate = {
 let goalStopped = false
 let capabilityRevoked = false
 let recoveryRequired = true
+const workspaces = ['workspace:alpha', 'workspace:beta']
+const goals = new Map([['workspace:alpha', ['goal:one']], ['workspace:beta', []]])
+const objectives = new Map([['goal:one', 'Inspect authoritative state.']])
 
 const host = {
-  workspaces() { return ['workspace:alpha', 'workspace:beta'] },
-  goals(workspaceId) { return workspaceId === 'workspace:alpha' ? ['goal:one'] : [] },
+  workspaces() { return [...workspaces].sort() },
+  goals(workspaceId) { return goals.get(workspaceId) ?? [] },
+  createWorkspace(workspaceId) {
+    if (workspaces.includes(workspaceId)) throw Object.assign(new Error('workspace exists'), { code: 'WORKSPACE_ALREADY_EXISTS' })
+    workspaces.push(workspaceId); goals.set(workspaceId, []); return { workspaceId }
+  },
+  createGoal(workspaceId, goalId, objective) {
+    const visible = goals.get(workspaceId)
+    if (visible === undefined) throw Object.assign(new Error('workspace missing'), { code: 'WORKSPACE_NOT_FOUND' })
+    if (visible.includes(goalId)) throw Object.assign(new Error('goal exists'), { code: 'GOAL_ALREADY_REGISTERED' })
+    visible.push(goalId); objectives.set(goalId, objective)
+    return { workspaceId, goalId, objective, planRevisionId: 'object:new-plan', planHash: hash('a') }
+  },
   async executeTool(workspaceId, goalId, tool, args) {
     return { workspaceId, goalId, callId: 'call:fixture', tool, result: { sum: args.left + args.right }, reportArtifactId: 'object:report', reportHash: `sha256:${'7'.repeat(64)}` }
   },
@@ -116,7 +130,7 @@ const host = {
       workspaceId, goalId,
       currentPlan: goalId === null ? null : {
         revisionId: 'object:plan', hash: `sha256:${'1'.repeat(64)}`,
-        objective: 'Inspect authoritative state.', approved: true,
+        objective: objectives.get(goalId) ?? 'Inspect authoritative state.', approved: true,
       },
       progress: null, observations: [],
       memory: {

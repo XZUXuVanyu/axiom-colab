@@ -4,6 +4,18 @@ Last updated: 2026-08-30
 
 ## Current state
 
+- Qt now creates workspaces and goals through narrow host-owned operations.
+  Newly created identities are selected only after strict correlated responses
+  and authoritative workspace/goal list refreshes.
+- Goal creation captures the objective in a trusted-host working proposal,
+  commits it only through the configured user authority, and registers the
+  lifecycle goal only against the resulting exact plan revision/hash. Qt does
+  not write the memory or lifecycle databases and displays the committed
+  binding returned by the host.
+- Retrying after the plan commit but before lifecycle registration reuses only
+  an exact matching approved plan; changed objectives and duplicate registered
+  goals fail closed.
+
 - Qt now renders and invokes host-projected stop, resume, capability-revocation,
   and workspace-recovery controls. Every result is strictly correlated and the
   view refreshes authoritative inspection instead of changing control state
@@ -913,13 +925,13 @@ installation controls:
 
 ## Exact next work
 
-Add workspace and goal creation through narrow host-owned services, including
-the approved working-plan path required before lifecycle registration. Keep
-model-authored objectives distinct from user approval, bind the registered goal
-to the exact committed plan revision/hash, and refresh authoritative selectors
-without allowing Qt to write memory or lifecycle databases directly.
-Keep installed-candidate execution absent until the executable loading strategy
-preserves its exact candidate and installation evidence hashes.
+Continue the new-Tool GUI path from an approved installation proposal through
+one explicit host-owned installation action and authoritative rediscovery.
+Bind the action to the exact approval, candidate, validation, proposal, and
+permission hashes already projected in the UI; refresh inspection rather than
+letting Qt infer installation from files or approval state. Keep installed-
+candidate execution absent until an executable loading strategy preserves its
+exact candidate and installation-evidence hashes.
 
 Keep the WSL integration suite opt-in for portable CI, and run it explicitly on
 the supported Windows/Ubuntu composition before changing its confinement

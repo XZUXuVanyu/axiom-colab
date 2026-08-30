@@ -6,6 +6,7 @@
 #include <QElapsedTimer>
 #include <QLabel>
 #include <QListWidget>
+#include <QLineEdit>
 #include <QPlainTextEdit>
 #include <QPushButton>
 #include <QThread>
@@ -51,6 +52,12 @@ int main(int argc, char* argv[]) {
     auto* revoke_capability = view.findChild<QPushButton*>("revokeCapability");
     auto* recover_workspace = view.findChild<QPushButton*>("recoverWorkspace");
     auto* lifecycle_result = view.findChild<QLabel*>("lifecycleResult");
+    auto* new_workspace_id = view.findChild<QLineEdit*>("newWorkspaceId");
+    auto* create_workspace = view.findChild<QPushButton*>("createWorkspace");
+    auto* new_goal_id = view.findChild<QLineEdit*>("newGoalId");
+    auto* new_goal_objective = view.findChild<QPlainTextEdit*>("newGoalObjective");
+    auto* create_goal = view.findChild<QPushButton*>("createGoal");
+    auto* creation_result = view.findChild<QLabel*>("creationResult");
     if (workspaces == nullptr || goals == nullptr || resources == nullptr
         || plan == nullptr || status == nullptr || compute == nullptr
         || working == nullptr || artifacts == nullptr) {
@@ -67,6 +74,12 @@ int main(int argc, char* argv[]) {
         || capabilities == nullptr || revoke_capability == nullptr
         || recover_workspace == nullptr || lifecycle_result == nullptr) {
         std::cerr << "[FAIL] Tool execution widgets are not inspectable\n";
+        return 1;
+    }
+    if (new_workspace_id == nullptr || create_workspace == nullptr
+        || new_goal_id == nullptr || new_goal_objective == nullptr
+        || create_goal == nullptr || creation_result == nullptr) {
+        std::cerr << "[FAIL] workspace and goal creation widgets are not inspectable\n";
         return 1;
     }
 
@@ -257,6 +270,45 @@ int main(int argc, char* argv[]) {
         || !initial_result->toolTip().contains("evidence:initial")
         || !initial_input->toPlainText().isEmpty()) {
         std::cerr << "[FAIL] initial candidate creation did not render or clear source input\n";
+        return 1;
+    }
+    timer.restart();
+    while (timer.elapsed() < 5000 && !create_workspace->isEnabled()) {
+        application.processEvents(); QThread::msleep(10);
+    }
+    new_workspace_id->setText("workspace:new");
+    create_workspace->click();
+    timer.restart();
+    while (timer.elapsed() < 5000
+           && workspaces->currentText() != "workspace:new") {
+        application.processEvents(); QThread::msleep(10);
+    }
+    if (workspaces->currentText() != "workspace:new"
+        || !creation_result->text().contains("host-owned store")) {
+        std::cerr << "[FAIL] host workspace creation did not refresh selection: workspace="
+                  << workspaces->currentText().toStdString() << " result="
+                  << creation_result->text().toStdString() << " status="
+                  << status->text().toStdString() << "\n";
+        return 1;
+    }
+    timer.restart();
+    while (timer.elapsed() < 5000 && !create_goal->isEnabled()) {
+        application.processEvents(); QThread::msleep(10);
+    }
+    new_goal_id->setText("goal:new");
+    new_goal_objective->setPlainText("Approve and inspect this plan.");
+    create_goal->click();
+    timer.restart();
+    while (timer.elapsed() < 5000 && goals->currentText() != "goal:new") {
+        application.processEvents(); QThread::msleep(10);
+    }
+    if (goals->currentText() != "goal:new"
+        || !creation_result->text().contains("exact user approval")
+        || !creation_result->toolTip().contains("object:new-plan")) {
+        std::cerr << "[FAIL] approved goal creation did not refresh authoritative selection: goal="
+                  << goals->currentText().toStdString() << " result="
+                  << creation_result->text().toStdString() << " status="
+                  << status->text().toStdString() << "\n";
         return 1;
     }
     std::cout << "[PASS] supervisory view renders workspace resources\n";

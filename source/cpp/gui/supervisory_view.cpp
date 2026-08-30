@@ -6,12 +6,16 @@
 #include <QGroupBox>
 #include <QHBoxLayout>
 #include <QLabel>
+#include <QLineEdit>
 #include <QListWidget>
 #include <QPushButton>
 #include <QPlainTextEdit>
 #include <QVBoxLayout>
+#include <QVariant>
 
 #include <optional>
+#include <algorithm>
+#include <cctype>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -68,6 +72,25 @@ QString text(const std::string& value) {
     return QString::fromUtf8(value.data(), static_cast<qsizetype>(value.size()));
 }
 
+bool valid_identity(std::string_view value, std::string_view prefix) {
+    if (!value.starts_with(prefix) || value.size() <= prefix.size()
+        || value.size() > prefix.size() + 128) return false;
+    return std::isalnum(static_cast<unsigned char>(value[prefix.size()])) != 0
+        && std::all_of(value.begin() + static_cast<std::ptrdiff_t>(prefix.size()), value.end(),
+            [](char character) {
+                return std::isalnum(static_cast<unsigned char>(character)) != 0
+                    || character == '.' || character == '_' || character == '-';
+            });
+}
+
+bool valid_hash(std::string_view value) {
+    return value.size() == 71 && value.starts_with("sha256:")
+        && std::all_of(value.begin() + 7, value.end(), [](char character) {
+            return (character >= '0' && character <= '9')
+                || (character >= 'a' && character <= 'f');
+        });
+}
+
 QString optional_state(const Json& value, std::string_view field,
                        std::string_view nested_field) {
     const Json& member = value.at(field);
@@ -121,7 +144,7 @@ void SupervisoryView::build_ui() {
     heading->setFont(heading_font);
     page->addWidget(heading);
     page->addWidget(new QLabel(
-        "Host-verified workspace state with a constrained policy-scoped Tool command path. This view cannot approve or install.",
+        "Host-verified workspace state with constrained creation, approval, lifecycle, and policy-scoped Tool paths. This view cannot install or write authority stores directly.",
         this));
 
     auto* selection = new QHBoxLayout();
@@ -142,6 +165,39 @@ void SupervisoryView::build_ui() {
     selection->addStretch();
     selection->addWidget(connection_status_);
     page->addLayout(selection);
+
+    auto* creation_group = new QGroupBox("Create supervised workspace or goal", this);
+    auto* creation_layout = new QGridLayout(creation_group);
+    new_workspace_id_ = new QLineEdit(creation_group);
+    new_workspace_id_->setObjectName("newWorkspaceId");
+    new_workspace_id_->setPlaceholderText("workspace:research");
+    create_workspace_ = new QPushButton("Create workspace", creation_group);
+    create_workspace_->setObjectName("createWorkspace");
+    new_goal_id_ = new QLineEdit(creation_group);
+    new_goal_id_->setObjectName("newGoalId");
+    new_goal_id_->setPlaceholderText("goal:investigate");
+    new_goal_objective_ = new QPlainTextEdit(creation_group);
+    new_goal_objective_->setObjectName("newGoalObjective");
+    new_goal_objective_->setPlaceholderText("Objective to commit as the exact user-approved working plan.");
+    new_goal_objective_->setMaximumHeight(70);
+    create_goal_ = new QPushButton("Approve plan and create goal", creation_group);
+    create_goal_->setObjectName("createGoal");
+    creation_result_ = new QLabel(
+        "Goal creation records a host proposal and an exact user approval before lifecycle registration.",
+        creation_group);
+    creation_result_->setObjectName("creationResult");
+    creation_result_->setWordWrap(true);
+    creation_result_->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    creation_layout->addWidget(new QLabel("New workspace identity", creation_group), 0, 0);
+    creation_layout->addWidget(new_workspace_id_, 0, 1);
+    creation_layout->addWidget(create_workspace_, 0, 2);
+    creation_layout->addWidget(new QLabel("New goal identity", creation_group), 1, 0);
+    creation_layout->addWidget(new_goal_id_, 1, 1);
+    creation_layout->addWidget(create_goal_, 1, 2);
+    creation_layout->addWidget(new QLabel("Approved objective", creation_group), 2, 0);
+    creation_layout->addWidget(new_goal_objective_, 2, 1, 1, 2);
+    creation_layout->addWidget(creation_result_, 3, 0, 1, 3);
+    page->addWidget(creation_group);
 
     auto* resource_group = new QGroupBox("Resources", this);
     auto* resource_layout = new QVBoxLayout(resource_group);
@@ -301,6 +357,10 @@ void SupervisoryView::build_ui() {
 
     connect(refresh_button_, &QPushButton::clicked, this,
             &SupervisoryView::load_workspaces);
+    connect(create_workspace_, &QPushButton::clicked, this,
+            &SupervisoryView::create_workspace);
+    connect(create_goal_, &QPushButton::clicked, this,
+            &SupervisoryView::create_goal);
     connect(workspace_selector_, qOverload<int>(&QComboBox::currentIndexChanged), this,
             [this](int index) {
                 if (index >= 0 && !busy_) load_goals();
@@ -345,6 +405,66 @@ void SupervisoryView::build_ui() {
             [this](int row) { revoke_capability_->setEnabled(row >= 0 && !busy_); });
 }
 
+void SupervisoryView::create_workspace() {
+    const std::string workspace = new_workspace_id_->text().toStdString();
+    set_busy(true);
+    try {
+        (void)client_.create_workspace(workspace,
+            [this, workspace](const SupervisoryResponse* response, const std::string* error) {
+                if (error != nullptr) { show_error(text(*error)); set_busy(false); return; }
+                try {
+                    const auto& result = require_object(response->result, "workspace creation result");
+                    exact_fields(result, {"workspaceId"}, "workspace creation result");
+                    if (string_field(response->result, "workspaceId") != workspace) {
+                        throw SupervisoryResponseError("workspace creation result does not match the request");
+                    }
+                    creation_result_->setText("Created " + text(workspace) + " through the host-owned store.");
+                    new_workspace_id_->clear();
+                    workspace_selector_->setProperty("selectAfterReload", text(workspace));
+                    set_busy(false);
+                    load_workspaces();
+                } catch (const std::exception& decode_error) {
+                    show_error(QString::fromUtf8(decode_error.what())); set_busy(false);
+                }
+            });
+    } catch (const std::exception& error) { show_error(QString::fromUtf8(error.what())); set_busy(false); }
+}
+
+void SupervisoryView::create_goal() {
+    if (workspace_selector_->currentText().isEmpty()) { show_error("Select a workspace first"); return; }
+    const std::string workspace = workspace_selector_->currentText().toStdString();
+    const std::string goal = new_goal_id_->text().toStdString();
+    const std::string objective = new_goal_objective_->toPlainText().toStdString();
+    set_busy(true);
+    try {
+        (void)client_.create_goal(workspace, goal, objective,
+            [this, workspace, goal, objective](const SupervisoryResponse* response, const std::string* error) {
+                if (error != nullptr) { show_error(text(*error)); set_busy(false); return; }
+                try {
+                    const auto& result = require_object(response->result, "goal creation result");
+                    exact_fields(result, {"workspaceId", "goalId", "objective", "planRevisionId", "planHash"}, "goal creation result");
+                    if (string_field(response->result, "workspaceId") != workspace
+                        || string_field(response->result, "goalId") != goal
+                        || string_field(response->result, "objective") != objective) {
+                        throw SupervisoryResponseError("goal creation result does not match the request");
+                    }
+                    const std::string& revision = string_field(response->result, "planRevisionId");
+                    const std::string& hash = string_field(response->result, "planHash");
+                    if (!valid_identity(revision, "object:") || !valid_hash(hash)) {
+                        throw SupervisoryResponseError("goal creation returned a malformed approved-plan binding");
+                    }
+                    creation_result_->setText("Created " + text(goal) + " after exact user approval.");
+                    creation_result_->setToolTip("Plan revision: " + text(revision) + "\nPlan hash: " + text(hash));
+                    new_goal_id_->clear(); new_goal_objective_->clear();
+                    goal_selector_->setProperty("selectAfterReload", text(goal));
+                    set_busy(false); load_goals();
+                } catch (const std::exception& decode_error) {
+                    show_error(QString::fromUtf8(decode_error.what())); set_busy(false);
+                }
+            });
+    } catch (const std::exception& error) { show_error(QString::fromUtf8(error.what())); set_busy(false); }
+}
+
 void SupervisoryView::start_process() {
     if (config_path_.isEmpty()) {
         show_error("Not connected: start with --supervisory-config <absolute-config.json>");
@@ -374,7 +494,9 @@ void SupervisoryView::load_workspaces() {
                 }
                 try {
                     const auto workspaces = parse_workspace_list_result(*response);
-                    const QString previous = workspace_selector_->currentText();
+                    QString previous = workspace_selector_->property("selectAfterReload").toString();
+                    if (previous.isEmpty()) previous = workspace_selector_->currentText();
+                    workspace_selector_->setProperty("selectAfterReload", QVariant{});
                     workspace_selector_->blockSignals(true);
                     workspace_selector_->clear();
                     for (const auto& workspace : workspaces) {
@@ -434,6 +556,12 @@ void SupervisoryView::load_goals() {
                     goal_selector_->addItem("Workspace overview");
                     for (const auto& goal : result.goals) {
                         goal_selector_->addItem(text(goal));
+                    }
+                    const QString requested_goal = goal_selector_->property("selectAfterReload").toString();
+                    if (!requested_goal.isEmpty()) {
+                        const int requested_index = goal_selector_->findText(requested_goal);
+                        if (requested_index >= 0) goal_selector_->setCurrentIndex(requested_index);
+                        goal_selector_->setProperty("selectAfterReload", QVariant{});
                     }
                     goal_selector_->blockSignals(false);
                     set_busy(false);
@@ -1110,6 +1238,12 @@ void SupervisoryView::show_error(const QString& message) {
 void SupervisoryView::set_busy(bool busy) {
     busy_ = busy;
     refresh_button_->setEnabled(!busy && client_.is_running());
+    create_workspace_->setEnabled(!busy && client_.is_running());
+    create_goal_->setEnabled(!busy && client_.is_running()
+        && !workspace_selector_->currentText().isEmpty());
+    new_workspace_id_->setEnabled(!busy);
+    new_goal_id_->setEnabled(!busy);
+    new_goal_objective_->setEnabled(!busy);
     workspace_selector_->setEnabled(!busy);
     goal_selector_->setEnabled(!busy);
     execute_button_->setEnabled(!busy && client_.is_running()

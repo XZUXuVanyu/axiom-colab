@@ -4,6 +4,40 @@ Entries are chronological. Each entry corresponds to one logical Git commit and
 records its exact subject, purpose, material changes, and validation actually
 performed.
 
+## 2026-08-30 - feat(gui): create supervised workspaces and goals
+
+Purpose: continue Stage 8 with the daily-use entry path while preserving the
+authority split between a proposed objective, user approval, committed working
+memory, and lifecycle registration.
+
+Material changes:
+
+- Added strict supervisory operations for workspace creation and goal creation.
+- Made the production host create a goal plan as a trusted-host proposal,
+  approve it only with the configured user actor, and register the lifecycle
+  goal against the exact committed revision and hash.
+- Added retry-safe reuse of an exact matching approved plan after a partial
+  goal-creation interruption; duplicate goals and changed objectives fail
+  closed.
+- Added Qt workspace/goal creation controls with strict correlated result
+  decoding, committed-plan binding display, cleared input, and authoritative
+  selector refresh.
+
+Validation actually run:
+
+- `pnpm.cmd test`: all 88 TypeScript tests passed and regenerated `dist/`.
+- A fresh Visual Studio 2026 Release tree configured against the intact Qt
+  6.12.0 kit compiled the supervisory process and view tests with warnings as
+  errors.
+- Release `ctest -R "axiom-supervisory-(view|process)"`: both tests passed.
+- `pnpm.cmd run test:integration`: five Bridge/built-in/production-host tests
+  passed; the three WSL confinement tests skipped by the portable command.
+- `git diff --check`: passed with newline-conversion notices only.
+- The pre-existing `build/windows` tree remained bound to the damaged Qt
+  6.11.2 headers despite cache overrides and failed at its incomplete
+  `QApplication` header; the fresh `build/windows-qt612` tree was used for the
+  valid compile and test result.
+
 ## 2026-08-30 - feat(gui): expose host-owned lifecycle controls
 
 Purpose: complete the Stage 8 stop, revoke, resume, and recovery path without
