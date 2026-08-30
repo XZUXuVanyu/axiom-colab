@@ -302,14 +302,25 @@ void SupervisoryView::build_ui() {
     reject_candidate_->setObjectName("rejectCandidate");
     approve_candidate_->setEnabled(false);
     reject_candidate_->setEnabled(false);
+    install_candidate_ = new QPushButton("Install exact approved candidate", candidate_evidence);
+    install_candidate_->setObjectName("installCandidate");
+    install_candidate_->setEnabled(false);
     candidate_actions->addWidget(approve_candidate_);
     candidate_actions->addWidget(reject_candidate_);
+    candidate_actions->addWidget(install_candidate_);
     submit_hidden_challenge_ = new QPushButton("Run hidden challenge", candidate_evidence);
     submit_hidden_challenge_->setObjectName("submitHiddenChallenge");
     submit_hidden_challenge_->setEnabled(false);
     candidate_actions->addWidget(submit_hidden_challenge_);
     candidate_actions->addStretch();
     candidate_evidence_layout->addLayout(candidate_actions);
+    installation_result_ = new QLabel(
+        "Installation requires an exact approved proposal and remains non-executable until a verified loader exists.",
+        candidate_evidence);
+    installation_result_->setObjectName("installationResult");
+    installation_result_->setWordWrap(true);
+    installation_result_->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    candidate_evidence_layout->addWidget(installation_result_);
     candidate_details_ = new QPlainTextEdit(candidate_evidence);
     candidate_details_->setObjectName("candidateDetails");
     candidate_details_->setReadOnly(true);
@@ -349,6 +360,7 @@ void SupervisoryView::build_ui() {
     candidate_evidence_layout->addWidget(candidate_revision_result_);
     summaries->addWidget(candidate_evidence, 4, 0, 1, 2);
     compute_memory_->setObjectName("computeMemory");
+    tools_->setObjectName("discoveredTools");
     working_memory_->setObjectName("workingMemory");
     artifacts_->setObjectName("artifactLineage");
     summaries->setRowStretch(0, 1);
@@ -384,11 +396,16 @@ void SupervisoryView::build_ui() {
                     && !item->data(Qt::UserRole + 3).toString().isEmpty();
                 submit_hidden_challenge_->setEnabled(current && !busy_);
                 revise_candidate_->setEnabled(current && !busy_);
+                const bool installable = item != nullptr
+                    && !item->data(Qt::UserRole + 5).toString().isEmpty();
+                install_candidate_->setEnabled(installable && !busy_);
             });
     connect(approve_candidate_, &QPushButton::clicked, this,
             [this] { decide_selected_installation(true); });
     connect(reject_candidate_, &QPushButton::clicked, this,
             [this] { decide_selected_installation(false); });
+    connect(install_candidate_, &QPushButton::clicked, this,
+            &SupervisoryView::install_selected_candidate);
     connect(submit_hidden_challenge_, &QPushButton::clicked, this,
             &SupervisoryView::submit_selected_hidden_challenge);
     connect(revise_candidate_, &QPushButton::clicked, this,
@@ -690,6 +707,55 @@ void SupervisoryView::decide_selected_installation(bool approve) {
                         *response, workspace, proposal_id, proposal_hash, decision);
                     set_busy(false);
                     inspect_selected_workspace();
+                } catch (const std::exception& decode_error) {
+                    show_error(QString::fromUtf8(decode_error.what())); set_busy(false);
+                }
+            });
+    } catch (const std::exception& error) {
+        show_error(QString::fromUtf8(error.what())); set_busy(false);
+    }
+}
+
+void SupervisoryView::install_selected_candidate() {
+    auto* item = candidates_->currentItem();
+    if (item == nullptr || workspace_selector_->currentText().isEmpty()
+        || item->data(Qt::UserRole + 5).toString().isEmpty()) {
+        show_error("Select an exact approved, not-yet-installed candidate first");
+        return;
+    }
+    const std::string workspace = workspace_selector_->currentText().toStdString();
+    Json binding;
+    try { binding = Json::parse(item->data(Qt::UserRole + 5).toString().toStdString()); }
+    catch (const std::exception& error) { show_error(QString::fromUtf8(error.what())); return; }
+    const std::string proposal_id = string_field(binding, "proposalId");
+    const std::string approval_id = string_field(binding, "approvalId");
+    const std::string candidate_hash = string_field(binding, "candidateHash");
+    set_busy(true);
+    try {
+        (void)client_.install_candidate(workspace, binding,
+            [this, workspace, proposal_id, approval_id, candidate_hash](
+                const SupervisoryResponse* response, const std::string* error) {
+                if (error != nullptr) { show_error(text(*error)); set_busy(false); return; }
+                try {
+                    if (!response->ok) throw SupervisoryResponseError(
+                        response->error_code + ": " + response->error_message);
+                    const auto& result = require_object(response->result, "installation result");
+                    exact_fields(result, {"workspaceId", "installationId", "proposalId", "approvalId",
+                        "candidateHash", "evidenceHash", "outcome"}, "installation result");
+                    const std::string& installation_id = string_field(response->result, "installationId");
+                    const std::string& evidence_hash = string_field(response->result, "evidenceHash");
+                    if (string_field(response->result, "workspaceId") != workspace
+                        || string_field(response->result, "proposalId") != proposal_id
+                        || string_field(response->result, "approvalId") != approval_id
+                        || string_field(response->result, "candidateHash") != candidate_hash
+                        || string_field(response->result, "outcome") != "installed"
+                        || !valid_identity(installation_id, "evidence:") || !valid_hash(evidence_hash)) {
+                        throw SupervisoryResponseError("installation result does not match the exact approved candidate");
+                    }
+                    installation_result_->setText("Installed exact approved candidate; executable loading remains disabled.");
+                    installation_result_->setToolTip("Installation: " + text(installation_id)
+                        + "\nEvidence hash: " + text(evidence_hash));
+                    set_busy(false); inspect_selected_workspace();
                 } catch (const std::exception& decode_error) {
                     show_error(QString::fromUtf8(decode_error.what())); set_busy(false);
                 }
@@ -1121,16 +1187,51 @@ void SupervisoryView::render(const SupervisoryWorkspaceInspection& inspection) {
         item->setData(Qt::UserRole, detail);
         const Json& proposal = candidate.at("proposal");
         if (!proposal.is_null()) {
-            require_object(proposal, "installation proposal");
-            detail += QString("\n\nInstallation proposal: %1 [%2]\nProposal hash: %3\nValidation: %4\nValidation record: %5\nCandidate snapshot: %6\nRequested permissions: %7")
+            const auto& proposal_object = require_object(proposal, "installation proposal");
+            exact_fields(proposal_object, {"proposalId", "proposalHash", "validationId",
+                "validationRecordHash", "candidateSnapshotHash", "requestedPermissions",
+                "permissionsHash", "state"}, "installation proposal");
+            detail += QString("\n\nInstallation proposal: %1 [%2]\nProposal hash: %3\nValidation: %4\nValidation record: %5\nCandidate snapshot: %6\nRequested permissions: %7\nPermissions hash: %8")
                 .arg(text(string_field(proposal, "proposalId")), text(string_field(proposal, "state")),
                      text(string_field(proposal, "proposalHash")), text(string_field(proposal, "validationId")),
                      text(string_field(proposal, "validationRecordHash")), text(string_field(proposal, "candidateSnapshotHash")),
-                     text(proposal.at("requestedPermissions").dump()));
+                     text(proposal.at("requestedPermissions").dump()), text(string_field(proposal, "permissionsHash")));
             item->setData(Qt::UserRole, detail);
             if (string_field(proposal, "state") == "proposed") {
                 item->setData(Qt::UserRole + 1, text(string_field(proposal, "proposalId")));
                 item->setData(Qt::UserRole + 2, text(string_field(proposal, "proposalHash")));
+            }
+            const Json& approval_value = candidate.at("approval");
+            const Json& installation_value = candidate.at("installation");
+            if (!approval_value.is_null()) {
+                const auto& approval_object = require_object(approval_value, "installation approval");
+                exact_fields(approval_object, {"proposalId", "proposalHash", "approvalId",
+                    "approvalHash", "decision"}, "installation approval");
+                const Json& approval_id = approval_value.at("approvalId");
+                const Json& approval_hash = approval_value.at("approvalHash");
+                if (string_field(approval_value, "decision") == "approved") {
+                    if (!approval_id.is_string() || !approval_hash.is_string()) {
+                        throw SupervisoryResponseError("approved installation decision lacks authoritative approval hashes");
+                    }
+                    detail += "\nApproval: " + text(approval_id.as_string())
+                        + "\nApproval hash: " + text(approval_hash.as_string());
+                    item->setData(Qt::UserRole, detail);
+                    if (installation_value.is_null()) {
+                        item->setData(Qt::UserRole + 5, text(Json::object({
+                            {"proposalId", string_field(proposal, "proposalId")},
+                            {"proposalHash", string_field(proposal, "proposalHash")},
+                            {"approvalId", approval_id.as_string()},
+                            {"approvalHash", approval_hash.as_string()},
+                            {"candidateHash", string_field(candidate, "candidateHash")},
+                            {"validationId", string_field(proposal, "validationId")},
+                            {"validationRecordHash", string_field(proposal, "validationRecordHash")},
+                            {"candidateSnapshotHash", string_field(proposal, "candidateSnapshotHash")},
+                            {"permissionsHash", string_field(proposal, "permissionsHash")},
+                        }).dump()));
+                    }
+                } else if (!approval_id.is_null() || !approval_hash.is_null()) {
+                    throw SupervisoryResponseError("rejected decision cannot carry approval authority hashes");
+                }
             }
         }
     }
@@ -1253,6 +1354,9 @@ void SupervisoryView::set_busy(bool busy) {
         && !candidates_->currentItem()->data(Qt::UserRole + 1).toString().isEmpty();
     approve_candidate_->setEnabled(!busy && pending_proposal && client_.is_running());
     reject_candidate_->setEnabled(!busy && pending_proposal && client_.is_running());
+    const bool installable_candidate = candidates_->currentItem() != nullptr
+        && !candidates_->currentItem()->data(Qt::UserRole + 5).toString().isEmpty();
+    install_candidate_->setEnabled(!busy && installable_candidate && client_.is_running());
     const bool current_candidate = candidates_->currentItem() != nullptr
         && !candidates_->currentItem()->data(Qt::UserRole + 3).toString().isEmpty();
     submit_hidden_challenge_->setEnabled(

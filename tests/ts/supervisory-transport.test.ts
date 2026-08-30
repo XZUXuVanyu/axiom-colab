@@ -20,6 +20,11 @@ test('supervisory transport lists workspaces and correlates immutable inspection
     createGoal(workspaceId: string, goalId: string, objective: string) {
       return { workspaceId, goalId, objective, planRevisionId: 'object:new-plan', planHash: `sha256:${'a'.repeat(64)}` }
     },
+    installCandidate(workspaceId: string, binding: any) {
+      return { workspaceId, installationId: 'evidence:installed', proposalId: binding.proposalId,
+        approvalId: binding.approvalId, candidateHash: binding.candidateHash,
+        evidenceHash: `sha256:${'b'.repeat(64)}`, outcome: 'installed' }
+    },
     async inspect(workspaceId: 'workspace:alpha' | 'workspace:beta') { return snapshot(workspaceId) },
     async executeTool(workspaceId: string, goalId: string, tool: string, args: unknown) {
       return { workspaceId, goalId, callId: 'call:one', tool, result: args, reportArtifactId: 'object:report', reportHash: `sha256:${'1'.repeat(64)}` }
@@ -69,6 +74,15 @@ test('supervisory transport lists workspaces and correlates immutable inspection
   const goal = JSON.parse(await transport.handle(JSON.stringify({ protocolVersion: '1.1', id: 'goal', operation: 'create-goal', workspaceId: 'workspace:new', goalId: 'goal:new', objective: 'User-approved objective.' })))
   assert.equal(goal.result.objective, 'User-approved objective.')
   assert.equal(goal.result.planRevisionId, 'object:new-plan')
+  const installed = JSON.parse(await transport.handle(JSON.stringify({
+    protocolVersion: '1.1', id: 'install', operation: 'install-candidate', workspaceId: 'workspace:alpha',
+    binding: { proposalId: 'proposal:one', proposalHash: `sha256:${'1'.repeat(64)}`,
+      approvalId: 'approval:one', approvalHash: `sha256:${'2'.repeat(64)}`,
+      candidateHash: `sha256:${'3'.repeat(64)}`, validationId: 'validation:one',
+      validationRecordHash: `sha256:${'4'.repeat(64)}`, candidateSnapshotHash: `sha256:${'5'.repeat(64)}`,
+      permissionsHash: `sha256:${'6'.repeat(64)}` },
+  })))
+  assert.equal(installed.result.installationId, 'evidence:installed')
   const inspected = JSON.parse(await transport.handle(JSON.stringify({ protocolVersion: '1.1', id: 'two', operation: 'inspect', workspaceId: 'workspace:beta', goalId: null })))
   assert.equal(inspected.id, 'two')
   assert.equal(inspected.result.workspaceId, 'workspace:beta')
@@ -122,6 +136,8 @@ test('supervisory transport rejects malformed, oversized, and authority-changing
   assert.equal(malformedWorkspace.error.code, 'INVALID_WORKSPACE_ID')
   const emptyObjective = JSON.parse(await transport.handle(JSON.stringify({ protocolVersion: '1.1', id: 'goal', operation: 'create-goal', workspaceId: 'workspace:alpha', goalId: 'goal:new', objective: '' })))
   assert.equal(emptyObjective.error.code, 'INVALID_GOAL_OBJECTIVE')
+  const invalidInstall = JSON.parse(await transport.handle(JSON.stringify({ protocolVersion: '1.1', id: 'install', operation: 'install-candidate', workspaceId: 'workspace:alpha', binding: {} })))
+  assert.equal(invalidInstall.error.code, 'INVALID_REQUEST')
   const oversized = JSON.parse(await transport.handle(' '.repeat(257)))
   assert.equal(oversized.error.code, 'REQUEST_TOO_LARGE')
   const invalidArguments = JSON.parse(await transport.handle(JSON.stringify({ protocolVersion: '1.1', id: 'execute', operation: 'execute-tool', workspaceId: 'workspace:alpha', goalId: 'goal:one', tool: 'add_numbers', arguments: [] })))

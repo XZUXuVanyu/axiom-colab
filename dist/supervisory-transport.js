@@ -74,6 +74,48 @@ function parseSpecification(value) {
     }
     return value;
 }
+function parseInstallationBinding(value) {
+    if (!record(value)) fail('INVALID_INSTALLATION_BINDING', 'installation binding must be an object');
+    exact(value, [
+        'proposalId',
+        'proposalHash',
+        'approvalId',
+        'approvalHash',
+        'candidateHash',
+        'validationId',
+        'validationRecordHash',
+        'candidateSnapshotHash',
+        'permissionsHash'
+    ]);
+    const identities = [
+        [
+            'proposalId',
+            'proposal:'
+        ],
+        [
+            'approvalId',
+            'approval:'
+        ],
+        [
+            'validationId',
+            'validation:'
+        ]
+    ];
+    for (const [field, prefix] of identities){
+        if (typeof value[field] !== 'string' || !new RegExp(`^${prefix}[A-Za-z0-9][A-Za-z0-9._-]{0,127}$`).test(value[field])) fail('INVALID_INSTALLATION_BINDING', `${field} is malformed`);
+    }
+    for (const field of [
+        'proposalHash',
+        'approvalHash',
+        'candidateHash',
+        'validationRecordHash',
+        'candidateSnapshotHash',
+        'permissionsHash'
+    ]){
+        if (typeof value[field] !== 'string' || !/^sha256:[0-9a-f]{64}$/.test(value[field])) fail('INVALID_INSTALLATION_BINDING', `${field} is malformed`);
+    }
+    return value;
+}
 function parseHiddenCommands(value) {
     if (!Array.isArray(value) || value.length === 0) fail('INVALID_HIDDEN_CHALLENGE', 'hidden challenge commands must not be empty');
     return value.map((item, index)=>{
@@ -147,6 +189,20 @@ function parseRequest(text, maxBytes) {
         if (typeof value.goalId !== 'string' || !/^goal:[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(value.goalId)) fail('INVALID_GOAL_ID', 'goal identity is malformed');
         if (typeof value.objective !== 'string' || value.objective.length === 0 || value.objective.length > 16_384) fail('INVALID_GOAL_OBJECTIVE', 'goal objective must contain 1..16384 characters');
         return value;
+    }
+    if (value.operation === 'install-candidate') {
+        exact(value, [
+            'protocolVersion',
+            'id',
+            'operation',
+            'workspaceId',
+            'binding'
+        ]);
+        if (typeof value.workspaceId !== 'string' || !/^workspace:[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(value.workspaceId)) fail('INVALID_WORKSPACE_ID', 'workspace identity is malformed');
+        return {
+            ...value,
+            binding: parseInstallationBinding(value.binding)
+        };
     }
     if (value.operation === 'inspect') {
         exact(value, [
@@ -328,7 +384,7 @@ export class SupervisoryTransport {
                 goals: [
                     ...this.host.goals(request.workspaceId)
                 ]
-            } : request.operation === 'create-workspace' ? this.host.createWorkspace(request.workspaceId) : request.operation === 'create-goal' ? this.host.createGoal(request.workspaceId, request.goalId, request.objective) : request.operation === 'inspect' ? await this.host.inspect(request.workspaceId, request.goalId) : request.operation === 'execute-tool' ? await this.host.executeTool(request.workspaceId, request.goalId, request.tool, request.arguments) : request.operation === 'decide-installation' ? await this.host.decideInstallation(request.workspaceId, request.proposalId, request.proposalHash, request.decision) : request.operation === 'submit-hidden-challenge' ? await this.host.submitHiddenChallenge(request.workspaceId, request.revisionId, request.candidateHash, request.fixtures, request.commands) : request.operation === 'revise-candidate' ? this.host.reviseCandidate(request.workspaceId, request.parentRevisionId, request.parentCandidateHash, request.descriptor, request.sources) : request.operation === 'create-candidate' ? this.host.createCandidate(request.workspaceId, request.specification, request.descriptor, request.sources) : request.operation === 'stop-goal' ? (await this.host.stopGoal(request.workspaceId, request.goalId, request.planRevisionId, request.planHash), {
+            } : request.operation === 'create-workspace' ? this.host.createWorkspace(request.workspaceId) : request.operation === 'create-goal' ? this.host.createGoal(request.workspaceId, request.goalId, request.objective) : request.operation === 'install-candidate' ? this.host.installCandidate(request.workspaceId, request.binding) : request.operation === 'inspect' ? await this.host.inspect(request.workspaceId, request.goalId) : request.operation === 'execute-tool' ? await this.host.executeTool(request.workspaceId, request.goalId, request.tool, request.arguments) : request.operation === 'decide-installation' ? await this.host.decideInstallation(request.workspaceId, request.proposalId, request.proposalHash, request.decision) : request.operation === 'submit-hidden-challenge' ? await this.host.submitHiddenChallenge(request.workspaceId, request.revisionId, request.candidateHash, request.fixtures, request.commands) : request.operation === 'revise-candidate' ? this.host.reviseCandidate(request.workspaceId, request.parentRevisionId, request.parentCandidateHash, request.descriptor, request.sources) : request.operation === 'create-candidate' ? this.host.createCandidate(request.workspaceId, request.specification, request.descriptor, request.sources) : request.operation === 'stop-goal' ? (await this.host.stopGoal(request.workspaceId, request.goalId, request.planRevisionId, request.planHash), {
                 workspaceId: request.workspaceId,
                 goalId: request.goalId,
                 action: 'stopped'

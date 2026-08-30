@@ -61,6 +61,33 @@ export interface InstalledToolRediscovery {
     readonly actorId: LaboratoryId<'actor'>
     readonly authority: 'trusted-host'
   }): readonly ToolInstallationEvidence[]
+  install(context: {
+    readonly workspaceId: LaboratoryId<'workspace'>
+    readonly actorId: LaboratoryId<'actor'>
+    readonly authority: 'trusted-host'
+  }, proposalId: LaboratoryId<'proposal'>): ToolInstallationEvidence
+}
+
+export interface InstallationRequestBinding {
+  readonly proposalId: LaboratoryId<'proposal'>
+  readonly proposalHash: `sha256:${string}`
+  readonly approvalId: LaboratoryId<'approval'>
+  readonly approvalHash: `sha256:${string}`
+  readonly candidateHash: `sha256:${string}`
+  readonly validationId: LaboratoryId<'validation'>
+  readonly validationRecordHash: `sha256:${string}`
+  readonly candidateSnapshotHash: `sha256:${string}`
+  readonly permissionsHash: `sha256:${string}`
+}
+
+export interface InstallationResult {
+  readonly workspaceId: LaboratoryId<'workspace'>
+  readonly installationId: LaboratoryId<'evidence'>
+  readonly proposalId: LaboratoryId<'proposal'>
+  readonly approvalId: LaboratoryId<'approval'>
+  readonly candidateHash: `sha256:${string}`
+  readonly evidenceHash: `sha256:${string}`
+  readonly outcome: 'installed'
 }
 
 export interface LocalApplicationHostOptions {
@@ -266,6 +293,36 @@ export class LocalApplicationHost {
     if (decision === 'approved') this.options.proposalService.approve(context, proposalId)
     else this.options.proposalService.reject(context, proposalId)
     return { workspaceId, proposalId, proposalHash, decision }
+  }
+
+  installCandidate(
+    workspaceId: LaboratoryId<'workspace'>,
+    binding: InstallationRequestBinding,
+  ): InstallationResult {
+    this.ensureReady()
+    this.options.store.reopenWorkspace(workspaceId)
+    const proposal = this.options.candidates.inspectInstallationProposal(workspaceId, binding.proposalId)
+    const approval = this.options.candidates.inspectInstallationApproval(workspaceId, binding.proposalId)
+    if (proposal === null || approval === null || proposal.state !== 'approved'
+        || proposal.proposalHash !== binding.proposalHash
+        || approval.approvalId !== binding.approvalId || approval.approvalHash !== binding.approvalHash
+        || proposal.candidateHash !== binding.candidateHash
+        || proposal.validationId !== binding.validationId
+        || proposal.validationRecordHash !== binding.validationRecordHash
+        || proposal.candidateSnapshotHash !== binding.candidateSnapshotHash
+        || proposal.permissionsHash !== binding.permissionsHash) {
+      fail('STALE_INSTALLATION_BINDING', 'installation request does not bind the exact visible approval and evidence')
+    }
+    const evidence = this.installation.install(
+      { workspaceId, actorId: this.options.hostActorId, authority: 'trusted-host' },
+      binding.proposalId,
+    )
+    if (evidence.outcome !== 'installed') fail('INSTALLATION_FAILED', 'installer did not produce successful immutable evidence')
+    return {
+      workspaceId, installationId: evidence.installationId, proposalId: evidence.proposalId,
+      approvalId: evidence.approvalId, candidateHash: evidence.candidateHash,
+      evidenceHash: evidence.evidenceHash, outcome: evidence.outcome,
+    }
   }
 
   async submitHiddenChallenge(

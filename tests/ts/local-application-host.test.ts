@@ -248,6 +248,50 @@ test('application host binds a user decision to the exact visible proposal hash'
   host.close()
 })
 
+test('application host installs only the exact visible approval and evidence binding', async () => {
+  const value = fixture()
+  const proposal = {
+    proposalId: 'proposal:install', proposalHash: `sha256:${'1'.repeat(64)}`, state: 'approved',
+    candidateHash: `sha256:${'2'.repeat(64)}`, validationId: 'validation:install',
+    validationRecordHash: `sha256:${'3'.repeat(64)}`, candidateSnapshotHash: `sha256:${'4'.repeat(64)}`,
+    permissionsHash: `sha256:${'5'.repeat(64)}`,
+  }
+  const approval = { approvalId: 'approval:install', approvalHash: `sha256:${'6'.repeat(64)}` }
+  const candidates = new Proxy(value.candidates as any, {
+    get(target, property) {
+      if (property === 'inspectInstallationProposal') return () => proposal
+      if (property === 'inspectInstallationApproval') return () => approval
+      const member = Reflect.get(target, property)
+      return typeof member === 'function' ? member.bind(target) : member
+    },
+  })
+  const installs: string[] = []
+  const host = new LocalApplicationHost({
+    ...value, candidates, validator: { isPromotionEligible: () => false }, hostActorId: 'actor:host',
+    createInstallation: () => ({
+      rediscover: () => [],
+      install(context: any, proposalId: string) {
+        installs.push(`${context.authority}:${proposalId}`)
+        return { workspaceId: context.workspaceId, installationId: 'evidence:installed', proposalId,
+          approvalId: approval.approvalId, candidateHash: proposal.candidateHash,
+          evidenceHash: `sha256:${'7'.repeat(64)}`, outcome: 'installed' }
+      },
+    }),
+  } as any)
+  await host.initialize()
+  const binding = { proposalId: proposal.proposalId, proposalHash: proposal.proposalHash,
+    approvalId: approval.approvalId, approvalHash: approval.approvalHash,
+    candidateHash: proposal.candidateHash, validationId: proposal.validationId,
+    validationRecordHash: proposal.validationRecordHash, candidateSnapshotHash: proposal.candidateSnapshotHash,
+    permissionsHash: proposal.permissionsHash }
+  assert.throws(() => host.installCandidate('workspace:alpha', { ...binding, approvalHash: `sha256:${'f'.repeat(64)}` } as any), (error: unknown) => (error as any).code === 'STALE_INSTALLATION_BINDING')
+  const result = host.installCandidate('workspace:alpha', binding as any)
+  assert.equal(result.installationId, 'evidence:installed')
+  assert.deepEqual(installs, ['trusted-host:proposal:install'])
+  assert.doesNotMatch(JSON.stringify(result), /relativeLocation|installedRoot|descriptor|source/)
+  host.close()
+})
+
 test('application host binds lifecycle actions to exact projected authority', async () => {
   const value = fixture()
   value.lifecycle.close()

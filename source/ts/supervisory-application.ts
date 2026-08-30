@@ -123,6 +123,7 @@ export interface SupervisoryCandidateProjection {
     readonly validationRecordHash: `sha256:${string}`
     readonly candidateSnapshotHash: `sha256:${string}`
     readonly requestedPermissions: readonly string[]
+    readonly permissionsHash: `sha256:${string}`
     readonly state: 'proposed' | 'approved' | 'rejected'
   } | null
   readonly validation: {
@@ -141,6 +142,8 @@ export interface SupervisoryCandidateProjection {
   readonly approval: {
     readonly proposalId: LaboratoryId<'proposal'>
     readonly proposalHash: `sha256:${string}`
+    readonly approvalId: LaboratoryId<'approval'> | null
+    readonly approvalHash: `sha256:${string}` | null
     readonly decision: 'approved' | 'rejected'
   } | null
   readonly installation: {
@@ -375,6 +378,15 @@ export class SupervisoryApplicationModel {
       if (candidate.approval !== null && candidate.validation === null) fail('MISLEADING_AUTHORITY', 'approval must retain its validation projection')
       if (candidate.approval !== null && candidate.proposal === null) fail('MISLEADING_AUTHORITY', 'approval must retain its exact proposal projection')
       if (candidate.proposal?.state === 'proposed' && candidate.approval !== null) fail('MISLEADING_AUTHORITY', 'pending proposal cannot carry a user decision')
+      if (candidate.approval?.decision === 'approved'
+          && (candidate.proposal?.state !== 'approved' || typeof candidate.approval.approvalId !== 'string'
+            || typeof candidate.approval.approvalHash !== 'string')) {
+        fail('MISLEADING_AUTHORITY', 'approved candidate must retain exact approval authority hashes')
+      }
+      if (candidate.approval?.decision === 'rejected'
+          && (candidate.approval.approvalId !== null || candidate.approval.approvalHash !== null)) {
+        fail('MISLEADING_AUTHORITY', 'rejected candidate cannot carry approval authority hashes')
+      }
       if (candidate.installation !== null && candidate.approval === null) fail('MISLEADING_AUTHORITY', 'installation must retain its approval projection')
       if (candidate.validation !== null) {
         const suiteKinds = new Set(candidate.validation.suites.map((suite) => suite.kind))

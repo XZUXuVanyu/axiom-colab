@@ -110,7 +110,8 @@ export class LocalSupervisoryBackend implements SupervisoryBackend {
           proposalId: proposal.proposalId, proposalHash: proposal.proposalHash,
           validationId: proposal.validationId, validationRecordHash: proposal.validationRecordHash,
           candidateSnapshotHash: proposal.candidateSnapshotHash,
-          requestedPermissions: [...proposal.requestedPermissions], state: proposal.state,
+          requestedPermissions: [...proposal.requestedPermissions], permissionsHash: proposal.permissionsHash,
+          state: proposal.state,
         },
         validation: validation === null ? null : {
           validationId: validation.record.validationId, recordHash: validation.record.recordHash,
@@ -127,6 +128,7 @@ export class LocalSupervisoryBackend implements SupervisoryBackend {
         },
         approval: proposal === null || proposal.state === 'proposed' ? null : {
           proposalId: proposal.proposalId, proposalHash: proposal.proposalHash,
+          approvalId: approval?.approvalId ?? null, approvalHash: approval?.approvalHash ?? null,
           decision: approval === null ? 'rejected' : 'approved',
         },
         installation: installation === null ? null : {

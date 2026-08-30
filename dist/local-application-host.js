@@ -175,6 +175,30 @@ export class LocalApplicationHost {
             decision
         };
     }
+    installCandidate(workspaceId, binding) {
+        this.ensureReady();
+        this.options.store.reopenWorkspace(workspaceId);
+        const proposal = this.options.candidates.inspectInstallationProposal(workspaceId, binding.proposalId);
+        const approval = this.options.candidates.inspectInstallationApproval(workspaceId, binding.proposalId);
+        if (proposal === null || approval === null || proposal.state !== 'approved' || proposal.proposalHash !== binding.proposalHash || approval.approvalId !== binding.approvalId || approval.approvalHash !== binding.approvalHash || proposal.candidateHash !== binding.candidateHash || proposal.validationId !== binding.validationId || proposal.validationRecordHash !== binding.validationRecordHash || proposal.candidateSnapshotHash !== binding.candidateSnapshotHash || proposal.permissionsHash !== binding.permissionsHash) {
+            fail('STALE_INSTALLATION_BINDING', 'installation request does not bind the exact visible approval and evidence');
+        }
+        const evidence = this.installation.install({
+            workspaceId,
+            actorId: this.options.hostActorId,
+            authority: 'trusted-host'
+        }, binding.proposalId);
+        if (evidence.outcome !== 'installed') fail('INSTALLATION_FAILED', 'installer did not produce successful immutable evidence');
+        return {
+            workspaceId,
+            installationId: evidence.installationId,
+            proposalId: evidence.proposalId,
+            approvalId: evidence.approvalId,
+            candidateHash: evidence.candidateHash,
+            evidenceHash: evidence.evidenceHash,
+            outcome: evidence.outcome
+        };
+    }
     async submitHiddenChallenge(workspaceId, revisionId, candidateHash, fixtures, commands) {
         this.ensureReady();
         const runner = this.options.challengeValidator;

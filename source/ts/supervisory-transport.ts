@@ -2,7 +2,7 @@ import type { JsonValue } from './harness-types.js'
 import type { CandidateFile, ValidationCommand } from './candidate-validation.js'
 import type { LaboratoryId } from './laboratory-contract.js'
 import type { SupervisoryToolExecution, SupervisoryWorkspaceSnapshot } from './supervisory-application.js'
-import type { GoalCreationResult, HiddenChallengeValidationResult } from './local-application-host.js'
+import type { GoalCreationResult, HiddenChallengeValidationResult, InstallationRequestBinding, InstallationResult } from './local-application-host.js'
 import type { CandidateRevision, ToolSpecification, ToolSpecificationInput } from './tool-workshop.js'
 
 export const SUPERVISORY_TRANSPORT_VERSION = '1.1' as const
@@ -12,6 +12,7 @@ export interface SupervisoryTransportHost {
   goals(workspaceId: LaboratoryId<'workspace'>): readonly LaboratoryId<'goal'>[]
   createWorkspace(workspaceId: LaboratoryId<'workspace'>): { readonly workspaceId: LaboratoryId<'workspace'> }
   createGoal(workspaceId: LaboratoryId<'workspace'>, goalId: LaboratoryId<'goal'>, objective: string): GoalCreationResult
+  installCandidate(workspaceId: LaboratoryId<'workspace'>, binding: InstallationRequestBinding): InstallationResult
   inspect(workspaceId: LaboratoryId<'workspace'>, goalId: LaboratoryId<'goal'> | null): Promise<SupervisoryWorkspaceSnapshot>
   executeTool(workspaceId: LaboratoryId<'workspace'>, goalId: LaboratoryId<'goal'>, tool: string, args: Record<string, JsonValue>): Promise<SupervisoryToolExecution>
   decideInstallation(workspaceId: LaboratoryId<'workspace'>, proposalId: LaboratoryId<'proposal'>, proposalHash: `sha256:${string}`, decision: 'approved' | 'rejected'): Promise<JsonValue>
@@ -29,6 +30,7 @@ type Request =
   | { readonly protocolVersion: typeof SUPERVISORY_TRANSPORT_VERSION; readonly id: string; readonly operation: 'list-goals'; readonly workspaceId: LaboratoryId<'workspace'> }
   | { readonly protocolVersion: typeof SUPERVISORY_TRANSPORT_VERSION; readonly id: string; readonly operation: 'create-workspace'; readonly workspaceId: LaboratoryId<'workspace'> }
   | { readonly protocolVersion: typeof SUPERVISORY_TRANSPORT_VERSION; readonly id: string; readonly operation: 'create-goal'; readonly workspaceId: LaboratoryId<'workspace'>; readonly goalId: LaboratoryId<'goal'>; readonly objective: string }
+  | { readonly protocolVersion: typeof SUPERVISORY_TRANSPORT_VERSION; readonly id: string; readonly operation: 'install-candidate'; readonly workspaceId: LaboratoryId<'workspace'>; readonly binding: InstallationRequestBinding }
   | { readonly protocolVersion: typeof SUPERVISORY_TRANSPORT_VERSION; readonly id: string; readonly operation: 'inspect'; readonly workspaceId: LaboratoryId<'workspace'>; readonly goalId: LaboratoryId<'goal'> | null }
   | { readonly protocolVersion: typeof SUPERVISORY_TRANSPORT_VERSION; readonly id: string; readonly operation: 'execute-tool'; readonly workspaceId: LaboratoryId<'workspace'>; readonly goalId: LaboratoryId<'goal'>; readonly tool: string; readonly arguments: Record<string, JsonValue> }
   | { readonly protocolVersion: typeof SUPERVISORY_TRANSPORT_VERSION; readonly id: string; readonly operation: 'decide-installation'; readonly workspaceId: LaboratoryId<'workspace'>; readonly proposalId: LaboratoryId<'proposal'>; readonly proposalHash: `sha256:${string}`; readonly decision: 'approved' | 'rejected' }
@@ -105,6 +107,21 @@ function parseSpecification(value: unknown): ToolSpecificationInput {
   return value as unknown as ToolSpecificationInput
 }
 
+function parseInstallationBinding(value: unknown): InstallationRequestBinding {
+  if (!record(value)) fail('INVALID_INSTALLATION_BINDING', 'installation binding must be an object')
+  exact(value, ['proposalId', 'proposalHash', 'approvalId', 'approvalHash', 'candidateHash', 'validationId', 'validationRecordHash', 'candidateSnapshotHash', 'permissionsHash'])
+  const identities = [
+    ['proposalId', 'proposal:'], ['approvalId', 'approval:'], ['validationId', 'validation:'],
+  ] as const
+  for (const [field, prefix] of identities) {
+    if (typeof value[field] !== 'string' || !new RegExp(`^${prefix}[A-Za-z0-9][A-Za-z0-9._-]{0,127}$`).test(value[field])) fail('INVALID_INSTALLATION_BINDING', `${field} is malformed`)
+  }
+  for (const field of ['proposalHash', 'approvalHash', 'candidateHash', 'validationRecordHash', 'candidateSnapshotHash', 'permissionsHash'] as const) {
+    if (typeof value[field] !== 'string' || !/^sha256:[0-9a-f]{64}$/.test(value[field])) fail('INVALID_INSTALLATION_BINDING', `${field} is malformed`)
+  }
+  return value as unknown as InstallationRequestBinding
+}
+
 function parseHiddenCommands(value: unknown): readonly ValidationCommand[] {
   if (!Array.isArray(value) || value.length === 0) fail('INVALID_HIDDEN_CHALLENGE', 'hidden challenge commands must not be empty')
   return value.map((item, index) => {
@@ -144,6 +161,11 @@ function parseRequest(text: string, maxBytes: number): Request {
     if (typeof value.goalId !== 'string' || !/^goal:[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(value.goalId)) fail('INVALID_GOAL_ID', 'goal identity is malformed')
     if (typeof value.objective !== 'string' || value.objective.length === 0 || value.objective.length > 16_384) fail('INVALID_GOAL_OBJECTIVE', 'goal objective must contain 1..16384 characters')
     return value as unknown as Request
+  }
+  if (value.operation === 'install-candidate') {
+    exact(value, ['protocolVersion', 'id', 'operation', 'workspaceId', 'binding'])
+    if (typeof value.workspaceId !== 'string' || !/^workspace:[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(value.workspaceId)) fail('INVALID_WORKSPACE_ID', 'workspace identity is malformed')
+    return { ...value, binding: parseInstallationBinding(value.binding) } as unknown as Request
   }
   if (value.operation === 'inspect') {
     exact(value, ['protocolVersion', 'id', 'operation', 'workspaceId', 'goalId'])
@@ -242,6 +264,8 @@ export class SupervisoryTransport {
             ? this.host.createWorkspace(request.workspaceId)
             : request.operation === 'create-goal'
               ? this.host.createGoal(request.workspaceId, request.goalId, request.objective)
+              : request.operation === 'install-candidate'
+                ? this.host.installCandidate(request.workspaceId, request.binding)
           : request.operation === 'inspect'
             ? await this.host.inspect(request.workspaceId, request.goalId)
             : request.operation === 'execute-tool'

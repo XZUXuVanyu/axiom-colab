@@ -40,6 +40,7 @@ private:
     void inspect_selected_workspace();
     void execute_selected_tool();
     void decide_selected_installation(bool approve);
+    void install_selected_candidate();
     void submit_selected_hidden_challenge();
     void revise_selected_candidate();
     void create_initial_candidate();
@@ -77,6 +78,8 @@ private:
     QPlainTextEdit* candidate_details_{};
     QPushButton* approve_candidate_{};
     QPushButton* reject_candidate_{};
+    QPushButton* install_candidate_{};
+    QLabel* installation_result_{};
     QPlainTextEdit* hidden_challenge_input_{};
     QPushButton* submit_hidden_challenge_{};
     QLabel* hidden_challenge_result_{};

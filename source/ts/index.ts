@@ -199,7 +199,8 @@ export { LocalGoalLifecycle, LocalGoalLifecycleError } from './local-goal-lifecy
 export type { LocalGoalLifecycleOptions } from './local-goal-lifecycle.js'
 export { LocalApplicationHost, LocalApplicationHostError } from './local-application-host.js'
 export type {
-  GoalCreationResult, InstalledToolRediscovery, LocalApplicationHostOptions,
+  GoalCreationResult, InstallationRequestBinding, InstallationResult,
+  InstalledToolRediscovery, LocalApplicationHostOptions,
 } from './local-application-host.js'
 export { SUPERVISORY_TRANSPORT_VERSION, SupervisoryTransport, SupervisoryTransportError } from './supervisory-transport.js'
 export type { SupervisoryTransportHost } from './supervisory-transport.js'

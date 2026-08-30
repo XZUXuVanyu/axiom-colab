@@ -76,6 +76,7 @@ export class LocalSupervisoryBackend {
                     requestedPermissions: [
                         ...proposal.requestedPermissions
                     ],
+                    permissionsHash: proposal.permissionsHash,
                     state: proposal.state
                 },
                 validation: validation === null ? null : {
@@ -103,6 +104,8 @@ export class LocalSupervisoryBackend {
                 approval: proposal === null || proposal.state === 'proposed' ? null : {
                     proposalId: proposal.proposalId,
                     proposalHash: proposal.proposalHash,
+                    approvalId: approval?.approvalId ?? null,
+                    approvalHash: approval?.approvalHash ?? null,
                     decision: approval === null ? 'rejected' : 'approved'
                 },
                 installation: installation === null ? null : {

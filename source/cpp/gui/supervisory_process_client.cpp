@@ -206,6 +206,17 @@ std::string SupervisoryProcessClient::decide_installation(
     }), std::move(handler));
 }
 
+std::string SupervisoryProcessClient::install_candidate(
+    std::string_view workspace_id, Json binding, ResponseHandler handler) {
+    if (!valid_identity(workspace_id, "workspace:") || !binding.is_object()) {
+        throw std::invalid_argument("candidate installation binding is malformed");
+    }
+    return send_request(Json::object({
+        {"protocolVersion", "1.1"}, {"operation", "install-candidate"},
+        {"workspaceId", std::string(workspace_id)}, {"binding", std::move(binding)},
+    }), std::move(handler));
+}
+
 std::string SupervisoryProcessClient::submit_hidden_challenge(
     std::string_view workspace_id, std::string_view revision_id,
     std::string_view candidate_hash, Json fixtures, Json commands,

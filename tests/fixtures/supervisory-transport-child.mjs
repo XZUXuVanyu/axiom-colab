@@ -21,7 +21,7 @@ const candidate = {
   proposal: {
     proposalId: 'proposal:fixture', proposalHash: hash('7'), validationId: 'validation:fixture',
     validationRecordHash: hash('d'), candidateSnapshotHash: hash('c'),
-    requestedPermissions: ['compute.read'], state: 'proposed',
+    requestedPermissions: ['compute.read'], permissionsHash: hash('6'), state: 'proposed',
   },
   approval: null, installation: null,
 }
@@ -52,7 +52,22 @@ const host = {
   async decideInstallation(workspaceId, proposalId, proposalHash, decision) {
     if (proposalId !== candidate.proposal.proposalId || proposalHash !== candidate.proposal.proposalHash) throw Object.assign(new Error('stale proposal'), { code: 'STALE_INSTALLATION_PROPOSAL' })
     candidate.proposal.state = decision
+    candidate.approval = decision === 'approved'
+      ? { proposalId, proposalHash, approvalId: 'approval:fixture', approvalHash: hash('a'), decision }
+      : { proposalId, proposalHash, approvalId: null, approvalHash: null, decision }
     return { workspaceId, proposalId, proposalHash, decision }
+  },
+  installCandidate(workspaceId, binding) {
+    if (candidate.approval?.decision !== 'approved' || candidate.installation !== null
+        || binding.proposalId !== candidate.proposal?.proposalId
+        || binding.approvalId !== candidate.approval.approvalId
+        || binding.candidateHash !== candidate.candidateHash) {
+      throw Object.assign(new Error('stale installation binding'), { code: 'STALE_INSTALLATION_BINDING' })
+    }
+    candidate.installation = { installationId: 'evidence:installed', evidenceHash: hash('b'), outcome: 'installed' }
+    return { workspaceId, installationId: 'evidence:installed', proposalId: binding.proposalId,
+      approvalId: binding.approvalId, candidateHash: binding.candidateHash,
+      evidenceHash: hash('b'), outcome: 'installed' }
   },
   async submitHiddenChallenge(workspaceId, revisionId, candidateHash, fixtures, commands) {
     if (revisionId !== candidate.revisionId || candidateHash !== candidate.candidateHash) throw Object.assign(new Error('stale candidate'), { code: 'STALE_CANDIDATE_REVISION' })
@@ -73,6 +88,8 @@ const host = {
     candidate.candidateHash = hash('0')
     candidate.validation = null
     candidate.proposal = null
+    candidate.approval = null
+    candidate.installation = null
     return {
       protocolVersion: '1.0', revisionId: candidate.revisionId, candidateId: candidate.candidateId,
       workspaceId, specificationId: 'proposal:spec', specificationHash: hash('1'), revision: 2,
@@ -90,6 +107,8 @@ const host = {
     candidate.candidateHash = hash('9')
     candidate.validation = null
     candidate.proposal = null
+    candidate.approval = null
+    candidate.installation = null
     return {
       specification: {
         protocolVersion: '1.0', specificationId: 'proposal:new', workspaceId,
@@ -138,7 +157,10 @@ const host = {
         working: [{ revisionId: 'object:working', key: 'decision', revision: 1, hash: `sha256:${'3'.repeat(64)}`, proposalId: 'proposal:decision', committedAt: '2026-08-29T03:00:00.000Z' }],
         artifacts: [{ artifactId: 'object:artifact', hash: `sha256:${'4'.repeat(64)}`, size: 1, schemaHash: `sha256:${'5'.repeat(64)}`, parentIds: [], childIds: [], operation: 'seed', parametersHash: `sha256:${'6'.repeat(64)}`, softwareVersion: '1.0.0', validationId: null, createdAt: '2026-08-29T03:00:00.000Z' }],
       },
-      tools: [{ name: 'add_numbers', source: 'built-in', executable: true, installationEvidenceHash: null, descriptor: { name: 'add_numbers', description: 'Adds values.', whenToUse: 'For addition.', parameters: { type: 'object' }, output: { type: 'object' }, timeoutMs: 1000, allowParallel: true, sideEffect: false } }], candidates: [candidate], timeline: [],
+      tools: [
+        { name: 'add_numbers', source: 'built-in', executable: true, installationEvidenceHash: null, descriptor: { name: 'add_numbers', description: 'Adds values.', whenToUse: 'For addition.', parameters: { type: 'object' }, output: { type: 'object' }, timeoutMs: 1000, allowParallel: true, sideEffect: false } },
+        ...(candidate.installation?.outcome === 'installed' ? [{ name: 'candidate_tool', source: 'installed', executable: false, installationEvidenceHash: candidate.installation.evidenceHash, descriptor: candidate.descriptor }] : []),
+      ], candidates: [candidate], timeline: [],
       resources: { workspaceId, usedBytes: 0, objectCount: 0, quota: { maxBytes: 10, maxObjects: 1 }, expiredObjects: 0, corruptObjects: 0 },
       controls: {
         canStopGoal: goalId === 'goal:one' && !goalStopped,

@@ -32,11 +32,15 @@ int main(int argc, char* argv[]) {
     auto* compute = view.findChild<QListWidget*>("computeMemory");
     auto* working = view.findChild<QListWidget*>("workingMemory");
     auto* artifacts = view.findChild<QListWidget*>("artifactLineage");
+    auto* discovered_tools = view.findChild<QListWidget*>("discoveredTools");
     auto* execute = view.findChild<QPushButton*>("executeTool");
     auto* arguments = view.findChild<QPlainTextEdit*>("executionArguments");
     auto* execution_result = view.findChild<QLabel*>("executionResult");
     auto* candidate_details = view.findChild<QPlainTextEdit*>("candidateDetails");
     auto* reject_candidate = view.findChild<QPushButton*>("rejectCandidate");
+    auto* approve_candidate = view.findChild<QPushButton*>("approveCandidate");
+    auto* install_candidate = view.findChild<QPushButton*>("installCandidate");
+    auto* installation_result = view.findChild<QLabel*>("installationResult");
     auto* challenge_input = view.findChild<QPlainTextEdit*>("hiddenChallengeInput");
     auto* submit_challenge = view.findChild<QPushButton*>("submitHiddenChallenge");
     auto* challenge_result = view.findChild<QLabel*>("hiddenChallengeResult");
@@ -60,12 +64,14 @@ int main(int argc, char* argv[]) {
     auto* creation_result = view.findChild<QLabel*>("creationResult");
     if (workspaces == nullptr || goals == nullptr || resources == nullptr
         || plan == nullptr || status == nullptr || compute == nullptr
-        || working == nullptr || artifacts == nullptr) {
+        || working == nullptr || artifacts == nullptr || discovered_tools == nullptr) {
         std::cerr << "[FAIL] supervisory widgets are not inspectable\n";
         return 1;
     }
     if (execute == nullptr || arguments == nullptr || execution_result == nullptr
         || candidate_details == nullptr || reject_candidate == nullptr
+        || approve_candidate == nullptr || install_candidate == nullptr
+        || installation_result == nullptr
         || challenge_input == nullptr || submit_challenge == nullptr
         || challenge_result == nullptr || revision_input == nullptr
         || revise_candidate == nullptr || revision_result == nullptr
@@ -206,16 +212,35 @@ int main(int argc, char* argv[]) {
         std::cerr << "[FAIL] hidden challenge did not render redacted evidence\n";
         return 1;
     }
-    reject_candidate->click();
+    approve_candidate->click();
     timer.restart();
     while (timer.elapsed() < 5000
-           && !candidate_details->toPlainText().contains("proposal:fixture [rejected]")) {
+           && !candidate_details->toPlainText().contains("proposal:fixture [approved]")) {
         application.processEvents();
         QThread::msleep(10);
     }
-    if (!candidate_details->toPlainText().contains("proposal:fixture [rejected]")) {
-        std::cerr << "[FAIL] exact installation rejection did not refresh authoritative state\n";
+    if (!candidate_details->toPlainText().contains("Approval: approval:fixture")
+        || !install_candidate->isEnabled()) {
+        std::cerr << "[FAIL] exact installation approval was not bound for installation\n";
         return 1;
+    }
+    install_candidate->click();
+    timer.restart();
+    while (timer.elapsed() < 5000
+           && (!installation_result->text().contains("exact approved candidate")
+               || discovered_tools->count() != 2 || install_candidate->isEnabled())) {
+        application.processEvents(); QThread::msleep(10);
+    }
+    if (!installation_result->toolTip().contains("evidence:installed")
+        || install_candidate->isEnabled() || discovered_tools->count() != 2
+        || !discovered_tools->item(1)->text().contains("candidate_tool  [installed]")
+        || !discovered_tools->item(1)->toolTip().contains("Verified installation evidence")) {
+        std::cerr << "[FAIL] exact candidate installation did not refresh authoritative evidence\n";
+        return 1;
+    }
+    timer.restart();
+    while (timer.elapsed() < 5000 && !execute->isEnabled()) {
+        application.processEvents(); QThread::msleep(10);
     }
     arguments->setPlainText(R"({"left":2,"right":3})");
     execute->click();

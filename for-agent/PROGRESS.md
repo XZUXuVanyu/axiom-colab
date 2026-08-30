@@ -4,6 +4,36 @@ Entries are chronological. Each entry corresponds to one logical Git commit and
 records its exact subject, purpose, material changes, and validation actually
 performed.
 
+## 2026-08-30 - feat(gui): install exact approved candidates
+
+Purpose: continue the Stage 8 new-Tool path through the existing trusted
+installer without allowing Qt, transport, or approval state to manufacture an
+installed Tool.
+
+Material changes:
+
+- Added a strict installation request binding the exact proposal, approval,
+  candidate, validation record/snapshot, and permissions hashes visible to Qt.
+- Made the host re-inspect every binding before delegating to the existing
+  trusted installation service, which repeats live evidence and byte checks.
+- Returned only immutable installation identity/hash facts; paths, descriptors,
+  source bytes, and repository authority remain outside the response.
+- Extended candidate projection with permission and approval authority hashes,
+  rejecting misleading approved/rejected combinations in the supervisory
+  model.
+- Added the Qt installation control, strict correlated result checks, and an
+  authoritative refresh that shows the verified registry entry as installed
+  but deliberately non-executable.
+
+Validation actually run:
+
+- `pnpm.cmd test`: all 89 TypeScript tests passed and regenerated `dist/`.
+- `pnpm.cmd run test:integration`: five Bridge/built-in/production-host tests
+  passed; the three WSL confinement tests skipped by the portable command.
+- The Qt 6.12.0 Visual Studio 2026 Release tree compiled the supervisory
+  process and view tests with warnings as errors.
+- Release `ctest -R "axiom-supervisory-(view|process)"`: both tests passed.
+
 ## 2026-08-30 - feat(gui): create supervised workspaces and goals
 
 Purpose: continue Stage 8 with the daily-use entry path while preserving the

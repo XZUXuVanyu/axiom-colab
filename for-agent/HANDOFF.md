@@ -4,6 +4,23 @@ Last updated: 2026-08-30
 
 ## Current state
 
+- Qt now exposes one explicit installation action only for a selected approved,
+  not-yet-installed candidate. The request echoes the exact proposal, approval,
+  candidate, validation record/snapshot, and permission hashes projected by
+  authoritative inspection.
+- The production host re-inspects every echoed binding, delegates only under
+  trusted-host authority to `ToolInstallationService`, and returns a redacted
+  immutable evidence identity/hash without paths, descriptors, or source bytes.
+  The installer repeats all live trust checks and byte verification before its
+  registry entry becomes visible.
+- After installation Qt refreshes authoritative inspection. The installed Tool
+  appears only through the verified host registry with its installation-
+  evidence hash and remains explicitly non-executable; the widget never infers
+  installation from approval state or installed files.
+- Candidate projections now retain proposal permission hashes and exact user
+  approval identities/hashes. Rejections carry no approval authority hashes,
+  and misleading combinations fail in the UI-independent supervisory model.
+
 - Qt now creates workspaces and goals through narrow host-owned operations.
   Newly created identities are selected only after strict correlated responses
   and authoritative workspace/goal list refreshes.
@@ -925,13 +942,12 @@ installation controls:
 
 ## Exact next work
 
-Continue the new-Tool GUI path from an approved installation proposal through
-one explicit host-owned installation action and authoritative rediscovery.
-Bind the action to the exact approval, candidate, validation, proposal, and
-permission hashes already projected in the UI; refresh inspection rather than
-letting Qt infer installation from files or approval state. Keep installed-
-candidate execution absent until an executable loading strategy preserves its
-exact candidate and installation-evidence hashes.
+Define and implement the installed-candidate executable loading boundary. A
+loaded executable must be produced from or cryptographically bound to the exact
+installed candidate bytes, descriptor hash, candidate hash, and installation-
+evidence hash; registration and every call must retain those bindings. Do not
+make the current source-only installed projection executable or silently rebuild
+the shared production Bridge from mutable later source.
 
 Keep the WSL integration suite opt-in for portable CI, and run it explicitly on
 the supported Windows/Ubuntu composition before changing its confinement
