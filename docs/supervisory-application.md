@@ -105,8 +105,12 @@ before returning success. One exact-hash installation decision command accepts
 only a visible workspace, proposal identity/hash, and `approved` or `rejected`.
 The host supplies trusted user identity and delegates to
 `ToolInstallationProposalService`, which repeats live candidate, validation,
-permission, and proposal checks before authoring an approval. Installation and
-lifecycle commands remain absent. Host inspection bypasses mutable UI selection, so concurrent clients
+permission, and proposal checks before authoring an approval. Installation
+remains absent. Lifecycle commands bind exact projected state: stop/resume
+include the approved-plan revision and hash, revocation includes the selected
+workspace/goal scope and capability identity, and recovery binds the workspace.
+The host re-inspects availability before delegating, and Qt refreshes after
+success. Host inspection bypasses mutable UI selection, so concurrent clients
 cannot redirect one another's workspace or goal request.
 
 Hidden challenge submission binds the exact visible current candidate revision

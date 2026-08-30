@@ -25,6 +25,9 @@ const candidate = {
   },
   approval: null, installation: null,
 }
+let goalStopped = false
+let capabilityRevoked = false
+let recoveryRequired = true
 
 const host = {
   workspaces() { return ['workspace:alpha', 'workspace:beta'] },
@@ -88,6 +91,25 @@ const host = {
       },
     }
   },
+  async stopGoal(workspaceId, goalId, planRevisionId, planHash) {
+    if (workspaceId !== 'workspace:alpha' || goalId !== 'goal:one'
+        || planRevisionId !== 'object:plan' || planHash !== hash('1') || goalStopped) throw Object.assign(new Error('stale stop'), { code: 'ACTION_NOT_AVAILABLE' })
+    goalStopped = true
+  },
+  async resumeGoal(workspaceId, goalId, planRevisionId, planHash) {
+    if (workspaceId !== 'workspace:alpha' || goalId !== 'goal:one'
+        || planRevisionId !== 'object:plan' || planHash !== hash('1') || !goalStopped) throw Object.assign(new Error('stale resume'), { code: 'ACTION_NOT_AVAILABLE' })
+    goalStopped = false
+  },
+  async revokeCapability(workspaceId, goalId, capabilityId) {
+    if (workspaceId !== 'workspace:alpha' || goalId !== 'goal:one'
+        || capabilityId !== 'capability:active' || capabilityRevoked) throw Object.assign(new Error('stale capability'), { code: 'ACTION_NOT_AVAILABLE' })
+    capabilityRevoked = true
+  },
+  async recoverWorkspace(workspaceId) {
+    if (workspaceId !== 'workspace:alpha' || !recoveryRequired) throw Object.assign(new Error('stale recovery'), { code: 'ACTION_NOT_AVAILABLE' })
+    recoveryRequired = false
+  },
   async inspect(workspaceId, goalId) {
     if (workspaceId === 'workspace:missing') throw Object.assign(new Error('workspace is not visible'), { code: 'WORKSPACE_NOT_FOUND' })
     return {
@@ -104,7 +126,12 @@ const host = {
       },
       tools: [{ name: 'add_numbers', source: 'built-in', executable: true, installationEvidenceHash: null, descriptor: { name: 'add_numbers', description: 'Adds values.', whenToUse: 'For addition.', parameters: { type: 'object' }, output: { type: 'object' }, timeoutMs: 1000, allowParallel: true, sideEffect: false } }], candidates: [candidate], timeline: [],
       resources: { workspaceId, usedBytes: 0, objectCount: 0, quota: { maxBytes: 10, maxObjects: 1 }, expiredObjects: 0, corruptObjects: 0 },
-      controls: { canStopGoal: false, revocableCapabilityIds: [], canResumeGoal: false, recoveryRequired: false },
+      controls: {
+        canStopGoal: goalId === 'goal:one' && !goalStopped,
+        revocableCapabilityIds: goalId === 'goal:one' && !capabilityRevoked ? ['capability:active'] : [],
+        canResumeGoal: goalId === 'goal:one' && goalStopped,
+        recoveryRequired,
+      },
     }
   },
 }

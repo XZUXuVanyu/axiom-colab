@@ -45,6 +45,12 @@ int main(int argc, char* argv[]) {
     auto* initial_input = view.findChild<QPlainTextEdit*>("initialCandidateInput");
     auto* create_candidate = view.findChild<QPushButton*>("createCandidate");
     auto* initial_result = view.findChild<QLabel*>("initialCandidateResult");
+    auto* stop_goal = view.findChild<QPushButton*>("stopGoal");
+    auto* resume_goal = view.findChild<QPushButton*>("resumeGoal");
+    auto* capabilities = view.findChild<QListWidget*>("revocableCapabilities");
+    auto* revoke_capability = view.findChild<QPushButton*>("revokeCapability");
+    auto* recover_workspace = view.findChild<QPushButton*>("recoverWorkspace");
+    auto* lifecycle_result = view.findChild<QLabel*>("lifecycleResult");
     if (workspaces == nullptr || goals == nullptr || resources == nullptr
         || plan == nullptr || status == nullptr || compute == nullptr
         || working == nullptr || artifacts == nullptr) {
@@ -57,7 +63,9 @@ int main(int argc, char* argv[]) {
         || challenge_result == nullptr || revision_input == nullptr
         || revise_candidate == nullptr || revision_result == nullptr
         || initial_input == nullptr || create_candidate == nullptr
-        || initial_result == nullptr) {
+        || initial_result == nullptr || stop_goal == nullptr || resume_goal == nullptr
+        || capabilities == nullptr || revoke_capability == nullptr
+        || recover_workspace == nullptr || lifecycle_result == nullptr) {
         std::cerr << "[FAIL] Tool execution widgets are not inspectable\n";
         return 1;
     }
@@ -100,6 +108,53 @@ int main(int argc, char* argv[]) {
     }
     if (status->text() != "Connected (supervised)") {
         std::cerr << "[FAIL] supervisory view did not remain connected\n";
+        return 1;
+    }
+    if (!stop_goal->isEnabled() || resume_goal->isEnabled()
+        || capabilities->count() != 1 || !recover_workspace->isEnabled()) {
+        std::cerr << "[FAIL] authoritative lifecycle controls did not render\n";
+        return 1;
+    }
+    stop_goal->click();
+    timer.restart();
+    while (timer.elapsed() < 5000 && !resume_goal->isEnabled()) {
+        application.processEvents(); QThread::msleep(10);
+    }
+    if (!lifecycle_result->text().contains("Goal stopped") || stop_goal->isEnabled()) {
+        std::cerr << "[FAIL] host stop did not refresh lifecycle state\n";
+        return 1;
+    }
+    capabilities->setCurrentRow(0);
+    revoke_capability->click();
+    timer.restart();
+    while (timer.elapsed() < 5000 && capabilities->count() != 0) {
+        application.processEvents(); QThread::msleep(10);
+    }
+    if (!lifecycle_result->text().contains("Capability revoked")) {
+        std::cerr << "[FAIL] host capability revocation did not refresh state\n";
+        return 1;
+    }
+    recover_workspace->click();
+    timer.restart();
+    while (timer.elapsed() < 5000
+           && !lifecycle_result->text().contains("recovery completed")) {
+        application.processEvents(); QThread::msleep(10);
+    }
+    if (!lifecycle_result->text().contains("recovery completed")) {
+        std::cerr << "[FAIL] host workspace recovery did not refresh state\n";
+        return 1;
+    }
+    timer.restart();
+    while (timer.elapsed() < 5000 && !resume_goal->isEnabled()) {
+        application.processEvents(); QThread::msleep(10);
+    }
+    resume_goal->click();
+    timer.restart();
+    while (timer.elapsed() < 5000 && !stop_goal->isEnabled()) {
+        application.processEvents(); QThread::msleep(10);
+    }
+    if (!lifecycle_result->text().contains("Goal resumed")) {
+        std::cerr << "[FAIL] host resume did not refresh lifecycle state\n";
         return 1;
     }
     if (compute->count() != 1 || working->count() != 1 || artifacts->count() != 1

@@ -40,6 +40,9 @@ private:
     void submit_selected_hidden_challenge();
     void revise_selected_candidate();
     void create_initial_candidate();
+    void change_goal_state(bool stop);
+    void revoke_selected_capability();
+    void recover_selected_workspace();
     void render(const SupervisoryWorkspaceInspection& inspection);
     void show_error(const QString& message);
     void set_busy(bool busy);
@@ -54,6 +57,12 @@ private:
     QLabel* resources_{};
     QLabel* approved_plan_{};
     QLabel* goal_progress_{};
+    QPushButton* stop_goal_{};
+    QPushButton* resume_goal_{};
+    QListWidget* revocable_capabilities_{};
+    QPushButton* revoke_capability_{};
+    QPushButton* recover_workspace_{};
+    QLabel* lifecycle_result_{};
     QListWidget* tools_{};
     QListWidget* candidates_{};
     QPlainTextEdit* candidate_details_{};
@@ -78,6 +87,11 @@ private:
     QPushButton* execute_button_{};
     QLabel* execution_result_{};
     bool busy_{};
+    bool can_stop_goal_{};
+    bool can_resume_goal_{};
+    bool recovery_required_{};
+    std::string plan_revision_id_;
+    std::string plan_hash_;
 };
 
 } // namespace axiom_colab::gui

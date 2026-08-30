@@ -165,6 +165,31 @@ void SupervisoryView::build_ui() {
     plan_layout->addWidget(goal_progress_);
     page->addWidget(plan_group);
 
+    auto* lifecycle_group = new QGroupBox("Host-owned lifecycle controls", this);
+    auto* lifecycle_layout = new QGridLayout(lifecycle_group);
+    stop_goal_ = new QPushButton("Stop selected goal", lifecycle_group);
+    stop_goal_->setObjectName("stopGoal");
+    resume_goal_ = new QPushButton("Resume selected goal", lifecycle_group);
+    resume_goal_->setObjectName("resumeGoal");
+    recover_workspace_ = new QPushButton("Recover workspace", lifecycle_group);
+    recover_workspace_->setObjectName("recoverWorkspace");
+    revocable_capabilities_ = new QListWidget(lifecycle_group);
+    revocable_capabilities_->setObjectName("revocableCapabilities");
+    revocable_capabilities_->setMaximumHeight(80);
+    revoke_capability_ = new QPushButton("Revoke selected capability", lifecycle_group);
+    revoke_capability_->setObjectName("revokeCapability");
+    lifecycle_result_ = new QLabel("Actions are enabled only from host-projected authoritative state.", lifecycle_group);
+    lifecycle_result_->setObjectName("lifecycleResult");
+    lifecycle_result_->setWordWrap(true);
+    lifecycle_layout->addWidget(stop_goal_, 0, 0);
+    lifecycle_layout->addWidget(resume_goal_, 0, 1);
+    lifecycle_layout->addWidget(recover_workspace_, 0, 2);
+    lifecycle_layout->addWidget(new QLabel("Revocable capabilities", lifecycle_group), 1, 0);
+    lifecycle_layout->addWidget(revocable_capabilities_, 1, 1);
+    lifecycle_layout->addWidget(revoke_capability_, 1, 2);
+    lifecycle_layout->addWidget(lifecycle_result_, 2, 0, 1, 3);
+    page->addWidget(lifecycle_group);
+
     auto* execution_group = new QGroupBox("Execute host-authorized built-in Tool", this);
     auto* execution_layout = new QGridLayout(execution_group);
     execution_tool_selector_ = new QComboBox(execution_group);
@@ -310,6 +335,14 @@ void SupervisoryView::build_ui() {
             &SupervisoryView::revise_selected_candidate);
     connect(create_candidate_, &QPushButton::clicked, this,
             &SupervisoryView::create_initial_candidate);
+    connect(stop_goal_, &QPushButton::clicked, this, [this] { change_goal_state(true); });
+    connect(resume_goal_, &QPushButton::clicked, this, [this] { change_goal_state(false); });
+    connect(revoke_capability_, &QPushButton::clicked, this,
+            &SupervisoryView::revoke_selected_capability);
+    connect(recover_workspace_, &QPushButton::clicked, this,
+            &SupervisoryView::recover_selected_workspace);
+    connect(revocable_capabilities_, &QListWidget::currentRowChanged, this,
+            [this](int row) { revoke_capability_->setEnabled(row >= 0 && !busy_); });
 }
 
 void SupervisoryView::start_process() {
@@ -708,7 +741,87 @@ void SupervisoryView::create_initial_candidate() {
     }
 }
 
+void SupervisoryView::change_goal_state(bool stop) {
+    if (workspace_selector_->currentText().isEmpty() || goal_selector_->currentIndex() <= 0
+        || plan_revision_id_.empty() || plan_hash_.empty()) {
+        show_error("Select a goal with an exact approved plan first"); return;
+    }
+    const std::string workspace = workspace_selector_->currentText().toStdString();
+    const std::string goal = goal_selector_->currentText().toStdString();
+    const std::string action = stop ? "stopped" : "resumed";
+    lifecycle_result_->setText(stop ? "Stopping through the host lifecycle..." : "Resuming through the host lifecycle...");
+    set_busy(true);
+    auto handler = [this, workspace, goal, action](const SupervisoryResponse* response, const std::string* error) {
+        if (error != nullptr) { show_error(text(*error)); set_busy(false); return; }
+        try {
+            if (!response->ok) throw SupervisoryResponseError(response->error_code + ": " + response->error_message);
+            (void)parse_lifecycle_result(*response, workspace, goal, std::nullopt, action);
+            lifecycle_result_->setText(action == "stopped" ? "Goal stopped by the host." : "Goal resumed by the host.");
+            set_busy(false); inspect_selected_workspace();
+        } catch (const std::exception& decode_error) {
+            show_error(QString::fromUtf8(decode_error.what())); set_busy(false);
+        }
+    };
+    try {
+        if (stop) (void)client_.stop_goal(workspace, goal, plan_revision_id_, plan_hash_, std::move(handler));
+        else (void)client_.resume_goal(workspace, goal, plan_revision_id_, plan_hash_, std::move(handler));
+    } catch (const std::exception& error) { show_error(QString::fromUtf8(error.what())); set_busy(false); }
+}
+
+void SupervisoryView::revoke_selected_capability() {
+    auto* item = revocable_capabilities_->currentItem();
+    if (item == nullptr || workspace_selector_->currentText().isEmpty()) {
+        show_error("Select a host-projected revocable capability first"); return;
+    }
+    const std::string workspace = workspace_selector_->currentText().toStdString();
+    const std::optional<std::string> goal = goal_selector_->currentIndex() > 0
+        ? std::optional<std::string>(goal_selector_->currentText().toStdString()) : std::nullopt;
+    const std::string capability = item->text().toStdString();
+    lifecycle_result_->setText("Revoking the exact selected capability through the host lifecycle...");
+    set_busy(true);
+    try {
+        (void)client_.revoke_capability(workspace,
+            goal.has_value() ? std::optional<std::string_view>(*goal) : std::nullopt, capability,
+            [this, workspace, goal, capability](const SupervisoryResponse* response, const std::string* error) {
+                if (error != nullptr) { show_error(text(*error)); set_busy(false); return; }
+                try {
+                    if (!response->ok) throw SupervisoryResponseError(response->error_code + ": " + response->error_message);
+                    (void)parse_lifecycle_result(*response, workspace,
+                        goal.has_value() ? std::optional<std::string_view>(*goal) : std::nullopt,
+                        capability, "revoked");
+                    lifecycle_result_->setText("Capability revoked by the host.");
+                    set_busy(false); inspect_selected_workspace();
+                } catch (const std::exception& decode_error) {
+                    show_error(QString::fromUtf8(decode_error.what())); set_busy(false);
+                }
+            });
+    } catch (const std::exception& error) { show_error(QString::fromUtf8(error.what())); set_busy(false); }
+}
+
+void SupervisoryView::recover_selected_workspace() {
+    if (workspace_selector_->currentText().isEmpty()) { show_error("Select a workspace first"); return; }
+    const std::string workspace = workspace_selector_->currentText().toStdString();
+    lifecycle_result_->setText("Recovering through the host lifecycle...");
+    set_busy(true);
+    try {
+        (void)client_.recover_workspace(workspace,
+            [this, workspace](const SupervisoryResponse* response, const std::string* error) {
+                if (error != nullptr) { show_error(text(*error)); set_busy(false); return; }
+                try {
+                    if (!response->ok) throw SupervisoryResponseError(response->error_code + ": " + response->error_message);
+                    (void)parse_lifecycle_result(*response, workspace, std::nullopt, std::nullopt, "recovered");
+                    lifecycle_result_->setText("Workspace recovery completed by the host.");
+                    set_busy(false); inspect_selected_workspace();
+                } catch (const std::exception& decode_error) {
+                    show_error(QString::fromUtf8(decode_error.what())); set_busy(false);
+                }
+            });
+    } catch (const std::exception& error) { show_error(QString::fromUtf8(error.what())); set_busy(false); }
+}
+
 void SupervisoryView::render(const SupervisoryWorkspaceInspection& inspection) {
+    plan_revision_id_.clear();
+    plan_hash_.clear();
     if (inspection.current_plan.is_null()) {
         if (inspection.goal_id.has_value()) {
             throw SupervisoryResponseError(
@@ -731,6 +844,8 @@ void SupervisoryView::render(const SupervisoryWorkspaceInspection& inspection) {
         approved_plan_->setToolTip(
             "Approved revision: " + text(string_field(inspection.current_plan, "revisionId"))
             + "\nHash: " + text(string_field(inspection.current_plan, "hash")));
+        plan_revision_id_ = string_field(inspection.current_plan, "revisionId");
+        plan_hash_ = string_field(inspection.current_plan, "hash");
     }
 
     if (inspection.progress.is_null()) {
@@ -972,6 +1087,20 @@ void SupervisoryView::render(const SupervisoryWorkspaceInspection& inspection) {
             item->setToolTip("Model claim only; no authoritative evidence hash");
         }
     }
+
+    const auto& controls = require_object(inspection.controls, "controls");
+    exact_fields(controls, {"canStopGoal", "revocableCapabilityIds", "canResumeGoal", "recoveryRequired"}, "controls");
+    can_stop_goal_ = boolean_field(inspection.controls, "canStopGoal");
+    can_resume_goal_ = boolean_field(inspection.controls, "canResumeGoal");
+    recovery_required_ = boolean_field(inspection.controls, "recoveryRequired");
+    const Json& capability_ids = inspection.controls.at("revocableCapabilityIds");
+    if (!capability_ids.is_array()) throw SupervisoryResponseError("revocableCapabilityIds must be an array");
+    revocable_capabilities_->clear();
+    for (const Json& capability : capability_ids.as_array()) {
+        if (!capability.is_string()) throw SupervisoryResponseError("revocable capability identity must be a string");
+        revocable_capabilities_->addItem(text(capability.as_string()));
+    }
+    set_busy(false);
 }
 
 void SupervisoryView::show_error(const QString& message) {
@@ -996,6 +1125,11 @@ void SupervisoryView::set_busy(bool busy) {
         !busy && current_candidate && client_.is_running());
     revise_candidate_->setEnabled(!busy && current_candidate && client_.is_running());
     create_candidate_->setEnabled(!busy && !workspace_selector_->currentText().isEmpty()
+        && client_.is_running());
+    stop_goal_->setEnabled(!busy && can_stop_goal_ && !plan_revision_id_.empty() && client_.is_running());
+    resume_goal_->setEnabled(!busy && can_resume_goal_ && !plan_revision_id_.empty() && client_.is_running());
+    recover_workspace_->setEnabled(!busy && recovery_required_ && client_.is_running());
+    revoke_capability_->setEnabled(!busy && revocable_capabilities_->currentItem() != nullptr
         && client_.is_running());
 }
 

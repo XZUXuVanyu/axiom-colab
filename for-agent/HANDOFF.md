@@ -4,6 +4,18 @@ Last updated: 2026-08-30
 
 ## Current state
 
+- Qt now renders and invokes host-projected stop, resume, capability-revocation,
+  and workspace-recovery controls. Every result is strictly correlated and the
+  view refreshes authoritative inspection instead of changing control state
+  locally.
+- Stop/resume requests bind the exact visible approved-plan revision/hash;
+  revocation binds the exact workspace/goal selection and capability identity;
+  recovery binds the workspace. The host re-inspects current availability
+  before delegating to the restart-safe lifecycle service.
+- The production local host gates Tool execution when a goal is stopped, sends
+  capability revocation to the authenticated memory authority, and verifies
+  recovery through the memory store before committing lifecycle transitions.
+
 - Qt now creates a new structured Tool specification and its initial immutable
   candidate through one narrow host-owned workshop operation. The workspace-
   level form accepts the full specification, descriptor, and canonical-base64
@@ -158,8 +170,8 @@ Last updated: 2026-08-30
   composes durable memory/candidate/lifecycle repositories, Adapter discovery,
   installed-Tool rediscovery, authentic promotion inspection, the local host,
   and the JSON-lines server without putting diagnostics on stdout.
-- This initial production process deliberately exposes no lifecycle mutation
-  authority and cannot author validation evidence. Promotion projection checks
+- The production process exposes only narrow exact-state lifecycle operations
+  and cannot author validation evidence. Promotion projection checks
   exact stored evidence plus all five confinement observations through a
   narrow read-only authority object. Goal-specific inspection uses only exact
   lifecycle and committed-plan bindings; workspace inspection with
@@ -193,7 +205,8 @@ Last updated: 2026-08-30
   pure-Tool execution. Requests use strict fields, validated
   identities, a 64 KiB default limit, request-ID correlation, and structured
   errors; the only approval operation is the exact-hash installation-proposal
-  decision, while installation, lifecycle, and memory-authority operations are absent.
+  decision. Exact-state lifecycle operations are present; installation and
+  general memory-authority operations remain absent.
 - Host inspection now has a selection-independent path, preventing concurrent
   transport requests from redirecting shared UI workspace/goal selection.
 - `LocalApplicationHost` now owns Adapter descriptor discovery, deterministic
@@ -900,11 +913,11 @@ installation controls:
 
 ## Exact next work
 
-Expose lifecycle controls through existing host-owned
-stop/revoke/resume/recovery services. Bind every request to the exact visible
-workspace, goal, approved-plan state, or capability identity as applicable;
-refresh authoritative inspection after each result and do not reproduce
-lifecycle authority in Qt.
+Add workspace and goal creation through narrow host-owned services, including
+the approved working-plan path required before lifecycle registration. Keep
+model-authored objectives distinct from user approval, bind the registered goal
+to the exact committed plan revision/hash, and refresh authoritative selectors
+without allowing Qt to write memory or lifecycle databases directly.
 Keep installed-candidate execution absent until the executable loading strategy
 preserves its exact candidate and installation evidence hashes.
 

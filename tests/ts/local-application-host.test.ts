@@ -221,6 +221,45 @@ test('application host binds a user decision to the exact visible proposal hash'
   host.close()
 })
 
+test('application host binds lifecycle actions to exact projected authority', async () => {
+  const value = fixture()
+  value.lifecycle.close()
+  const plan = {
+    id: 'object:plan', key: 'goal:one:plan', revision: 1,
+    value: { goalId: 'goal:one', objective: 'Supervise lifecycle.' }, hash: `sha256:${'1'.repeat(64)}`,
+    proposalId: 'proposal:plan', committedAt: '2026-08-30T10:00:00.000Z',
+  } as const
+  const actions: string[] = []
+  const lifecycle = new LocalGoalLifecycle(join(value.root, 'action-lifecycle.sqlite3'), {
+    approvedPlan: (workspaceId, goalId) => workspaceId === 'workspace:alpha' && goalId === 'goal:one' ? plan : null,
+    async stopGoal() { actions.push('stop') }, async resumeGoal() { actions.push('resume') },
+    async revokeCapability(_workspaceId, capabilityId) { actions.push(`revoke:${capabilityId}`) },
+    async recoverWorkspace() { actions.push('recover') },
+  })
+  lifecycle.registerGoal('workspace:alpha', 'goal:one')
+  lifecycle.trackCapability('workspace:alpha', 'goal:one', 'capability:active')
+  lifecycle.requireRecovery('workspace:alpha')
+  const host = new LocalApplicationHost({
+    ...value, lifecycle, validator: { isPromotionEligible: () => false }, hostActorId: 'actor:host',
+    createInstallation: () => ({ rediscover: () => [] }),
+  } as any)
+  await host.initialize()
+  await assert.rejects(
+    host.stopGoal('workspace:alpha', 'goal:one', 'object:plan', `sha256:${'f'.repeat(64)}`),
+    (error: unknown) => (error as any).code === 'STALE_APPROVED_PLAN',
+  )
+  await host.stopGoal('workspace:alpha', 'goal:one', plan.id, plan.hash)
+  await assert.rejects(
+    host.executeTool('workspace:alpha', 'goal:one', 'add_numbers', {}),
+    (error: unknown) => (error as any).code === 'GOAL_NOT_ACTIVE',
+  )
+  await host.revokeCapability('workspace:alpha', 'goal:one', 'capability:active')
+  await host.resumeGoal('workspace:alpha', 'goal:one', plan.id, plan.hash)
+  await host.recoverWorkspace('workspace:alpha')
+  assert.deepEqual(actions, ['stop', 'revoke:capability:active', 'resume', 'recover'])
+  host.close()
+})
+
 test('application host binds hidden challenges to the exact current candidate and returns redacted evidence', async () => {
   const value = fixture()
   const workshop = new ToolWorkshop({ repository: value.candidates, idFactory: () => crypto.randomUUID() })

@@ -304,14 +304,15 @@ export async function runLocalSupervisoryProcess(configValue: unknown): Promise<
     evidenceRepository: candidates,
     validatorCredential,
   })
-  const unavailable = async (): Promise<never> => { throw Object.assign(new Error('lifecycle mutation is not exposed by the read-only process'), { code: 'OPERATION_NOT_AVAILABLE' }) }
   const approvedPlan = createLocalApprovedPlanReader(workflows, config.hostActorId)
   const lifecycle = new LocalGoalLifecycle(join(config.stateRoot, 'lifecycle.sqlite3'), {
     approvedPlan,
-    revokeCapability: unavailable,
-    stopGoal: unavailable,
-    resumeGoal: unavailable,
-    recoverWorkspace: unavailable,
+    revokeCapability: async (_workspaceId, capabilityId) => { memoryService.revoke(capabilityId) },
+    // This host has no autonomous background runner; the durable lifecycle
+    // transition itself gates subsequent Tool-call admission.
+    stopGoal: async () => {},
+    resumeGoal: async () => {},
+    recoverWorkspace: async (workspaceId) => { store.reopenWorkspace(workspaceId) },
   })
   const observer = new ToolObserver({
     info: (message) => process.stderr.write(`${message}\n`),

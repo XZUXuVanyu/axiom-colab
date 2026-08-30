@@ -240,6 +240,61 @@ std::string SupervisoryProcessClient::create_candidate(
     }), std::move(handler));
 }
 
+namespace {
+void require_plan_action_binding(std::string_view workspace_id,
+                                 std::string_view goal_id,
+                                 std::string_view plan_revision_id,
+                                 std::string_view plan_hash) {
+    if (!valid_identity(workspace_id, "workspace:")
+        || !valid_identity(goal_id, "goal:")
+        || !valid_identity(plan_revision_id, "object:")
+        || !plan_hash.starts_with("sha256:") || plan_hash.size() != 71) {
+        throw std::invalid_argument("goal lifecycle binding is malformed");
+    }
+}
+}
+
+std::string SupervisoryProcessClient::stop_goal(
+    std::string_view workspace_id, std::string_view goal_id,
+    std::string_view plan_revision_id, std::string_view plan_hash,
+    ResponseHandler handler) {
+    require_plan_action_binding(workspace_id, goal_id, plan_revision_id, plan_hash);
+    return send_request(Json::object({{"protocolVersion", "1.1"}, {"operation", "stop-goal"},
+        {"workspaceId", std::string(workspace_id)}, {"goalId", std::string(goal_id)},
+        {"planRevisionId", std::string(plan_revision_id)}, {"planHash", std::string(plan_hash)}}), std::move(handler));
+}
+
+std::string SupervisoryProcessClient::resume_goal(
+    std::string_view workspace_id, std::string_view goal_id,
+    std::string_view plan_revision_id, std::string_view plan_hash,
+    ResponseHandler handler) {
+    require_plan_action_binding(workspace_id, goal_id, plan_revision_id, plan_hash);
+    return send_request(Json::object({{"protocolVersion", "1.1"}, {"operation", "resume-goal"},
+        {"workspaceId", std::string(workspace_id)}, {"goalId", std::string(goal_id)},
+        {"planRevisionId", std::string(plan_revision_id)}, {"planHash", std::string(plan_hash)}}), std::move(handler));
+}
+
+std::string SupervisoryProcessClient::revoke_capability(
+    std::string_view workspace_id, std::optional<std::string_view> goal_id,
+    std::string_view capability_id, ResponseHandler handler) {
+    if (!valid_identity(workspace_id, "workspace:")
+        || (goal_id.has_value() && !valid_identity(*goal_id, "goal:"))
+        || !valid_identity(capability_id, "capability:")) {
+        throw std::invalid_argument("capability revocation binding is malformed");
+    }
+    return send_request(Json::object({{"protocolVersion", "1.1"}, {"operation", "revoke-capability"},
+        {"workspaceId", std::string(workspace_id)},
+        {"goalId", goal_id.has_value() ? Json(std::string(*goal_id)) : Json(nullptr)},
+        {"capabilityId", std::string(capability_id)}}), std::move(handler));
+}
+
+std::string SupervisoryProcessClient::recover_workspace(
+    std::string_view workspace_id, ResponseHandler handler) {
+    if (!valid_identity(workspace_id, "workspace:")) throw std::invalid_argument("workspace identity is malformed");
+    return send_request(Json::object({{"protocolVersion", "1.1"}, {"operation", "recover-workspace"},
+        {"workspaceId", std::string(workspace_id)}}), std::move(handler));
+}
+
 std::string SupervisoryProcessClient::send_request(Json request,
                                                    ResponseHandler handler) {
     if (!is_running()) {

@@ -378,4 +378,37 @@ SupervisoryInitialCandidateResult parse_initial_candidate_result(
         .candidate_id = candidate_id, .candidate_hash = candidate_hash};
 }
 
+SupervisoryLifecycleResult parse_lifecycle_result(
+    const SupervisoryResponse& response, std::string_view expected_workspace_id,
+    std::optional<std::string_view> expected_goal_id,
+    std::optional<std::string_view> expected_capability_id,
+    std::string_view expected_action) {
+    if (!response.ok) fail("cannot decode lifecycle action from an error response");
+    const auto& result = require_object(response.result, "lifecycle result");
+    if (expected_goal_id.has_value() && expected_capability_id.has_value()) {
+        require_exact_fields(result, {"workspaceId", "goalId", "capabilityId", "action"});
+    } else if (expected_goal_id.has_value()) {
+        require_exact_fields(result, {"workspaceId", "goalId", "action"});
+    } else if (expected_capability_id.has_value()) {
+        require_exact_fields(result, {"workspaceId", "capabilityId", "action"});
+    } else {
+        require_exact_fields(result, {"workspaceId", "action"});
+    }
+    const auto& workspace_id = require_string(response.result.at("workspaceId"), "workspaceId");
+    const auto& action = require_string(response.result.at("action"), "action");
+    std::optional<std::string> goal_id;
+    std::optional<std::string> capability_id;
+    if (expected_goal_id.has_value()) goal_id = require_string(response.result.at("goalId"), "goalId");
+    if (expected_capability_id.has_value()) capability_id = require_string(response.result.at("capabilityId"), "capabilityId");
+    if (workspace_id != expected_workspace_id || !valid_identity(workspace_id, "workspace:")
+        || action != expected_action
+        || (expected_goal_id.has_value() && (*goal_id != *expected_goal_id || !valid_identity(*goal_id, "goal:")))
+        || (expected_capability_id.has_value() && (*capability_id != *expected_capability_id
+            || !valid_identity(*capability_id, "capability:")))) {
+        fail("lifecycle result does not match the exact requested binding");
+    }
+    return {.workspace_id = workspace_id, .goal_id = std::move(goal_id),
+        .capability_id = std::move(capability_id), .action = action};
+}
+
 } // namespace axiom_colab::gui

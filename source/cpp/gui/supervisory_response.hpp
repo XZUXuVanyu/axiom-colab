@@ -90,6 +90,13 @@ struct SupervisoryInitialCandidateResult final {
     std::string candidate_hash;
 };
 
+struct SupervisoryLifecycleResult final {
+    std::string workspace_id;
+    std::optional<std::string> goal_id;
+    std::optional<std::string> capability_id;
+    std::string action;
+};
+
 [[nodiscard]] SupervisoryResponse parse_supervisory_response(
     std::string_view text, std::string_view expected_request_id);
 [[nodiscard]] std::vector<std::string> parse_workspace_list_result(
@@ -116,5 +123,10 @@ struct SupervisoryInitialCandidateResult final {
     std::string_view expected_parent_candidate_hash);
 [[nodiscard]] SupervisoryInitialCandidateResult parse_initial_candidate_result(
     const SupervisoryResponse& response, std::string_view expected_workspace_id);
+[[nodiscard]] SupervisoryLifecycleResult parse_lifecycle_result(
+    const SupervisoryResponse& response, std::string_view expected_workspace_id,
+    std::optional<std::string_view> expected_goal_id,
+    std::optional<std::string_view> expected_capability_id,
+    std::string_view expected_action);
 
 } // namespace axiom_colab::gui

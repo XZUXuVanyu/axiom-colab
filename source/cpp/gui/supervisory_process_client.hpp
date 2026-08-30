@@ -61,6 +61,19 @@ public:
         std::string_view workspace_id, cpp_adapter::Json specification,
         cpp_adapter::Json descriptor, cpp_adapter::Json sources,
         ResponseHandler handler);
+    [[nodiscard]] std::string stop_goal(
+        std::string_view workspace_id, std::string_view goal_id,
+        std::string_view plan_revision_id, std::string_view plan_hash,
+        ResponseHandler handler);
+    [[nodiscard]] std::string resume_goal(
+        std::string_view workspace_id, std::string_view goal_id,
+        std::string_view plan_revision_id, std::string_view plan_hash,
+        ResponseHandler handler);
+    [[nodiscard]] std::string revoke_capability(
+        std::string_view workspace_id, std::optional<std::string_view> goal_id,
+        std::string_view capability_id, ResponseHandler handler);
+    [[nodiscard]] std::string recover_workspace(
+        std::string_view workspace_id, ResponseHandler handler);
 
 private:
     struct PendingRequest final {

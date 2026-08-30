@@ -4,6 +4,37 @@ Entries are chronological. Each entry corresponds to one logical Git commit and
 records its exact subject, purpose, material changes, and validation actually
 performed.
 
+## 2026-08-30 - feat(gui): expose host-owned lifecycle controls
+
+Purpose: complete the Stage 8 stop, revoke, resume, and recovery path without
+moving lifecycle or memory authority into Qt.
+
+Material changes:
+
+- Added strict supervisory operations for plan-bound stop/resume,
+  selection-scoped capability revocation, and workspace recovery.
+- Re-inspects host-projected availability before every mutation and rejects
+  stale plan hashes, unavailable actions, malformed identities, and selection
+  mismatches before delegating to `LocalGoalLifecycle`.
+- Added Qt controls with strict result correlation and authoritative refresh;
+  widgets never update lifecycle state by inference.
+- Composed production stop/resume admission gating, authenticated memory
+  capability revocation, and verified memory-store recovery.
+- Extended host, transport, real-process, and offscreen Widgets coverage through
+  stop, revoke, recover, resume, and stopped-goal Tool rejection.
+
+Validation actually run:
+
+- `pnpm.cmd test`: passed all 87 TypeScript tests.
+- `pnpm.cmd run test:integration`: passed 5 portable real-Bridge cases; 3
+  opt-in WSL confinement cases retained their skip gate.
+- Qt 6.12.0/MSVC 19.51 Ninja Release built all affected targets with warnings
+  as errors; all 3 CTest targets passed.
+- The first C++ build exposed an initializer-list/vector mismatch in the strict
+  decoder. Two subsequent Widgets runs exposed asynchronous wait races after
+  recovery; the corrected regression waits for the completed result and
+  authoritative refresh.
+
 ## 2026-08-30 - feat(gui): create initial candidates through the workshop
 
 Purpose: complete the Stage 8 workspace-level path from a new structured Tool

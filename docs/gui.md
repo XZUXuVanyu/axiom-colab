@@ -15,8 +15,11 @@ challenge output remains redacted. A pending installation proposal shows its
 exact proposal/candidate/validation hashes and requested permissions before
 enabling explicit approve/reject buttons. The host supplies the configured
 local user identity and delegates to the existing proposal service; Qt cannot
-author an approval record. No installation or lifecycle mutation operation is
-present. The selected current candidate accepts private hidden-challenge JSON
+author an approval record. Installation remains absent. Host-projected stop,
+resume, capability-revocation, and recovery controls delegate through the
+restart-safe lifecycle service and refresh authoritative inspection. Stop and
+resume bind the exact approved-plan revision/hash; revocation binds the exact
+selection-scoped capability identity. The selected current candidate accepts private hidden-challenge JSON
 containing base64 fixture bytes and allowlisted command definitions. Qt binds
 the request to the displayed revision and candidate hash, clears the private
 editor immediately after submission, and displays only validation hashes,

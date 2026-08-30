@@ -76,6 +76,34 @@ export class LocalApplicationHost {
         this.ensureReady();
         return this.backend.inspect(workspaceId, goalId);
     }
+    async stopGoal(workspaceId, goalId, planRevisionId, planHash) {
+        const snapshot = await this.inspect(workspaceId, goalId);
+        if (snapshot.currentPlan?.revisionId !== planRevisionId || snapshot.currentPlan.hash !== planHash) {
+            fail('STALE_APPROVED_PLAN', 'stop request does not bind the exact visible approved plan');
+        }
+        if (!snapshot.controls.canStopGoal) fail('ACTION_NOT_AVAILABLE', 'selected goal cannot be stopped');
+        await this.backend.stopGoal(workspaceId, goalId);
+    }
+    async resumeGoal(workspaceId, goalId, planRevisionId, planHash) {
+        const snapshot = await this.inspect(workspaceId, goalId);
+        if (snapshot.currentPlan?.revisionId !== planRevisionId || snapshot.currentPlan.hash !== planHash) {
+            fail('STALE_APPROVED_PLAN', 'resume request does not bind the exact visible approved plan');
+        }
+        if (!snapshot.controls.canResumeGoal) fail('ACTION_NOT_AVAILABLE', 'selected goal cannot be resumed');
+        await this.backend.resumeGoal(workspaceId, goalId);
+    }
+    async revokeCapability(workspaceId, goalId, capabilityId) {
+        const snapshot = await this.inspect(workspaceId, goalId);
+        if (!snapshot.controls.revocableCapabilityIds.includes(capabilityId)) {
+            fail('ACTION_NOT_AVAILABLE', 'capability is not revocable in the exact visible selection');
+        }
+        await this.backend.revokeCapability(workspaceId, capabilityId);
+    }
+    async recoverWorkspace(workspaceId) {
+        const snapshot = await this.inspect(workspaceId, null);
+        if (!snapshot.controls.recoveryRequired) fail('ACTION_NOT_AVAILABLE', 'workspace recovery is not required');
+        await this.backend.recoverWorkspace(workspaceId);
+    }
     async decideInstallation(workspaceId, proposalId, proposalHash, decision) {
         this.ensureReady();
         if (this.options.proposalService === undefined || this.options.userActorId === undefined) fail('OPERATION_NOT_AVAILABLE', 'installation decisions are not composed');
@@ -198,6 +226,7 @@ export class LocalApplicationHost {
         this.options.store.reopenWorkspace(workspaceId);
         const goal = this.options.lifecycle.inspectGoal(workspaceId, goalId);
         if (goal?.plan === null || goal === null) fail('GOAL_NOT_FOUND', 'selected goal has no authoritative approved plan');
+        if (!goal.canStop) fail('GOAL_NOT_ACTIVE', 'selected goal is not active');
         const descriptor = this.descriptors.find((item)=>item.name === toolName);
         if (descriptor === undefined) fail('TOOL_NOT_EXECUTABLE', 'Tool is not executable by the production Adapter');
         const callId = `call:${randomUUID()}`;
