@@ -4,6 +4,40 @@ Entries are chronological. Each entry corresponds to one logical Git commit and
 records its exact subject, purpose, material changes, and validation actually
 performed.
 
+## 2026-08-31 - feat(release): package a relocatable laboratory runtime
+
+Purpose: remove source-checkout and ambient-Node assumptions from the first
+clean-layout Stage 10 acceptance path.
+
+Material changes:
+
+- Added a strict runtime packager for exact GUI, Bridge, Node, generated
+  supervisory runtime, operational scripts, and Qt deployment files.
+- Added a complete path/size/SHA-256 runtime manifest and rejection of existing
+  outputs, missing inputs, collisions, links, and unsupported entries.
+- Made the installed Qt Laboratory resolve its runtime root and bundled Node
+  relative to the GUI executable while preserving source-tree fallback for
+  developer builds.
+- Documented runtime construction and the remaining developer-only Tool
+  authoring boundary.
+
+Validation recorded for this change:
+
+- `pnpm.cmd test` initially passed 104/105 tests and exposed strict directory
+  copy behavior; the focused runtime/deployment rerun then passed 2/2 after
+  copying Qt entries individually.
+- The Release Bridge and changed Qt GUI rebuilt with Qt 6.12.0/MSVC after the
+  managed sandbox first blocked MSBuild file tracking and the elevated build
+  exposed and corrected two missing Qt includes.
+- A 63-file runtime was created with real `windeployqt`. From the copied root,
+  bundled Node created `workspace:portable` and `goal:portable`, invoked the
+  copied `add_numbers` Bridge with result 42, sealed the report artifact, and
+  closed the exact approved plan into an immutable archive plus inactive
+  experience proposal.
+- Final `pnpm.cmd test` passed all 105 TypeScript tests. Release
+  `cpp-adapter-tests`, `axiom-supervisory-process-tests`, and
+  `axiom-supervisory-view-tests` rebuilt and passed 3/3 through CTest.
+
 ## 2026-08-31 - feat(recovery): archive authoritative state offline
 
 Purpose: start Stage 10 with a tested local backup and recovery operation that

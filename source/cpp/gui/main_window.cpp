@@ -2,6 +2,7 @@
 #include "supervisory_view.hpp"
 
 #include <QDir>
+#include <QCoreApplication>
 #include <QCheckBox>
 #include <QDragEnterEvent>
 #include <QFile>
@@ -38,6 +39,14 @@ bool is_source_file(const QString& path) {
 
 QString default_project_directory() {
     return QDir::cleanPath(QString::fromUtf8(CPP_ADAPTER_SOURCE_DIR));
+}
+
+QString supervisory_runtime_directory() {
+    const QDir installed_root(QDir(QCoreApplication::applicationDirPath()).filePath(".."));
+    if (QFileInfo::exists(installed_root.filePath("proj/scripts/run-supervisory.mjs"))) {
+        return QDir::cleanPath(installed_root.absolutePath());
+    }
+    return default_project_directory();
 }
 
 } // namespace
@@ -153,7 +162,7 @@ MainWindow::MainWindow(QString supervisory_config_path, QWidget* parent)
     page->addWidget(output_group, 1);
 
     tabs->addTab(new axiom_colab::gui::SupervisoryView(
-                     default_project_directory(),
+                     supervisory_runtime_directory(),
                      std::move(supervisory_config_path), tabs),
                  "Laboratory");
     tabs->addTab(central, "Tool authoring");

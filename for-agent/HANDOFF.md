@@ -4,6 +4,17 @@ Last updated: 2026-08-31
 
 ## Current state
 
+- Stage 10 now has a relocatable Windows runtime boundary. The packager copies
+  exact Release GUI, Bridge, Node, generated runtime, operational scripts, and
+  Qt deployment files into a new root and binds every copied file by size and
+  SHA-256 in a manifest. Qt resolves the copied supervisory script and bundled
+  Node relative to its executable rather than the compiled source checkout or
+  ambient `PATH`.
+- The clean copied layout completed a real portable workspace/goal/built-in/
+  closure path: `add_numbers` returned 42, its exact call was sealed in an
+  immutable report, and exact-plan closure produced a hash-bound archive and
+  inactive review proposal. WSL challenge and installed-candidate acceptance
+  remain separate and are not claimed by this portable smoke result.
 - Stage 10 has started with a portable offline state archive and verified
   restore boundary. `proj/scripts/state-archive.mjs` creates a complete
   path/size/SHA-256 manifest, copies through a non-authoritative sibling staging
@@ -1008,12 +1019,10 @@ installation controls:
 
 ## Exact next work
 
-Add a relocatable packaged-runtime layout containing the GUI, Bridge, Node
-supervisory runtime, generated `dist`, scripts, and required Qt runtime. Prove
-startup and the portable workspace/goal/built-in/closure flow from that clean
-layout without source-tree path assumptions, then extend the acceptance path
-through WSL challenge, approval, exact executable installation/invocation, and
-distillation. Do not weaken optional WSL confinement claims.
+Extend the clean-layout acceptance path through WSL hidden challenge,
+approval, exact executable installation/invocation, and distillation. Keep the
+packaged runtime separate from authoritative workspace state and do not weaken
+optional WSL confinement claims.
 
 Keep the WSL integration suite opt-in for portable CI and run it explicitly on
 the supported Windows/Ubuntu composition before changing confinement claims.

@@ -1,6 +1,8 @@
 #include "supervisory_view.hpp"
 
 #include <QComboBox>
+#include <QDir>
+#include <QFileInfo>
 #include <QFont>
 #include <QGridLayout>
 #include <QGroupBox>
@@ -539,8 +541,16 @@ void SupervisoryView::start_process() {
         return;
     }
     try {
+        const QString bundled_node = QDir(repository_root_).filePath(
+#ifdef Q_OS_WIN
+            "bin/node.exe"
+#else
+            "bin/node"
+#endif
+        );
         client_.start_local_supervisory_process(
-            "node", repository_root_, config_path_);
+            QFileInfo::exists(bundled_node) ? bundled_node : QString("node"),
+            repository_root_, config_path_);
         connection_status_->setText("Connected (supervised)");
         load_workspaces();
     } catch (const std::exception& error) {

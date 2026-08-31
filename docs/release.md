@@ -20,6 +20,32 @@ version. Additive Bridge capabilities remain compatible within protocol 1.0.
 7. Stop the supervisory host, create and verify an offline state archive using
    `proj/scripts/state-archive.mjs`, restore it to a new root, and inspect the
    restored workspaces through the production supervisory boundary.
+8. Build a relocatable runtime with the exact Release GUI, Bridge, Node, and Qt
+   deployment tool. Start the copied supervisory runtime from that layout and
+   complete the portable workspace/goal/built-in/closure acceptance path.
+
+## Relocatable Windows runtime
+
+The packager refuses an existing output directory, copies the exact GUI,
+Bridge, Node executable, generated `dist`, supervisory/archive/config scripts,
+and deployed Qt runtime, then writes `runtime-manifest.json` with the size and
+SHA-256 of every copied file. For example:
+
+```powershell
+pnpm.cmd package:runtime -- `
+  --output D:\Axiom\runtime `
+  --gui D:\build\Release\cpp-adapter-gui.exe `
+  --bridge D:\build\Release\cpp-tool-bridge.exe `
+  --node 'C:\Program Files\nodejs\node.exe' `
+  --windeployqt C:\Qt\6.12.0\msvc2022_64\bin\windeployqt.exe
+```
+
+Generate the supervisory configuration outside both the runtime and the
+authoritative state root. The installed GUI resolves the supervisory script
+and bundled Node relative to its own `bin` directory; it does not require the
+source checkout or ambient `PATH`. The separate Tool-authoring tab still
+targets a developer checkout and is not part of the packaged laboratory
+acceptance claim.
 
 ## Migration notes
 
