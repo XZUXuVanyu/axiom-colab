@@ -4,6 +4,34 @@ Entries are chronological. Each entry corresponds to one logical Git commit and
 records its exact subject, purpose, material changes, and validation actually
 performed.
 
+## 2026-08-31 - feat(gui): complete review-only goal closure
+
+Purpose: complete Stage 9 through the daily-use Qt interface while preserving
+the distinction between a user review decision and activation authority.
+
+Material changes:
+
+- Added exact-plan `close-goal` and exact-hash `decide-distillation` requests
+  to the correlated C++ process client.
+- Added a Qt closure form, immutable archive display, proposal list, and
+  accept/reject/defer controls driven only by refreshed authoritative inspection.
+- Cleared submitted draft JSON immediately and disabled closure after the
+  authoritative closure appeared.
+- Labeled proposed and decided material as inactive review state and explicitly
+  stated that cleanup, retention, skill, Tool, and activation actions did not run.
+- Extended the real-process fixture and offscreen widget test through closure
+  and an accepted-but-inactive cleanup proposal.
+
+Validation actually run:
+
+- Existing Qt/MSVC Release build completed with warnings as errors using the
+  approved outside-sandbox build required by MSBuild's file tracker.
+- Release `ctest` passed all 3 C++/process/offscreen-widget test executables.
+- `pnpm.cmd test`: all 102 TypeScript tests passed and regenerated `dist/`.
+- `pnpm.cmd run test:integration`: five portable real-Bridge/production-host
+  tests passed; the three opt-in WSL confinement tests skipped.
+- `git diff --check`: passed with newline-conversion notices only.
+
 ## 2026-08-31 - feat(gui): decode inactive distillation strictly
 
 Purpose: continue Stage 9 across the C++ process boundary before exposing goal

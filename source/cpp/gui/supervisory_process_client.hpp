@@ -82,6 +82,14 @@ public:
         std::string_view capability_id, ResponseHandler handler);
     [[nodiscard]] std::string recover_workspace(
         std::string_view workspace_id, ResponseHandler handler);
+    [[nodiscard]] std::string close_goal(
+        std::string_view workspace_id, std::string_view goal_id,
+        std::string_view plan_revision_id, std::string_view plan_hash,
+        cpp_adapter::Json drafts, ResponseHandler handler);
+    [[nodiscard]] std::string decide_distillation(
+        std::string_view workspace_id, std::string_view proposal_id,
+        std::string_view proposal_hash, std::string_view decision,
+        ResponseHandler handler);
 
 private:
     struct PendingRequest final {

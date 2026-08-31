@@ -246,6 +246,40 @@ void SupervisoryView::build_ui() {
     lifecycle_layout->addWidget(lifecycle_result_, 2, 0, 1, 3);
     page->addWidget(lifecycle_group);
 
+    auto* distillation_group = new QGroupBox("Close goal and review distillation", this);
+    auto* distillation_layout = new QGridLayout(distillation_group);
+    distillation_input_ = new QPlainTextEdit(distillation_group);
+    distillation_input_->setObjectName("distillationInput");
+    distillation_input_->setPlaceholderText(
+        R"([{"kind":"experience","content":{"summary":"..."},"evidenceArtifactIds":["object:..."]}])");
+    distillation_input_->setMaximumHeight(100);
+    close_goal_ = new QPushButton("Close goal with review proposals", distillation_group);
+    close_goal_->setObjectName("closeGoal");
+    closure_result_ = new QLabel(
+        "Closure creates an immutable archive; proposals remain inactive until a separate system activates them.",
+        distillation_group);
+    closure_result_->setObjectName("closureResult");
+    closure_result_->setWordWrap(true);
+    closure_result_->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    distillation_proposals_ = new QListWidget(distillation_group);
+    distillation_proposals_->setObjectName("distillationProposals");
+    distillation_proposals_->setMaximumHeight(130);
+    accept_distillation_ = new QPushButton("Accept review only", distillation_group);
+    accept_distillation_->setObjectName("acceptDistillation");
+    reject_distillation_ = new QPushButton("Reject", distillation_group);
+    reject_distillation_->setObjectName("rejectDistillation");
+    defer_distillation_ = new QPushButton("Defer", distillation_group);
+    defer_distillation_->setObjectName("deferDistillation");
+    distillation_layout->addWidget(new QLabel("Review proposal drafts (JSON array)", distillation_group), 0, 0);
+    distillation_layout->addWidget(distillation_input_, 0, 1, 1, 3);
+    distillation_layout->addWidget(close_goal_, 1, 0);
+    distillation_layout->addWidget(closure_result_, 1, 1, 1, 3);
+    distillation_layout->addWidget(distillation_proposals_, 2, 0, 1, 4);
+    distillation_layout->addWidget(accept_distillation_, 3, 0);
+    distillation_layout->addWidget(reject_distillation_, 3, 1);
+    distillation_layout->addWidget(defer_distillation_, 3, 2);
+    page->addWidget(distillation_group);
+
     auto* execution_group = new QGroupBox("Execute host-authorized built-in Tool", this);
     auto* execution_layout = new QGridLayout(execution_group);
     execution_tool_selector_ = new QComboBox(execution_group);
@@ -420,6 +454,22 @@ void SupervisoryView::build_ui() {
             &SupervisoryView::recover_selected_workspace);
     connect(revocable_capabilities_, &QListWidget::currentRowChanged, this,
             [this](int row) { revoke_capability_->setEnabled(row >= 0 && !busy_); });
+    connect(close_goal_, &QPushButton::clicked, this, &SupervisoryView::close_selected_goal);
+    connect(accept_distillation_, &QPushButton::clicked, this,
+            [this] { decide_selected_distillation("accepted"); });
+    connect(reject_distillation_, &QPushButton::clicked, this,
+            [this] { decide_selected_distillation("rejected"); });
+    connect(defer_distillation_, &QPushButton::clicked, this,
+            [this] { decide_selected_distillation("deferred"); });
+    connect(distillation_proposals_, &QListWidget::currentRowChanged, this,
+            [this](int row) {
+                const auto* item = row < 0 ? nullptr : distillation_proposals_->item(row);
+                const bool proposed = item != nullptr
+                    && !item->data(Qt::UserRole + 1).toString().isEmpty();
+                accept_distillation_->setEnabled(proposed && !busy_);
+                reject_distillation_->setEnabled(proposed && !busy_);
+                defer_distillation_->setEnabled(proposed && !busy_);
+            });
 }
 
 void SupervisoryView::create_workspace() {
@@ -1013,6 +1063,90 @@ void SupervisoryView::recover_selected_workspace() {
     } catch (const std::exception& error) { show_error(QString::fromUtf8(error.what())); set_busy(false); }
 }
 
+void SupervisoryView::close_selected_goal() {
+    if (workspace_selector_->currentText().isEmpty() || goal_selector_->currentIndex() <= 0
+        || plan_revision_id_.empty() || plan_hash_.empty()) {
+        show_error("Select a goal with its exact approved plan first");
+        return;
+    }
+    const std::string workspace = workspace_selector_->currentText().toStdString();
+    const std::string goal = goal_selector_->currentText().toStdString();
+    const std::string plan_revision = plan_revision_id_;
+    const std::string plan_hash = plan_hash_;
+    set_busy(true);
+    try {
+        Json drafts = Json::parse(distillation_input_->toPlainText().toStdString());
+        distillation_input_->clear();
+        (void)client_.close_goal(workspace, goal, plan_revision, plan_hash, std::move(drafts),
+            [this, workspace, goal, plan_revision, plan_hash](const SupervisoryResponse* response,
+                                                             const std::string* error) {
+                if (error != nullptr) { show_error(text(*error)); set_busy(false); return; }
+                try {
+                    if (!response->ok) throw SupervisoryResponseError(response->error_code + ": " + response->error_message);
+                    const auto& result = require_object(response->result, "goal closure result");
+                    exact_fields(result, {"closure", "proposals"}, "goal closure result");
+                    const Json& closure = response->result.at("closure");
+                    const auto& closure_object = require_object(closure, "goal closure");
+                    exact_fields(closure_object, {"closureId", "workspaceId", "goalId", "planRevisionId",
+                        "planHash", "checkpointHash", "archiveArtifactId", "archiveHash", "proposalIds",
+                        "closedAt", "closureHash"}, "goal closure");
+                    if (string_field(closure, "workspaceId") != workspace
+                        || string_field(closure, "goalId") != goal
+                        || string_field(closure, "planRevisionId") != plan_revision
+                        || string_field(closure, "planHash") != plan_hash) {
+                        throw SupervisoryResponseError("goal closure result does not bind the displayed plan");
+                    }
+                    closure_result_->setText("Goal closed with an immutable archive and inactive review proposals.");
+                    closure_result_->setToolTip("Closure: " + text(string_field(closure, "closureId"))
+                        + "\nArchive: " + text(string_field(closure, "archiveArtifactId"))
+                        + "\nArchive hash: " + text(string_field(closure, "archiveHash")));
+                    set_busy(false); inspect_selected_workspace();
+                } catch (const std::exception& decode_error) {
+                    show_error(QString::fromUtf8(decode_error.what())); set_busy(false);
+                }
+            });
+    } catch (const std::exception& error) {
+        distillation_input_->clear(); show_error(QString::fromUtf8(error.what())); set_busy(false);
+    }
+}
+
+void SupervisoryView::decide_selected_distillation(std::string decision) {
+    const auto* item = distillation_proposals_->currentItem();
+    if (item == nullptr || item->data(Qt::UserRole + 1).toString().isEmpty()) {
+        show_error("Select an undecided exact distillation proposal first");
+        return;
+    }
+    const std::string workspace = workspace_selector_->currentText().toStdString();
+    const std::string proposal_id = item->data(Qt::UserRole + 1).toString().toStdString();
+    const std::string proposal_hash = item->data(Qt::UserRole + 2).toString().toStdString();
+    set_busy(true);
+    try {
+        (void)client_.decide_distillation(workspace, proposal_id, proposal_hash, decision,
+            [this, workspace, proposal_id, proposal_hash, decision](const SupervisoryResponse* response,
+                                                                    const std::string* error) {
+                if (error != nullptr) { show_error(text(*error)); set_busy(false); return; }
+                try {
+                    if (!response->ok) throw SupervisoryResponseError(response->error_code + ": " + response->error_message);
+                    const auto& proposal = require_object(response->result, "distillation decision result");
+                    exact_fields(proposal, {"proposalId", "workspaceId", "goalId", "proposalHash", "state",
+                        "proposedAt", "decidedAt", "decidedBy", "kind", "content", "evidenceArtifactIds"},
+                        "distillation decision result");
+                    if (string_field(response->result, "workspaceId") != workspace
+                        || string_field(response->result, "proposalId") != proposal_id
+                        || string_field(response->result, "proposalHash") != proposal_hash
+                        || string_field(response->result, "state") != decision) {
+                        throw SupervisoryResponseError("distillation decision does not bind the displayed proposal");
+                    }
+                    closure_result_->setText("Review decision recorded as " + text(decision)
+                        + "; proposal remains inactive and no cleanup, retention, skill, or Tool action ran.");
+                    set_busy(false); inspect_selected_workspace();
+                } catch (const std::exception& decode_error) {
+                    show_error(QString::fromUtf8(decode_error.what())); set_busy(false);
+                }
+            });
+    } catch (const std::exception& error) { show_error(QString::fromUtf8(error.what())); set_busy(false); }
+}
+
 void SupervisoryView::render(const SupervisoryWorkspaceInspection& inspection) {
     plan_revision_id_.clear();
     plan_hash_.clear();
@@ -1317,6 +1451,37 @@ void SupervisoryView::render(const SupervisoryWorkspaceInspection& inspection) {
         }
     }
 
+    const Json& distillation = inspection.distillation;
+    goal_closed_ = !distillation.at("closure").is_null();
+    distillation_proposals_->clear();
+    if (goal_closed_) {
+        const Json& closure = distillation.at("closure");
+        closure_result_->setText("Goal is closed. Its archive and review decisions are authoritative; every proposal remains inactive.");
+        closure_result_->setToolTip("Closure: " + text(string_field(closure, "closureId"))
+            + "\nClosure hash: " + text(string_field(closure, "closureHash"))
+            + "\nArchive: " + text(string_field(closure, "archiveArtifactId"))
+            + "\nArchive hash: " + text(string_field(closure, "archiveHash")));
+    } else {
+        closure_result_->setText(inspection.goal_id.has_value()
+            ? "Closure creates an immutable archive; every proposal remains inactive after review."
+            : "Select a goal to close or inspect distillation.");
+        closure_result_->setToolTip({});
+    }
+    for (const Json& proposal : distillation.at("proposals").as_array()) {
+        const std::string state = string_field(proposal, "state");
+        auto* item = new QListWidgetItem(
+            text(string_field(proposal, "kind")) + " [" + text(state)
+                + "] — INACTIVE (review decision only)", distillation_proposals_);
+        item->setToolTip("Proposal: " + text(string_field(proposal, "proposalId"))
+            + "\nHash: " + text(string_field(proposal, "proposalHash"))
+            + "\nContent: " + text(proposal.at("content").dump())
+            + "\nNo activation, cleanup, retention, skill, or Tool action has run.");
+        if (state == "proposed") {
+            item->setData(Qt::UserRole + 1, text(string_field(proposal, "proposalId")));
+            item->setData(Qt::UserRole + 2, text(string_field(proposal, "proposalHash")));
+        }
+    }
+
     const auto& controls = require_object(inspection.controls, "controls");
     exact_fields(controls, {"canStopGoal", "revocableCapabilityIds", "canResumeGoal", "recoveryRequired"}, "controls");
     can_stop_goal_ = boolean_field(inspection.controls, "canStopGoal");
@@ -1369,6 +1534,14 @@ void SupervisoryView::set_busy(bool busy) {
     recover_workspace_->setEnabled(!busy && recovery_required_ && client_.is_running());
     revoke_capability_->setEnabled(!busy && revocable_capabilities_->currentItem() != nullptr
         && client_.is_running());
+    close_goal_->setEnabled(!busy && !goal_closed_ && goal_selector_->currentIndex() > 0
+        && !plan_revision_id_.empty() && client_.is_running());
+    distillation_input_->setEnabled(!busy && !goal_closed_);
+    const bool pending_distillation = distillation_proposals_->currentItem() != nullptr
+        && !distillation_proposals_->currentItem()->data(Qt::UserRole + 1).toString().isEmpty();
+    accept_distillation_->setEnabled(!busy && pending_distillation && client_.is_running());
+    reject_distillation_->setEnabled(!busy && pending_distillation && client_.is_running());
+    defer_distillation_->setEnabled(!busy && pending_distillation && client_.is_running());
 }
 
 } // namespace axiom_colab::gui

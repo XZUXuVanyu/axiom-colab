@@ -28,6 +28,8 @@ const candidate = {
 let goalStopped = false
 let capabilityRevoked = false
 let recoveryRequired = true
+let goalClosure = null
+let distillationProposals = []
 const workspaces = ['workspace:alpha', 'workspace:beta']
 const goals = new Map([['workspace:alpha', ['goal:one']], ['workspace:beta', []]])
 const objectives = new Map([['goal:one', 'Inspect authoritative state.']])
@@ -143,6 +145,31 @@ const host = {
     if (workspaceId !== 'workspace:alpha' || !recoveryRequired) throw Object.assign(new Error('stale recovery'), { code: 'ACTION_NOT_AVAILABLE' })
     recoveryRequired = false
   },
+  closeGoal(workspaceId, goalId, planRevisionId, planHash, drafts) {
+    if (workspaceId !== 'workspace:alpha' || goalId !== 'goal:one'
+        || planRevisionId !== 'object:plan' || planHash !== hash('1') || goalClosure !== null
+        || drafts.length === 0) throw Object.assign(new Error('stale closure'), { code: 'STALE_APPROVED_PLAN' })
+    distillationProposals = drafts.map((draft, index) => ({
+      proposalId: `proposal:distilled-${index}`, workspaceId, goalId,
+      proposalHash: hash(index === 0 ? '4' : '5'), state: 'proposed',
+      proposedAt: '2026-08-31T05:00:00.000Z', decidedAt: null, decidedBy: null,
+      kind: draft.kind, content: draft.content, evidenceArtifactIds: draft.evidenceArtifactIds,
+    }))
+    goalClosure = {
+      closureId: 'evidence:closure', workspaceId, goalId, planRevisionId, planHash,
+      checkpointHash: hash('2'), archiveArtifactId: 'object:archive', archiveHash: hash('3'),
+      proposalIds: distillationProposals.map((proposal) => proposal.proposalId),
+      closedAt: '2026-08-31T05:00:00.000Z', closureHash: hash('6'),
+    }
+    return { closure: goalClosure, proposals: distillationProposals }
+  },
+  decideDistillation(workspaceId, proposalId, proposalHash, decision) {
+    const proposal = distillationProposals.find((item) => item.proposalId === proposalId)
+    if (workspaceId !== 'workspace:alpha' || proposal?.proposalHash !== proposalHash
+        || proposal.state !== 'proposed') throw Object.assign(new Error('stale review'), { code: 'STALE_DISTILLATION_PROPOSAL' })
+    proposal.state = decision; proposal.decidedAt = '2026-08-31T06:00:00.000Z'; proposal.decidedBy = 'actor:user'
+    return proposal
+  },
   async inspect(workspaceId, goalId) {
     if (workspaceId === 'workspace:missing') throw Object.assign(new Error('workspace is not visible'), { code: 'WORKSPACE_NOT_FOUND' })
     return {
@@ -161,7 +188,14 @@ const host = {
         { name: 'add_numbers', source: 'built-in', executable: true, installationEvidenceHash: null, descriptor: { name: 'add_numbers', description: 'Adds values.', whenToUse: 'For addition.', parameters: { type: 'object' }, output: { type: 'object' }, timeoutMs: 1000, allowParallel: true, sideEffect: false } },
         ...(candidate.installation?.outcome === 'installed' ? [{ name: 'candidate_tool', source: 'installed', executable: false, installationEvidenceHash: candidate.installation.evidenceHash, descriptor: candidate.descriptor }] : []),
       ], candidates: [candidate], timeline: [],
-      distillation: { closure: null, proposals: [] },
+      distillation: goalId === null ? { closure: null, proposals: [] } : {
+        closure: goalClosure === null ? null : {
+          closureId: goalClosure.closureId, closureHash: goalClosure.closureHash,
+          checkpointHash: goalClosure.checkpointHash, archiveArtifactId: goalClosure.archiveArtifactId,
+          archiveHash: goalClosure.archiveHash, closedAt: goalClosure.closedAt,
+        },
+        proposals: distillationProposals.map(({ workspaceId: _workspace, goalId: _goal, ...proposal }) => ({ ...proposal, active: false })),
+      },
       resources: { workspaceId, usedBytes: 0, objectCount: 0, quota: { maxBytes: 10, maxObjects: 1 }, expiredObjects: 0, corruptObjects: 0 },
       controls: {
         canStopGoal: goalId === 'goal:one' && !goalStopped,

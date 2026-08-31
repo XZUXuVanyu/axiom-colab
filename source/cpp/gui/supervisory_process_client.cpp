@@ -332,6 +332,37 @@ std::string SupervisoryProcessClient::recover_workspace(
         {"workspaceId", std::string(workspace_id)}}), std::move(handler));
 }
 
+std::string SupervisoryProcessClient::close_goal(
+    std::string_view workspace_id, std::string_view goal_id,
+    std::string_view plan_revision_id, std::string_view plan_hash,
+    Json drafts, ResponseHandler handler) {
+    require_plan_action_binding(workspace_id, goal_id, plan_revision_id, plan_hash);
+    if (!drafts.is_array() || drafts.as_array().empty()
+        || drafts.as_array().size() > 128) {
+        throw std::invalid_argument("goal closure requires 1..128 distillation drafts");
+    }
+    return send_request(Json::object({{"protocolVersion", "1.1"}, {"operation", "close-goal"},
+        {"workspaceId", std::string(workspace_id)}, {"goalId", std::string(goal_id)},
+        {"planRevisionId", std::string(plan_revision_id)}, {"planHash", std::string(plan_hash)},
+        {"drafts", std::move(drafts)}}), std::move(handler));
+}
+
+std::string SupervisoryProcessClient::decide_distillation(
+    std::string_view workspace_id, std::string_view proposal_id,
+    std::string_view proposal_hash, std::string_view decision,
+    ResponseHandler handler) {
+    if (!valid_identity(workspace_id, "workspace:")
+        || !valid_identity(proposal_id, "proposal:")
+        || proposal_hash.size() != 71 || !proposal_hash.starts_with("sha256:")
+        || (decision != "accepted" && decision != "rejected" && decision != "deferred")) {
+        throw std::invalid_argument("distillation decision binding is malformed");
+    }
+    return send_request(Json::object({{"protocolVersion", "1.1"}, {"operation", "decide-distillation"},
+        {"workspaceId", std::string(workspace_id)}, {"proposalId", std::string(proposal_id)},
+        {"proposalHash", std::string(proposal_hash)}, {"decision", std::string(decision)}}),
+        std::move(handler));
+}
+
 std::string SupervisoryProcessClient::send_request(Json request,
                                                    ResponseHandler handler) {
     if (!is_running()) {

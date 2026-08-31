@@ -4,7 +4,14 @@ Last updated: 2026-08-31
 
 ## Current state
 
-- Stage 9 has started with an append-only, restart-safe goal checkpoint store.
+- Stage 9 is complete. Qt can close the selected goal only against its exact
+  displayed approved-plan revision/hash, immediately clears submitted draft
+  bytes, and refreshes the immutable closure/archive plus all review proposals.
+  Accept/reject/defer actions bind the exact displayed proposal hash. Every row,
+  including accepted cleanup, retention, skill, and Tool material, is labeled
+  `INACTIVE (review decision only)`; these controls perform no activation,
+  deletion, retention, installation, or policy side effect.
+- Stage 9 includes an append-only, restart-safe goal checkpoint store.
   Every successful supervisory Tool call now checkpoints the exact approved
   plan, cumulative call count, latest call, and sealed report artifact/hash.
   Supervisory progress prefers this operational checkpoint after restart while
@@ -912,7 +919,7 @@ Exit gate: the user can see what every approval changes, distinguish claims
 from observations and validated evidence, inspect authority and provenance, and
 complete the existing-Tool and new-Tool paths through the GUI.
 
-### Stage 9 - Add continuous checkpointing and goal distillation
+### Stage 9 - Add continuous checkpointing and goal distillation (complete)
 
 Checkpoint goal-relevant state throughout execution rather than relying on a
 graceful quit. On goal closure, generate reviewable proposals for experience,
@@ -993,10 +1000,11 @@ installation controls:
 
 ## Exact next work
 
-Add Qt close/review controls for the strictly decoded authoritative
-closure/archive and proposal projection. Requests must bind the displayed plan
-or proposal hash; Qt must show that accepted proposals are still inactive
-review decisions and must never execute cleanup or retention as a side effect.
+Begin Stage 10 by adding a clean-install end-to-end acceptance path through the
+production IDE boundary: create workspace/goal, execute a built-in, author and
+challenge a candidate, approve/install/invoke it, then close/distill the goal.
+Preserve the existing adversarial trust cases and package/migration/recovery
+documentation; do not weaken optional WSL confinement claims.
 
 Keep the WSL integration suite opt-in for portable CI and run it explicitly on
 the supported Windows/Ubuntu composition before changing confinement claims.

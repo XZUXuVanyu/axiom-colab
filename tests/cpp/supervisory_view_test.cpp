@@ -62,6 +62,11 @@ int main(int argc, char* argv[]) {
     auto* new_goal_objective = view.findChild<QPlainTextEdit*>("newGoalObjective");
     auto* create_goal = view.findChild<QPushButton*>("createGoal");
     auto* creation_result = view.findChild<QLabel*>("creationResult");
+    auto* distillation_input = view.findChild<QPlainTextEdit*>("distillationInput");
+    auto* close_goal = view.findChild<QPushButton*>("closeGoal");
+    auto* closure_result = view.findChild<QLabel*>("closureResult");
+    auto* distillation = view.findChild<QListWidget*>("distillationProposals");
+    auto* accept_distillation = view.findChild<QPushButton*>("acceptDistillation");
     if (workspaces == nullptr || goals == nullptr || resources == nullptr
         || plan == nullptr || status == nullptr || compute == nullptr
         || working == nullptr || artifacts == nullptr || discovered_tools == nullptr) {
@@ -84,7 +89,10 @@ int main(int argc, char* argv[]) {
     }
     if (new_workspace_id == nullptr || create_workspace == nullptr
         || new_goal_id == nullptr || new_goal_objective == nullptr
-        || create_goal == nullptr || creation_result == nullptr) {
+        || create_goal == nullptr || creation_result == nullptr
+        || distillation_input == nullptr || close_goal == nullptr
+        || closure_result == nullptr || distillation == nullptr
+        || accept_distillation == nullptr) {
         std::cerr << "[FAIL] workspace and goal creation widgets are not inspectable\n";
         return 1;
     }
@@ -252,6 +260,42 @@ int main(int argc, char* argv[]) {
     if (!execution_result->text().contains("\"sum\":5")
         || !execution_result->toolTip().contains("object:report")) {
         std::cerr << "[FAIL] observed Tool execution did not render\n";
+        return 1;
+    }
+    timer.restart();
+    while (timer.elapsed() < 5000 && !close_goal->isEnabled()) {
+        application.processEvents(); QThread::msleep(10);
+    }
+    distillation_input->setPlainText(
+        R"([{"kind":"cleanup","content":{"action":"review-only"},"evidenceArtifactIds":[]}])");
+    close_goal->click();
+    if (!distillation_input->toPlainText().isEmpty()) {
+        std::cerr << "[FAIL] submitted distillation draft remained in widget state\n";
+        return 1;
+    }
+    timer.restart();
+    while (timer.elapsed() < 5000 && distillation->count() != 1) {
+        application.processEvents(); QThread::msleep(10);
+    }
+    if (distillation->count() != 1 || close_goal->isEnabled()
+        || !distillation->item(0)->text().contains("[proposed] — INACTIVE")
+        || !closure_result->toolTip().contains("object:archive")) {
+        std::cerr << "[FAIL] goal closure did not render an immutable archive and inactive proposal: count="
+                  << distillation->count() << " status=" << status->text().toStdString()
+                  << " closure=" << closure_result->text().toStdString() << "\n";
+        return 1;
+    }
+    distillation->setCurrentRow(0);
+    accept_distillation->click();
+    timer.restart();
+    while (timer.elapsed() < 5000
+           && !distillation->item(0)->text().contains("[accepted]")) {
+        application.processEvents(); QThread::msleep(10);
+    }
+    if (!distillation->item(0)->text().contains("[accepted] — INACTIVE")
+        || !closure_result->text().contains("remains inactive")
+        || accept_distillation->isEnabled()) {
+        std::cerr << "[FAIL] accepted review was presented as active or remained actionable\n";
         return 1;
     }
     timer.restart();

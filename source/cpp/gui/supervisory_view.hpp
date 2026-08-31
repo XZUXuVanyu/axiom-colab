@@ -47,6 +47,8 @@ private:
     void change_goal_state(bool stop);
     void revoke_selected_capability();
     void recover_selected_workspace();
+    void close_selected_goal();
+    void decide_selected_distillation(std::string decision);
     void render(const SupervisoryWorkspaceInspection& inspection);
     void show_error(const QString& message);
     void set_busy(bool busy);
@@ -73,6 +75,13 @@ private:
     QPushButton* revoke_capability_{};
     QPushButton* recover_workspace_{};
     QLabel* lifecycle_result_{};
+    QPlainTextEdit* distillation_input_{};
+    QPushButton* close_goal_{};
+    QLabel* closure_result_{};
+    QListWidget* distillation_proposals_{};
+    QPushButton* accept_distillation_{};
+    QPushButton* reject_distillation_{};
+    QPushButton* defer_distillation_{};
     QListWidget* tools_{};
     QListWidget* candidates_{};
     QPlainTextEdit* candidate_details_{};
@@ -102,6 +111,7 @@ private:
     bool can_stop_goal_{};
     bool can_resume_goal_{};
     bool recovery_required_{};
+    bool goal_closed_{};
     std::string plan_revision_id_;
     std::string plan_hash_;
 };
