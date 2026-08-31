@@ -388,6 +388,7 @@ test('application host binds hidden challenges to the exact current candidate an
     sources: [{ path: 'src/tool.cpp', content: 'candidate source' }],
   })
   let captured: any
+  const proposed: string[] = []
   const record = {
     validationId: 'validation:hidden', recordHash: `sha256:${'4'.repeat(64)}`, outcome: 'passed',
     suites: [
@@ -412,6 +413,9 @@ test('application host binds hidden challenges to the exact current candidate an
     createInstallation: () => ({ rediscover: () => [] }), challengeValidator,
     validationProfile, validatorActorId: 'actor:validator', workshop,
     workshopActorId: 'actor:host',
+    proposalService: { propose(context: any, revisionId: string, validationId: string) {
+      proposed.push(`${context.authority}:${revisionId}:${validationId}`)
+    } },
   } as any)
   await host.initialize()
   const created = host.createCandidate('workspace:alpha', {
@@ -435,6 +439,7 @@ test('application host binds hidden challenges to the exact current candidate an
   assert.equal(captured.suites[2].kind, 'challenge')
   assert.equal(captured.fixtures[0].content, 'secret')
   assert.equal(result.promotable, true)
+  assert.deepEqual(proposed, [`trusted-host:${revision.revisionId}:validation:hidden`])
   assert.deepEqual(result.suites.map((suite) => suite.hidden), [false, false, true])
   assert.doesNotMatch(JSON.stringify(result), /secret|stdout|stderr|fixtures|commands/)
   const revised = host.reviseCandidate(

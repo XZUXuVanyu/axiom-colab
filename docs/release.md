@@ -47,6 +47,28 @@ source checkout or ambient `PATH`. The separate Tool-authoring tab still
 targets a developer checkout and is not part of the packaged laboratory
 acceptance claim.
 
+Candidate executable builds are also shell-free and must not depend on a
+developer-command-prompt environment. When ambient Visual Studio discovery is
+unsuitable, bind all three explicit options to an installed toolchain:
+`-WindowsGenerator Ninja`, `-WindowsCompilerPath <absolute-g++.exe>`, and
+`-WindowsBuildToolPath <absolute-ninja.exe>`. Supplying only part of that triple
+is rejected before configuration is written.
+
+After generating the config, exercise the packaged lifecycle with the bundled
+acceptance driver. Use a fresh state root because the run intentionally creates
+durable workspace, candidate, approval, installation, evidence, and closure
+records:
+
+```powershell
+D:\Axiom\runtime\bin\node.exe `
+  D:\Axiom\runtime\proj\scripts\accept-packaged-runtime.mjs `
+  D:\Axiom\config\supervisory.json
+```
+
+Success is one JSON record containing the workspace, goal, validation,
+installation, result, and closure identities plus
+`"distillation":"accepted-inactive"`.
+
 ## Migration notes
 
 ### 0.1.0

@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process';
+import { delimiter, dirname, isAbsolute } from 'node:path';
 export class ProcessExecutionError extends Error {
     code;
     exitCode;
@@ -19,6 +20,28 @@ export class ProcessExecutionError extends Error {
 }
 function bytes(chunks) {
     return Buffer.concat(chunks).toString('utf8');
+}
+function childEnvironment(executable, pathPrepend = []) {
+    if (process.platform !== 'win32') return process.env;
+    const environment = {};
+    let path;
+    for (const [name, value] of Object.entries(process.env)){
+        if (name.toLowerCase() === 'path') {
+            if (name === 'Path' || path === undefined) path = value;
+        } else {
+            environment[name] = value;
+        }
+    }
+    const directories = [
+        isAbsolute(executable) ? dirname(executable) : null,
+        ...pathPrepend
+    ].filter((item)=>item !== null);
+    if (directories.length > 0) {
+        const prefix = directories.join(delimiter);
+        path = path === undefined ? prefix : `${prefix}${delimiter}${path}`;
+    }
+    if (path !== undefined) environment.Path = path;
+    return environment;
 }
 export class ProcessRunner {
     active = new Map();
@@ -49,7 +72,8 @@ export class ProcessRunner {
                     'pipe',
                     'pipe'
                 ],
-                cwd: options.cwd
+                cwd: options.cwd,
+                env: childEnvironment(executable, options.pathPrepend)
             });
             const stdoutChunks = [];
             const stderrChunks = [];
@@ -165,8 +189,8 @@ export class ProcessRunner {
     dispose() {
         if (this.disposed) return;
         this.disposed = true;
-        for (const process of this.active.values()){
-            process.fail(new ProcessExecutionError('DISPOSED', 'Adapter disposed while Bridge was running'));
+        for (const process1 of this.active.values()){
+            process1.fail(new ProcessExecutionError('DISPOSED', 'Adapter disposed while Bridge was running'));
         }
     }
 }

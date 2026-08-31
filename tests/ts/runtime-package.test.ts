@@ -26,6 +26,7 @@ test('runtime package is relocatable and binds every copied byte in a manifest',
   assert(paths.includes('bin/Qt6Core.dll'))
   assert(paths.includes('dist/index.js'))
   assert(paths.includes('proj/scripts/run-supervisory.mjs'))
+  assert(paths.includes('proj/scripts/accept-packaged-runtime.mjs'))
   assert.equal(JSON.parse(await readFile(join(output, 'runtime-manifest.json'), 'utf8')).format,
     'axiom-colab-runtime')
   await assert.rejects(() => packageRuntime({ output, gui, bridge, node, qtRuntime: qt }),

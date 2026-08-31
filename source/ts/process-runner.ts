@@ -1,4 +1,5 @@
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process'
+import { delimiter, dirname, isAbsolute } from 'node:path'
 
 export interface ProcessLimits {
   readonly timeoutMs: number
@@ -13,6 +14,7 @@ export interface ProcessRunOptions extends ProcessLimits {
   readonly stdin?: string
   readonly signal?: AbortSignal
   readonly cwd?: string
+  readonly pathPrepend?: readonly string[]
 }
 
 export interface ProcessResult {
@@ -60,6 +62,27 @@ function bytes(chunks: Buffer[]): string {
   return Buffer.concat(chunks).toString('utf8')
 }
 
+function childEnvironment(executable: string, pathPrepend: readonly string[] = []): NodeJS.ProcessEnv {
+  if (process.platform !== 'win32') return process.env
+  const environment: NodeJS.ProcessEnv = {}
+  let path: string | undefined
+  for (const [name, value] of Object.entries(process.env)) {
+    if (name.toLowerCase() === 'path') {
+      if (name === 'Path' || path === undefined) path = value
+    } else {
+      environment[name] = value
+    }
+  }
+  const directories = [isAbsolute(executable) ? dirname(executable) : null, ...pathPrepend]
+    .filter((item): item is string => item !== null)
+  if (directories.length > 0) {
+    const prefix = directories.join(delimiter)
+    path = path === undefined ? prefix : `${prefix}${delimiter}${path}`
+  }
+  if (path !== undefined) environment.Path = path
+  return environment
+}
+
 export class ProcessRunner {
   private readonly active = new Map<ChildProcessWithoutNullStreams, ActiveProcess>()
   private disposed = false
@@ -87,6 +110,7 @@ export class ProcessRunner {
         windowsHide: true,
         stdio: ['pipe', 'pipe', 'pipe'],
         cwd: options.cwd,
+        env: childEnvironment(executable, options.pathPrepend),
       })
       const stdoutChunks: Buffer[] = []
       const stderrChunks: Buffer[] = []

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { dirname, join, resolve } from 'node:path'
+import { dirname, join, relative, resolve } from 'node:path'
 import { DatabaseSync } from 'node:sqlite'
 import { fileURLToPath } from 'node:url'
 import test from 'node:test'
@@ -358,6 +358,9 @@ test('installed path collisions fail closed without replacing the registered can
     idFactory: () => 'collision-first',
   })
   const first = firstInstaller.install(host, setup.proposal.proposalId)
+  const relativeParts = relative(setup.installationRoot, registrations[0]!.installedRoot).split(/[\\/]/)
+  assert.equal(relativeParts[0]?.length, 32)
+  assert.equal(relativeParts[2]?.length, 32)
   const secondProposal = setup.proposals.propose(model, setup.revision.revisionId, setup.proposal.validationId)
   setup.proposals.approve({ ...model, actorId: 'actor:user', authority: 'user' }, secondProposal.proposalId)
   const secondInstaller = new ToolInstallationService(setup.repository, setup.validator, {

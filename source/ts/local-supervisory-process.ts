@@ -286,11 +286,13 @@ export function parseLocalSupervisoryProcessConfig(value: unknown): LocalSupervi
   for (const key of Object.keys(value.executableBuild)) if (!buildAllowed.has(key)) throw new TypeError(`executableBuild contains unknown field ${key}`)
   if (!Array.isArray(value.executableBuild.commands) || value.executableBuild.commands.length === 0) throw new TypeError('executableBuild.commands must not be empty')
   const commands = value.executableBuild.commands.map((item, index) => {
-    if (!record(item) || Object.keys(item).some((key) => !new Set(['executable', 'args', 'cwd']).has(key))) throw new TypeError(`executableBuild.commands[${index}] is malformed`)
+    if (!record(item) || Object.keys(item).some((key) => !new Set(['executable', 'args', 'cwd', 'pathPrepend']).has(key))) throw new TypeError(`executableBuild.commands[${index}] is malformed`)
     if (typeof item.executable !== 'string' || !isAbsolute(item.executable)) throw new TypeError(`executableBuild.commands[${index}].executable must be absolute`)
     if (!Array.isArray(item.args) || !item.args.every((arg) => typeof arg === 'string')) throw new TypeError(`executableBuild.commands[${index}].args must be strings`)
     if (typeof item.cwd !== 'string' || item.cwd.length === 0 || isAbsolute(item.cwd)) throw new TypeError(`executableBuild.commands[${index}].cwd must be relative`)
-    return { executable: resolve(item.executable), args: [...item.args] as string[], cwd: item.cwd }
+    const pathPrepend = item.pathPrepend ?? []
+    if (!Array.isArray(pathPrepend) || !pathPrepend.every((path) => typeof path === 'string' && isAbsolute(path))) throw new TypeError(`executableBuild.commands[${index}].pathPrepend must contain absolute paths`)
+    return { executable: resolve(item.executable), args: [...item.args] as string[], cwd: item.cwd, pathPrepend: [...pathPrepend] as string[] }
   })
   const buildPath = (field: 'outputPath' | 'installedPath'): string => {
     const item = value.executableBuild?.[field]

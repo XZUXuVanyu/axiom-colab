@@ -300,7 +300,7 @@ export class SupervisoryTransport {
             : request.operation === 'create-goal'
               ? this.host.createGoal(request.workspaceId, request.goalId, request.objective)
               : request.operation === 'install-candidate'
-                ? this.host.installCandidate(request.workspaceId, request.binding)
+                ? await this.host.installCandidate(request.workspaceId, request.binding)
           : request.operation === 'inspect'
             ? await this.host.inspect(request.workspaceId, request.goalId)
             : request.operation === 'execute-tool'

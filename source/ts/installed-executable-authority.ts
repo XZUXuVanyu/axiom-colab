@@ -27,6 +27,7 @@ export interface InstalledExecutableBuildCommand {
   readonly executable: string
   readonly args: readonly string[]
   readonly cwd: string
+  readonly pathPrepend?: readonly string[]
 }
 
 export interface ShellFreeInstalledExecutableBuildOptions {
@@ -49,10 +50,12 @@ export class ShellFreeInstalledExecutableBuildBackend implements InstalledExecut
     const expand = (value: string): string => value.replaceAll('{publicName}', registration.publicName)
     for (const command of this.options.commands) {
       if (!isAbsolute(command.executable)) fail('INVALID_BUILD_PROFILE', 'build command executable must be absolute')
+      if (command.pathPrepend?.some((path) => !isAbsolute(path))) fail('INVALID_BUILD_PROFILE', 'build PATH entries must be absolute')
       const cwd = resolve(registration.installedRoot, expand(command.cwd))
       if (isAbsolute(command.cwd) || !contained(registration.installedRoot, cwd)) fail('BUILD_PATH_ESCAPE', 'build working directory escaped the installation')
       const result = await this.runner.run(command.executable, {
         ...this.options.limits, args: command.args.map(expand), cwd,
+        pathPrepend: command.pathPrepend,
       })
       if (result.exitCode !== 0) fail('EXECUTABLE_BUILD_FAILED', `trusted build command exited with ${result.exitCode}`)
     }

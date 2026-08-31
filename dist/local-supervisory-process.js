@@ -347,17 +347,23 @@ export function parseLocalSupervisoryProcessConfig(value) {
         if (!record(item) || Object.keys(item).some((key)=>!new Set([
                 'executable',
                 'args',
-                'cwd'
+                'cwd',
+                'pathPrepend'
             ]).has(key))) throw new TypeError(`executableBuild.commands[${index}] is malformed`);
         if (typeof item.executable !== 'string' || !isAbsolute(item.executable)) throw new TypeError(`executableBuild.commands[${index}].executable must be absolute`);
         if (!Array.isArray(item.args) || !item.args.every((arg)=>typeof arg === 'string')) throw new TypeError(`executableBuild.commands[${index}].args must be strings`);
         if (typeof item.cwd !== 'string' || item.cwd.length === 0 || isAbsolute(item.cwd)) throw new TypeError(`executableBuild.commands[${index}].cwd must be relative`);
+        const pathPrepend = item.pathPrepend ?? [];
+        if (!Array.isArray(pathPrepend) || !pathPrepend.every((path)=>typeof path === 'string' && isAbsolute(path))) throw new TypeError(`executableBuild.commands[${index}].pathPrepend must contain absolute paths`);
         return {
             executable: resolve(item.executable),
             args: [
                 ...item.args
             ],
-            cwd: item.cwd
+            cwd: item.cwd,
+            pathPrepend: [
+                ...pathPrepend
+            ]
         };
     });
     const buildPath = (field)=>{

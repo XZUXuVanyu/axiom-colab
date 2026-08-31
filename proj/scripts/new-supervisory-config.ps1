@@ -9,6 +9,9 @@ param(
     [string]$ValidationStagingRoot,
     [Parameter(Mandatory = $true)]
     [string]$CMakePath,
+    [string]$WindowsGenerator = '',
+    [string]$WindowsCompilerPath = '',
+    [string]$WindowsBuildToolPath = '',
     [string]$BridgeWorkingDirectory = '',
     [switch]$Force
 )
@@ -30,6 +33,26 @@ $bridge = Resolve-AbsolutePath $BridgePath 'BridgePath' $true
 $output = Resolve-AbsolutePath $OutputPath 'OutputPath' $false
 $validationStaging = Resolve-AbsolutePath $ValidationStagingRoot 'ValidationStagingRoot' $false
 $cmake = Resolve-AbsolutePath $CMakePath 'CMakePath' $true
+$toolchainValues = @($WindowsGenerator, $WindowsCompilerPath, $WindowsBuildToolPath)
+$toolchainCount = @($toolchainValues | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }).Count
+if ($toolchainCount -ne 0 -and $toolchainCount -ne 3) {
+    throw 'WindowsGenerator, WindowsCompilerPath, and WindowsBuildToolPath must be supplied together.'
+}
+$configureArguments = @('-S', '.', '-B', 'build')
+$buildPathPrepend = @()
+$executableOutputPath = 'source/build/Release/{publicName}.exe'
+if ($toolchainCount -eq 3) {
+    $windowsCompiler = Resolve-AbsolutePath $WindowsCompilerPath 'WindowsCompilerPath' $true
+    $windowsBuildTool = Resolve-AbsolutePath $WindowsBuildToolPath 'WindowsBuildToolPath' $true
+    $configureArguments += @(
+        '-G', $WindowsGenerator,
+        "-DCMAKE_CXX_COMPILER=$($windowsCompiler.Replace('\', '/'))",
+        "-DCMAKE_MAKE_PROGRAM=$($windowsBuildTool.Replace('\', '/'))")
+    $buildPathPrepend += Split-Path -Parent $windowsCompiler
+    if ($WindowsGenerator -eq 'Ninja') {
+        $executableOutputPath = 'source/build/{publicName}.exe'
+    }
+}
 $statePrefix = $state.TrimEnd([System.IO.Path]::DirectorySeparatorChar) +
     [System.IO.Path]::DirectorySeparatorChar
 if ($output.StartsWith($statePrefix, [System.StringComparison]::OrdinalIgnoreCase) -or
@@ -49,10 +72,10 @@ $config = [ordered]@{
     maxLineBytes = 65536
     executableBuild = [ordered]@{
         commands = @(
-            [ordered]@{ executable = $cmake; args = @('-S', '.', '-B', 'build'); cwd = 'source' },
-            [ordered]@{ executable = $cmake; args = @('--build', 'build', '--config', 'Release'); cwd = 'source' }
+            [ordered]@{ executable = $cmake; args = $configureArguments; cwd = 'source'; pathPrepend = $buildPathPrepend },
+            [ordered]@{ executable = $cmake; args = @('--build', 'build', '--config', 'Release'); cwd = 'source'; pathPrepend = $buildPathPrepend }
         )
-        outputPath = 'source/build/Release/{publicName}.exe'
+        outputPath = $executableOutputPath
         installedPath = 'bin/{publicName}.exe'
         limits = [ordered]@{
             timeoutMs = 120000; maxStdinBytes = 1048576

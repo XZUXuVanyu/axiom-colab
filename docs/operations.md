@@ -5,6 +5,18 @@ Node supervisory child before copying, backing up, or restoring that directory.
 Configuration, build trees, WSL validation staging, and generated logs are not
 authoritative state and are deliberately excluded from a state archive.
 
+On Windows, choose a short state root such as `D:\Axiom\state`. Candidate
+installation locators use collision-detecting 128-bit hash prefixes while full
+workspace/candidate hashes remain authoritative and are reverified from stored
+evidence. Deep state roots can still exceed legacy compiler/CMake object-path
+limits during trusted executable builds; the build must fail closed rather
+than relocating unverified output.
+
+The supported WSL validation composition requires Ubuntu 24.04 with systemd,
+Bubblewrap, cgroup v2, `prlimit`, CMake, CTest, Ninja, and a C++ compiler. These
+are host prerequisites and are not downloaded by Axiom CoLab. Run the opt-in
+confinement suite before accepting a machine for promotable validation.
+
 ## Create and verify an offline backup
 
 Use absolute, non-overlapping paths. The archive target must not already exist.

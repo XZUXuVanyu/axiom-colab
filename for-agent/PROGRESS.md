@@ -4,6 +4,49 @@ Entries are chronological. Each entry corresponds to one logical Git commit and
 records its exact subject, purpose, material changes, and validation actually
 performed.
 
+## 2026-08-31 - feat(release): prove the packaged candidate lifecycle
+
+Purpose: complete the clean-package goal-to-new-Tool-to-distillation acceptance
+loop without treating model claims, validation, approval, or installation as
+interchangeable authority.
+
+Material changes:
+
+- Added a packaged-runtime acceptance driver that authors a portable C++ Tool,
+  submits a hidden challenge, approves the resulting exact proposal, installs
+  and invokes the exact executable, closes the exact plan, and verifies that an
+  accepted distillation remains inactive.
+- Made promotable hidden validation create the missing review-only installation
+  proposal under trusted-host authority, without approval or activation.
+- Awaited asynchronous candidate installation at the supervisory transport so
+  build failures remain correlated protocol failures.
+- Normalized duplicate Windows PATH variables, prepended exact executable and
+  explicitly configured compiler directories, and added strict shell-free
+  generator/compiler/build-tool configuration.
+- Shortened non-authoritative filesystem locator components to 128-bit hash
+  prefixes while retaining full authoritative hashes and collision rejection.
+- Documented WSL build prerequisites and legacy Windows path constraints.
+
+Validation actually run:
+
+- The opt-in Ubuntu-24.04 WSL confinement suite passed 3/3, including namespace,
+  network, descendants, memory exhaustion, and CPU exhaustion checks.
+- Focused host, transport, candidate repository, installed executable, process,
+  local production composition, and package tests passed after each boundary
+  correction (latest focused run: 46/46).
+- Several real acceptance failures remained attributable and fail-closed:
+  absent Ubuntu CMake/compiler, MSBuild/CMake legacy path limits, missing MinGW
+  child PATH, wrong single-config output path, and missing MinGW runtime DLLs.
+  Ubuntu build prerequisites were installed with user approval; the final
+  candidate linked its runtime statically rather than borrowing developer DLLs.
+- A 64-file real `windeployqt` runtime then completed the exact full loop from
+  `D:\Dev\a6`: WSL validation was promotable, exact installation evidence was
+  created, `portable_sum(19, 23)` returned 42, its report was sealed, closure
+  created an immutable archive, and the accepted distillation remained inactive.
+- Final `pnpm.cmd test` passed all 107 TypeScript tests. The opt-in WSL
+  confinement suite then passed 3/3 again after the process-environment and
+  build-profile changes.
+
 ## 2026-08-31 - feat(release): package a relocatable laboratory runtime
 
 Purpose: remove source-checkout and ambient-Node assumptions from the first

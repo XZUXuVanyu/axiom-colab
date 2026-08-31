@@ -83,7 +83,7 @@ export async function packageRuntime(options) {
   await cp(options.node, join(bin, process.platform === 'win32' ? 'node.exe' : 'node'), { errorOnExist: true })
   await cp(join(projectRoot, 'dist'), join(output, 'dist'), { recursive: true, errorOnExist: true })
   await mkdir(join(output, 'proj', 'scripts'), { recursive: true })
-  for (const script of ['run-supervisory.mjs', 'state-archive.mjs', 'new-supervisory-config.ps1']) {
+  for (const script of ['run-supervisory.mjs', 'accept-packaged-runtime.mjs', 'state-archive.mjs', 'new-supervisory-config.ps1']) {
     await cp(join(projectRoot, 'proj', 'scripts', script), join(output, 'proj', 'scripts', script), { errorOnExist: true })
   }
 

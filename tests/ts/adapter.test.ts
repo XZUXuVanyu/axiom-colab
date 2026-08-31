@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import test from 'node:test'
 
@@ -355,6 +356,19 @@ test('ProcessRunner captures stdout and stderr without a shell', async () => {
   assert.match(result.stderr, /fake diagnostic/)
   assert.equal(parseDescribeToolsResponse(result.stdout).tools.length, 1)
   assert.equal(runner.activeCount, 0)
+})
+
+test('ProcessRunner normalizes duplicate Windows PATH spellings for child toolchains', async () => {
+  const runner = new ProcessRunner()
+  const result = await runner.run(process.execPath, {
+    args: ['-e', 'process.stdout.write(JSON.stringify({ keys: Object.keys(process.env).filter((key) => key.toLowerCase() === "path"), path: process.env.Path ?? process.env.PATH }))'],
+    timeoutMs: 5_000, maxStdinBytes: 1, maxStdoutBytes: 16 * 1024,
+    maxStderrBytes: 1024, killGraceMs: 100,
+  })
+  const environment = JSON.parse(result.stdout)
+  assert.equal(environment.keys.length, 1)
+  if (process.platform === 'win32') assert.equal(environment.path.split(';')[0], dirname(process.execPath))
+  runner.dispose()
 })
 
 test('malformed stdout and non-zero exit are distinguished', async () => {

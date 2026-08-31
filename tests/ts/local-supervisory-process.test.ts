@@ -128,6 +128,12 @@ test('local supervisory process config rejects ambient paths and unknown authori
     stateRoot: resolve('state'), bridgePath: process.execPath,
     executableBuild: executableBuild(), validationProfile: validationProfile(resolve('state/validation-staging')),
   }), /must not overlap/)
+  const unsafeBuild = executableBuild()
+  assert.throws(() => parseLocalSupervisoryProcessConfig({
+    stateRoot: resolve('build/test-state'), bridgePath: process.execPath,
+    executableBuild: { ...unsafeBuild, commands: [{ ...unsafeBuild.commands[0], pathPrepend: ['relative-toolchain'] }] },
+    validationProfile: validationProfile(resolve('build/test-validation-staging')),
+  }), /pathPrepend must contain absolute paths/)
 })
 
 test('local approved-plan reader binds committed working state to the exact goal', () => {

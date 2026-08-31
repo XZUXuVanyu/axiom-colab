@@ -45,8 +45,8 @@ function contained(root, path) {
     return rel === '' || rel !== '..' && !rel.startsWith(`..${sep}`) && !isAbsolute(rel);
 }
 function locationFor(workspaceId, publicName, candidateHash) {
-    const workspace = contentHash(workspaceId).slice('sha256:'.length);
-    const candidate = candidateHash.slice('sha256:'.length);
+    const workspace = contentHash(workspaceId).slice('sha256:'.length, 'sha256:'.length + 32);
+    const candidate = candidateHash.slice('sha256:'.length, 'sha256:'.length + 32);
     return `${workspace}/${publicName}/${candidate}`;
 }
 function writeExclusive(path, bytes) {

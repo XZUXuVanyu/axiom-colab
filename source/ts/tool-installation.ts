@@ -160,8 +160,13 @@ function contained(root: string, path: string): boolean {
 }
 
 function locationFor(workspaceId: string, publicName: string, candidateHash: string): string {
-  const workspace = contentHash(workspaceId).slice('sha256:'.length)
-  const candidate = candidateHash.slice('sha256:'.length)
+  // These are collision-detecting filesystem locators, not authority
+  // identities. Full hashes remain bound in evidence and every byte is
+  // reverified on rediscovery/load. Shortening each component keeps trusted
+  // Windows compiler staging below legacy MAX_PATH limits; a prefix collision
+  // fails closed at the existing exclusive final-directory promotion.
+  const workspace = contentHash(workspaceId).slice('sha256:'.length, 'sha256:'.length + 32)
+  const candidate = candidateHash.slice('sha256:'.length, 'sha256:'.length + 32)
   return `${workspace}/${publicName}/${candidate}`
 }
 

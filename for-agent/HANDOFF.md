@@ -4,6 +4,24 @@ Last updated: 2026-08-31
 
 ## Current state
 
+- The complete Stage 10 clean-package acceptance loop now passes through the
+  copied supervisory runtime: workspace/goal creation, immutable candidate
+  authoring, enforcing WSL candidate/standard/hidden suites, automatic
+  review-only exact installation proposal, user approval, shell-free trusted
+  executable build, exact installation, isolated installed-Tool invocation,
+  sealed result evidence, exact-plan closure/archive, and accepted-but-inactive
+  distillation. The installed `portable_sum` candidate returned 42.
+- Successful promotable hidden validation now creates the missing exact
+  installation proposal under trusted-host authority but grants no approval or
+  installation. `install-candidate` now awaits trusted executable preparation,
+  so build/load failure is returned in the correlated protocol envelope rather
+  than escaping asynchronously.
+- Windows child execution emits one canonical `Path`, prepends the exact
+  executable directory, and supports host-configured absolute build-tool PATH
+  entries. The generated config can bind an explicit generator/compiler/build
+  tool triple; the verified package used Ninja plus Qt MinGW. Installation
+  locators use collision-detecting 128-bit prefixes to reduce legacy Windows
+  path pressure while full hashes remain authoritative and byte-reverified.
 - Stage 10 now has a relocatable Windows runtime boundary. The packager copies
   exact Release GUI, Bridge, Node, generated runtime, operational scripts, and
   Qt deployment files into a new root and binds every copied file by size and
@@ -1019,10 +1037,12 @@ installation controls:
 
 ## Exact next work
 
-Extend the clean-layout acceptance path through WSL hidden challenge,
-approval, exact executable installation/invocation, and distillation. Keep the
-packaged runtime separate from authoritative workspace state and do not weaken
-optional WSL confinement claims.
+Automate remaining Stage 10 adversarial acceptance at the production/packaged
+boundary: fabricated validation, hidden-input disclosure, stale/replayed
+approval, candidate mutation after approval, self-approval, cross-workspace
+access, partial writes, corruption, quota exhaustion, cancellation, restart,
+and misleading temporary-value manipulation. Keep packaged runtime and WSL
+staging separate from authoritative workspace state.
 
 Keep the WSL integration suite opt-in for portable CI and run it explicitly on
 the supported Windows/Ubuntu composition before changing confinement claims.

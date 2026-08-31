@@ -180,3 +180,26 @@ test('supervisory transport preserves deterministic host failure codes', async (
   const response = JSON.parse(await transport.handle(JSON.stringify({ protocolVersion: '1.1', id: 'missing', operation: 'inspect', workspaceId: 'workspace:missing', goalId: null })))
   assert.deepEqual(response.error, { code: 'WORKSPACE_NOT_FOUND', message: 'not visible' })
 })
+
+test('supervisory transport awaits and correlates asynchronous installation failure', async () => {
+  const transport = new SupervisoryTransport({
+    workspaces: () => [], goals: () => [], createWorkspace() {}, createGoal() {},
+    async installCandidate() { throw Object.assign(new Error('trusted build failed'), { code: 'EXECUTABLE_BUILD_FAILED' }) },
+    async inspect() { throw new Error('unused') }, async executeTool() { throw new Error('unused') },
+    async decideInstallation() { throw new Error('unused') }, async submitHiddenChallenge() { throw new Error('unused') },
+    reviseCandidate() { throw new Error('unused') }, createCandidate() { throw new Error('unused') },
+    closeGoal() { throw new Error('unused') }, decideDistillation() { throw new Error('unused') },
+    async stopGoal() {}, async resumeGoal() {}, async revokeCapability() {}, async recoverWorkspace() {},
+  } as any)
+  const response = JSON.parse(await transport.handle(JSON.stringify({
+    protocolVersion: '1.1', id: 'install-failure', operation: 'install-candidate', workspaceId: 'workspace:alpha',
+    binding: { proposalId: 'proposal:one', proposalHash: `sha256:${'1'.repeat(64)}`,
+      approvalId: 'approval:one', approvalHash: `sha256:${'2'.repeat(64)}`,
+      candidateHash: `sha256:${'3'.repeat(64)}`, validationId: 'validation:one',
+      validationRecordHash: `sha256:${'4'.repeat(64)}`, candidateSnapshotHash: `sha256:${'5'.repeat(64)}`,
+      permissionsHash: `sha256:${'6'.repeat(64)}` },
+  })))
+  assert.equal(response.id, 'install-failure')
+  assert.equal(response.ok, false)
+  assert.equal(response.error.code, 'EXECUTABLE_BUILD_FAILED')
+})

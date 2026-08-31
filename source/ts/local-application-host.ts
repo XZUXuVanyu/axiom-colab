@@ -392,13 +392,22 @@ export class LocalApplicationHost {
       }],
     }
     const result = await runner.validate(request)
+    const promotable = this.options.validator.isPromotionEligible(
+      result.snapshot.snapshotHash, result.record)
+    if (promotable && this.options.proposalService !== undefined) {
+      this.options.proposalService.propose(
+        { workspaceId, actorId: this.options.hostActorId, authority: 'trusted-host' },
+        revisionId,
+        result.record.validationId,
+      )
+    }
     return {
       workspaceId, revisionId, candidateHash,
       validationId: result.record.validationId,
       snapshotHash: result.snapshot.snapshotHash,
       recordHash: result.record.recordHash,
       outcome: result.record.outcome,
-      promotable: this.options.validator.isPromotionEligible(result.snapshot.snapshotHash, result.record),
+      promotable,
       suites: result.record.suites.map((suite) => ({
         kind: suite.kind, outcome: suite.outcome, definitionHash: suite.definitionHash,
         commandCount: suite.commandCount, hidden: suite.hidden,
