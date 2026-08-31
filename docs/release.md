@@ -67,7 +67,13 @@ D:\Axiom\runtime\bin\node.exe `
 
 Success is one JSON record containing the workspace, goal, validation,
 installation, result, and closure identities plus
-`"distillation":"accepted-inactive"`.
+`"distillation":"accepted-inactive"` and `"restart":"verified"`. Before the
+successful installation, the driver also proves hidden-input redaction and
+rejects fabricated approval evidence, model-authority injection,
+cross-workspace proposal use, replayed approval, and installation of a
+candidate revision superseded after approval. It then restarts the copied
+supervisory process and re-inspects the exact installation, closure, and
+inactive distillation records.
 
 ## Migration notes
 

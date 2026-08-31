@@ -4,6 +4,14 @@ Last updated: 2026-08-31
 
 ## Current state
 
+- The packaged acceptance driver now exercises adversarial authority boundaries
+  before completing the success path. It verifies hidden fixtures and process
+  output remain redacted; fabricated approval bindings, model self-approval
+  fields, cross-workspace proposal use, replayed decisions, and installation of
+  a candidate superseded after approval all fail closed. It validates and
+  approves the new exact revision, completes installation/invocation/closure,
+  restarts the copied supervisory process, and re-inspects the exact durable
+  installation, closure, and inactive distillation state.
 - The complete Stage 10 clean-package acceptance loop now passes through the
   copied supervisory runtime: workspace/goal creation, immutable candidate
   authoring, enforcing WSL candidate/standard/hidden suites, automatic
@@ -1037,12 +1045,14 @@ installation controls:
 
 ## Exact next work
 
-Automate remaining Stage 10 adversarial acceptance at the production/packaged
-boundary: fabricated validation, hidden-input disclosure, stale/replayed
-approval, candidate mutation after approval, self-approval, cross-workspace
-access, partial writes, corruption, quota exhaustion, cancellation, restart,
-and misleading temporary-value manipulation. Keep packaged runtime and WSL
-staging separate from authoritative workspace state.
+Automate the remaining Stage 10 adversarial acceptance at the
+production/packaged boundary: candidate-authored fabricated validation output,
+partial writes, authoritative-state corruption, quota exhaustion,
+cancellation, and misleading temporary-value manipulation. The packaged
+boundary now covers hidden-input disclosure, fabricated approval evidence,
+self-approval injection, stale/replayed approval, candidate mutation after
+approval, cross-workspace proposal access, and supervisory restart. Keep
+packaged runtime and WSL staging separate from authoritative workspace state.
 
 Keep the WSL integration suite opt-in for portable CI and run it explicitly on
 the supported Windows/Ubuntu composition before changing confinement claims.

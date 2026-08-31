@@ -4,6 +4,37 @@ Entries are chronological. Each entry corresponds to one logical Git commit and
 records its exact subject, purpose, material changes, and validation actually
 performed.
 
+## 2026-08-31 - test(release): exercise packaged authority adversaries
+
+Purpose: move key Stage 10 adversarial claims from service-level tests to the
+real copied supervisory runtime without weakening the successful candidate
+lifecycle.
+
+Material changes:
+
+- Extended the packaged acceptance driver with correlated expected-rejection
+  requests for fabricated approval evidence, model self-approval fields,
+  cross-workspace proposal use, replayed approval, and installation of a
+  candidate superseded after approval.
+- Asserted that hidden fixture bytes, encoded inputs, and process streams never
+  appear in the packaged validation response.
+- Validated and approved the successor revision before completing trusted
+  installation, invocation, closure, and inactive distillation review.
+- Restarted the copied supervisory process and re-inspected the exact durable
+  installation, closure, and inactive proposal state.
+
+Validation actually run:
+
+- `pnpm.cmd test` rebuilt `dist/` and passed all 107 TypeScript tests.
+- Managed-sandbox execution denied WSL service access; the real validation
+  suites failed and remained non-promotable. The same clean-package run with
+  explicit WSL access passed both confined candidate revisions.
+- A fresh 64-file `windeployqt` package at
+  `build/portable-runtime-adversarial-6` rejected every adversarial request,
+  installed the exact successor candidate, returned 42 from
+  `portable_sum(19, 23)`, closed/distilled the goal, restarted, and verified the
+  durable authoritative records.
+
 ## 2026-08-31 - feat(release): prove the packaged candidate lifecycle
 
 Purpose: complete the clean-package goal-to-new-Tool-to-distillation acceptance
