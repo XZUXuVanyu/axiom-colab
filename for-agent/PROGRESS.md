@@ -4,6 +4,32 @@ Entries are chronological. Each entry corresponds to one logical Git commit and
 records its exact subject, purpose, material changes, and validation actually
 performed.
 
+## 2026-08-31 - test(release): reject fabricated packaged validation
+
+Purpose: prove at the copied production boundary that candidate-authored
+process output cannot masquerade as independent validation evidence.
+
+Material changes:
+
+- Added an adversarial candidate whose configure process prints plausible
+  passed, promotable, and validator-authority JSON before failing non-zero.
+- Required the packaged driver to observe a failed, non-promotable validation
+  with no proposal, approval, or installation authority.
+- Kept the malicious candidate in a separate workspace, then completed the
+  legitimate exact-candidate lifecycle and restart verification unchanged.
+
+Validation actually run:
+
+- `pnpm.cmd test` rebuilt `dist/` and passed all 107 TypeScript tests.
+- The first real combined package run proved fabricated validation rejection,
+  then exposed two valid layered stale-candidate error codes in the later
+  mutation check; the acceptance expectation was corrected without weakening
+  the required failure.
+- A fresh 64-file package at `build/portable-runtime-adversarial-8` rejected the
+  fabricated validation, completed both legitimate WSL-confined revisions,
+  returned 42 from the installed Tool, closed/distilled the goal, and verified
+  exact state after restart.
+
 ## 2026-08-31 - test(release): exercise packaged authority adversaries
 
 Purpose: move key Stage 10 adversarial claims from service-level tests to the

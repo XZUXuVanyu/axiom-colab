@@ -4,6 +4,11 @@ Last updated: 2026-08-31
 
 ## Current state
 
+- Packaged acceptance now authors a deliberately failing candidate whose CMake
+  process prints plausible passed/promotable/validator JSON. The independent
+  WSL runner records the real non-zero outcome, marks the run non-promotable,
+  and creates no proposal, approval, or installation. The separate legitimate
+  lifecycle still completes afterward and survives process restart.
 - The packaged acceptance driver now exercises adversarial authority boundaries
   before completing the success path. It verifies hidden fixtures and process
   output remain redacted; fabricated approval bindings, model self-approval
@@ -1046,10 +1051,10 @@ installation controls:
 ## Exact next work
 
 Automate the remaining Stage 10 adversarial acceptance at the
-production/packaged boundary: candidate-authored fabricated validation output,
-partial writes, authoritative-state corruption, quota exhaustion,
-cancellation, and misleading temporary-value manipulation. The packaged
-boundary now covers hidden-input disclosure, fabricated approval evidence,
+production/packaged boundary: partial writes, authoritative-state corruption,
+quota exhaustion, cancellation, and misleading temporary-value manipulation.
+The packaged boundary now covers fabricated validation output, hidden-input
+disclosure, fabricated approval evidence,
 self-approval injection, stale/replayed approval, candidate mutation after
 approval, cross-workspace proposal access, and supervisory restart. Keep
 packaged runtime and WSL staging separate from authoritative workspace state.
