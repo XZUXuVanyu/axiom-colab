@@ -4,6 +4,29 @@ Entries are chronological. Each entry corresponds to one logical Git commit and
 records its exact subject, purpose, material changes, and validation actually
 performed.
 
+## 2026-08-31 - feat(goal): create reviewable goal distillation
+
+Purpose: continue Stage 9 with an authority-safe closure and distillation
+contract before exposing goal completion through the production host or Qt.
+
+Material changes:
+
+- Added exact-plan/latest-checkpoint goal closure producing an immutable session
+  archive derived from the latest sealed report and all cited evidence artifacts.
+- Added durable review-only proposals for experience, knowledge, skill and Tool
+  candidates/references, unresolved questions, cleanup, and retention.
+- Added exact-hash user decisions for accept/reject/defer with replay and
+  cross-workspace rejection; decisions deliberately have no activation,
+  installation, deletion, or retention side effect.
+- Rejects unsupported evidence identities, missing artifacts, stale checkpoints,
+  duplicate closure, and closure without sealed Tool evidence.
+
+Validation actually run:
+
+- `pnpm.cmd test`: all 100 TypeScript tests passed and regenerated `dist/`.
+- `pnpm.cmd run test:integration`: five portable real-Bridge/production-host
+  tests passed; the three opt-in WSL confinement tests skipped.
+
 ## 2026-08-31 - feat(goal): checkpoint supervised execution continuously
 
 Purpose: begin Stage 9 with restart-safe progress recovery after every completed

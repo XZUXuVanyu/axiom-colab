@@ -10,6 +10,14 @@ Last updated: 2026-08-31
   Supervisory progress prefers this operational checkpoint after restart while
   retaining independently verified report observations. Checkpoints are
   recovery facts, not approved knowledge or distillation decisions.
+- Stage 9 now also has a UI-independent goal-distillation boundary. Closure
+  binds the exact approved plan and latest evidence-bearing checkpoint, derives
+  an immutable session archive with artifact lineage, and persists separately
+  reviewable experience, knowledge, skill/Tool candidate/reference, unresolved
+  question, cleanup, and retention proposals. User review can accept, reject,
+  or defer an exact proposal, but no decision activates content or performs
+  cleanup/retention by itself. Production host/transport/Qt composition is the
+  immediate continuation.
 - Stage 8 is complete. Production composition now owns a strict shell-free
   installed-executable build profile, a restart-safe SQLite evidence authority,
   byte-reverified loading, and one isolated Adapter instance per installed Tool.
@@ -968,11 +976,12 @@ installation controls:
 
 ## Exact next work
 
-Continue Stage 9 by defining the exact goal-closure transaction and reviewable
-distillation proposal contract for experience, evidence-supported knowledge,
-skill/Tool candidates, unresolved questions, cleanup, retention, and immutable
-session archive. Bind closure to the current approved plan and latest checkpoint;
-do not auto-promote any proposal or rely on graceful shutdown.
+Compose the goal-distillation service into the production host, add exact
+closure and proposal-review transport operations, project closure/archive and
+proposal states for inspection, and add Qt controls. Complete lifecycle state
+only after the archive and proposals are durable; make partial closure retry-safe
+before exposing the operation. Do not auto-promote accepted content or execute
+cleanup/retention decisions as part of review.
 
 Keep the WSL integration suite opt-in for portable CI and run it explicitly on
 the supported Windows/Ubuntu composition before changing confinement claims.
