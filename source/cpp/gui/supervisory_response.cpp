@@ -60,6 +60,75 @@ bool valid_identity(std::string_view value, std::string_view prefix) {
     return true;
 }
 
+bool valid_hash(std::string_view value) {
+    if (value.size() != 71 || !value.starts_with("sha256:")) return false;
+    for (const char character : value.substr(7)) {
+        if (!std::isdigit(static_cast<unsigned char>(character))
+            && (character < 'a' || character > 'f')) return false;
+    }
+    return true;
+}
+
+void validate_distillation(const Json& value, bool goal_selected) {
+    const auto& distillation = require_object(value, "distillation");
+    require_exact_fields(distillation, {"closure", "proposals"});
+    const Json& closure = value.at("closure");
+    if (!closure.is_null()) {
+        const auto& object = require_object(closure, "distillation.closure");
+        require_exact_fields(object, {"closureId", "closureHash", "checkpointHash",
+                                      "archiveArtifactId", "archiveHash", "closedAt"});
+        if (!valid_identity(require_string(closure.at("closureId"), "closureId"), "evidence:")
+            || !valid_hash(require_string(closure.at("closureHash"), "closureHash"))
+            || !valid_hash(require_string(closure.at("checkpointHash"), "checkpointHash"))
+            || !valid_identity(require_string(closure.at("archiveArtifactId"), "archiveArtifactId"), "object:")
+            || !valid_hash(require_string(closure.at("archiveHash"), "archiveHash"))
+            || require_string(closure.at("closedAt"), "closedAt").empty()) {
+            fail("distillation closure binding is malformed");
+        }
+    }
+    const Json& proposals = value.at("proposals");
+    if (!proposals.is_array()) fail("distillation.proposals must be an array");
+    if (!goal_selected && (!closure.is_null() || !proposals.as_array().empty())) {
+        fail("workspace overview cannot contain goal distillation");
+    }
+    if (closure.is_null() && !proposals.as_array().empty()) {
+        fail("distillation proposals require a closure");
+    }
+    std::set<std::string, std::less<>> identities;
+    const std::set<std::string, std::less<>> kinds = {"experience", "knowledge", "skill-candidate",
+        "tool-candidate", "tool-reference", "unresolved-question", "cleanup", "retention"};
+    const std::set<std::string, std::less<>> states = {"proposed", "accepted", "rejected", "deferred"};
+    for (const Json& proposal : proposals.as_array()) {
+        const auto& object = require_object(proposal, "distillation proposal");
+        require_exact_fields(object, {"proposalId", "proposalHash", "kind", "content",
+            "evidenceArtifactIds", "state", "proposedAt", "decidedAt", "decidedBy", "active"});
+        const auto& id = require_string(proposal.at("proposalId"), "proposalId");
+        const auto& kind = require_string(proposal.at("kind"), "kind");
+        const auto& state = require_string(proposal.at("state"), "state");
+        if (!valid_identity(id, "proposal:") || !identities.insert(id).second
+            || !valid_hash(require_string(proposal.at("proposalHash"), "proposalHash"))
+            || !kinds.contains(kind) || !states.contains(state)
+            || require_string(proposal.at("proposedAt"), "proposedAt").empty()
+            || !proposal.at("active").is_bool() || proposal.at("active").as_bool()) {
+            fail("distillation proposal binding is malformed or active");
+        }
+        const Json& evidence = proposal.at("evidenceArtifactIds");
+        if (!evidence.is_array()) fail("distillation evidence must be an array");
+        for (const Json& artifact : evidence.as_array()) {
+            if (!valid_identity(require_string(artifact, "evidence artifact"), "object:"))
+                fail("distillation evidence identity is malformed");
+        }
+        const bool proposed = state == "proposed";
+        if (proposed != (proposal.at("decidedAt").is_null() && proposal.at("decidedBy").is_null())) {
+            fail("distillation decision attribution is incomplete");
+        }
+        if (!proposed && (require_string(proposal.at("decidedAt"), "decidedAt").empty()
+            || !valid_identity(require_string(proposal.at("decidedBy"), "decidedBy"), "actor:"))) {
+            fail("distillation decision attribution is malformed");
+        }
+    }
+}
+
 } // namespace
 
 SupervisoryResponse parse_supervisory_response(
@@ -152,7 +221,7 @@ SupervisoryWorkspaceInspection parse_workspace_inspection_result(
     if (!response.ok) fail("cannot decode inspection from an error response");
     const auto& result = require_object(response.result, "inspection result");
     require_exact_fields(result, {"workspaceId", "goalId", "currentPlan", "progress", "observations", "memory", "tools",
-                                  "resources", "candidates", "timeline", "controls"});
+                                  "resources", "candidates", "timeline", "distillation", "controls"});
     const std::string& workspace_id = require_string(
         response.result.at("workspaceId"), "workspaceId");
     if (!valid_identity(workspace_id, "workspace:")
@@ -186,6 +255,7 @@ SupervisoryWorkspaceInspection parse_workspace_inspection_result(
         }
     }
     require_object(response.result.at("controls"), "controls");
+    validate_distillation(response.result.at("distillation"), goal_id.has_value());
     return {
         .workspace_id = workspace_id, .goal_id = std::move(goal_id),
         .current_plan = plan, .progress = progress,
@@ -194,6 +264,7 @@ SupervisoryWorkspaceInspection parse_workspace_inspection_result(
         .resources = response.result.at("resources"),
         .candidates = response.result.at("candidates"),
         .timeline = response.result.at("timeline"),
+        .distillation = response.result.at("distillation"),
         .controls = response.result.at("controls"),
     };
 }

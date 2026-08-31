@@ -31,7 +31,10 @@ Last updated: 2026-08-31
   The projection verifies proposal hashes, closure membership, and the archive
   against artifact inspection, and marks every proposal explicitly inactive;
   accepted cleanup, retention, skill, or Tool material still has no effect.
-  Strict C++ decoding and Qt controls remain next.
+  The C++ process boundary now strictly decodes this projection, rejects goal
+  distillation in workspace overviews, malformed identities/hashes/decisions,
+  duplicate proposals, and any proposal presented as active. Qt close/review
+  controls remain next.
 - Stage 8 is complete. Production composition now owns a strict shell-free
   installed-executable build profile, a restart-safe SQLite evidence authority,
   byte-reverified loading, and one isolated Adapter instance per installed Tool.
@@ -990,10 +993,10 @@ installation controls:
 
 ## Exact next work
 
-Add strict C++ decoders and Qt close/review controls for the authoritative
-closure/archive and proposal projection. Qt must show that accepted proposals
-are still inactive review decisions, and must never execute cleanup or
-retention as a side effect.
+Add Qt close/review controls for the strictly decoded authoritative
+closure/archive and proposal projection. Requests must bind the displayed plan
+or proposal hash; Qt must show that accepted proposals are still inactive
+review decisions and must never execute cleanup or retention as a side effect.
 
 Keep the WSL integration suite opt-in for portable CI and run it explicitly on
 the supported Windows/Ubuntu composition before changing confinement claims.

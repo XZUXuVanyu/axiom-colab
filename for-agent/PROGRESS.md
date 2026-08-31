@@ -4,6 +4,28 @@ Entries are chronological. Each entry corresponds to one logical Git commit and
 records its exact subject, purpose, material changes, and validation actually
 performed.
 
+## 2026-08-31 - feat(gui): decode inactive distillation strictly
+
+Purpose: continue Stage 9 across the C++ process boundary before exposing goal
+closure and proposal review in Qt.
+
+Material changes:
+
+- Extended the strict workspace-inspection decoder with the authoritative
+  closure/archive and proposal review projection.
+- Rejected unknown fields, malformed identities and hashes, unsupported kinds
+  or states, duplicate proposals, incomplete decision attribution, proposals
+  without closure, goal state in workspace overviews, and any active proposal.
+- Updated the real-process fixture and C++ contract test, including adversarial
+  workspace-overview distillation rejection.
+
+Validation actually run:
+
+- Existing Qt/MSVC Release build completed with warnings as errors after the
+  managed-shell file tracker required the approved outside-sandbox build.
+- Release `ctest` passed all 3 C++/process/offscreen-widget test executables.
+- `git diff --check`: passed with newline-conversion notices only.
+
 ## 2026-08-31 - feat(goal): project review-only distillation
 
 Purpose: continue Stage 9 by making durable closure and review state available

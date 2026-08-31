@@ -34,6 +34,7 @@ struct SupervisoryWorkspaceInspection final {
     cpp_adapter::Json resources;
     cpp_adapter::Json candidates;
     cpp_adapter::Json timeline;
+    cpp_adapter::Json distillation;
     cpp_adapter::Json controls;
 };
 

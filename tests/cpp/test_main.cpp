@@ -135,16 +135,24 @@ void test_supervisory_response_parser() {
     });
 
     const auto inspection_response = parse_supervisory_response(
-        R"({"protocolVersion":"1.1","id":"request:3","ok":true,"result":{"workspaceId":"workspace:one","goalId":null,"currentPlan":null,"progress":null,"observations":[],"memory":{"compute":[],"working":[],"artifacts":[]},"tools":[],"resources":{},"candidates":[],"timeline":[],"controls":{}}})",
+        R"({"protocolVersion":"1.1","id":"request:3","ok":true,"result":{"workspaceId":"workspace:one","goalId":null,"currentPlan":null,"progress":null,"observations":[],"memory":{"compute":[],"working":[],"artifacts":[]},"tools":[],"resources":{},"candidates":[],"timeline":[],"distillation":{"closure":null,"proposals":[]},"controls":{}}})",
         "request:3");
     const auto inspection = parse_workspace_inspection_result(
         inspection_response, "workspace:one", std::nullopt);
     CHECK(inspection.workspace_id == "workspace:one");
     CHECK(!inspection.goal_id.has_value());
     CHECK(inspection.tools.as_array().empty());
+    CHECK(inspection.distillation.at("proposals").as_array().empty());
     check_supervisory_response_error([&] {
         (void)parse_workspace_inspection_result(
             inspection_response, "workspace:other", std::nullopt);
+    });
+    check_supervisory_response_error([] {
+        const auto misleading = parse_supervisory_response(
+            R"({"protocolVersion":"1.1","id":"request:distillation","ok":true,"result":{"workspaceId":"workspace:one","goalId":null,"currentPlan":null,"progress":null,"observations":[],"memory":{"compute":[],"working":[],"artifacts":[]},"tools":[],"resources":{},"candidates":[],"timeline":[],"distillation":{"closure":null,"proposals":[{}]},"controls":{}}})",
+            "request:distillation");
+        (void)parse_workspace_inspection_result(
+            misleading, "workspace:one", std::nullopt);
     });
     check_supervisory_response_error([] {
         const auto duplicate = parse_supervisory_response(

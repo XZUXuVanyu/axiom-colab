@@ -161,6 +161,7 @@ const host = {
         { name: 'add_numbers', source: 'built-in', executable: true, installationEvidenceHash: null, descriptor: { name: 'add_numbers', description: 'Adds values.', whenToUse: 'For addition.', parameters: { type: 'object' }, output: { type: 'object' }, timeoutMs: 1000, allowParallel: true, sideEffect: false } },
         ...(candidate.installation?.outcome === 'installed' ? [{ name: 'candidate_tool', source: 'installed', executable: false, installationEvidenceHash: candidate.installation.evidenceHash, descriptor: candidate.descriptor }] : []),
       ], candidates: [candidate], timeline: [],
+      distillation: { closure: null, proposals: [] },
       resources: { workspaceId, usedBytes: 0, objectCount: 0, quota: { maxBytes: 10, maxObjects: 1 }, expiredObjects: 0, corruptObjects: 0 },
       controls: {
         canStopGoal: goalId === 'goal:one' && !goalStopped,
