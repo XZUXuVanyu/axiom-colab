@@ -167,6 +167,31 @@ test('loopback HTTP boundary authenticates and preserves structured failures', a
   }
 })
 
+test('loopback HTTP boundary preserves authoritative payload quota failures', async () => {
+  const { store, workflows, service } = setup()
+  const issued = service.issueGrant(grant(['compute.create'], {
+    maxOperations: 1, maxRequestBytes: 20_000,
+  }), 'model', 'secret-quota')
+  const server = new AuthenticatedMemoryHttpServer(service)
+  const endpoint = await server.listen()
+  try {
+    const body = request(issued, 'compute.create', {
+      base64: Buffer.alloc(10_001, 7).toString('base64'), expiresAt: null,
+    })
+    const { bearerToken: _secret, ...withoutSecret } = body
+    const response = await fetch(endpoint.invokeUrl, {
+      method: 'POST',
+      headers: { authorization: 'Bearer secret-quota', 'content-type': 'application/json' },
+      body: JSON.stringify(withoutSecret),
+    })
+    assert.equal(response.status, 400)
+    assert.equal((await response.json() as any).error.code, 'QUOTA_EXCEEDED')
+    assert.equal(store.resources('workspace:alpha').objectCount, 0)
+  } finally {
+    await server.close(); workflows.close(); store.close()
+  }
+})
+
 test('host memory session provider issues a complete call-bound envelope and revokes it', async () => {
   const { store, workflows, service } = setup()
   const server = new AuthenticatedMemoryHttpServer(service)

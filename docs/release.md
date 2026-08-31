@@ -74,7 +74,10 @@ fabricated approval evidence, model-authority injection,
 cross-workspace proposal use, replayed approval, and installation of a
 candidate revision superseded after approval. It then restarts the copied
 supervisory process and re-inspects the exact installation, closure, and
-inactive distillation records.
+inactive distillation records. A separately quota-bounded workspace invokes the
+real compute-memory Tool with an oversized payload and must return
+`QUOTA_EXCEEDED` while retaining zero payloads, compute objects, checkpoints,
+and observations.
 
 ## Migration notes
 

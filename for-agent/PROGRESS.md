@@ -4,6 +4,35 @@ Entries are chronological. Each entry corresponds to one logical Git commit and
 records its exact subject, purpose, material changes, and validation actually
 performed.
 
+## 2026-08-31 - test(release): prove packaged quota exhaustion
+
+Purpose: exercise authoritative workspace payload quotas through the real
+packaged C++ memory Tool and ensure rejection leaves no misleading progress.
+
+Material changes:
+
+- Added an optional strictly validated byte/object quota to production
+  workspace creation while preserving default quotas for existing callers.
+- Preserved `MemoryStoreError` codes through the authenticated memory service,
+  HTTP envelope, C++ memory client, Bridge, adapter, and supervisory protocol.
+- Added HTTP regression coverage for the exact `QUOTA_EXCEEDED` code.
+- Extended packaged acceptance with a bounded workspace whose oversized
+  `compute_buffer` create must leave no payload, compute object, checkpoint, or
+  observation while retaining its approved goal.
+
+Validation actually run:
+
+- The first package attempt showed that working-plan SQLite rows do not consume
+  the payload quota; acceptance was corrected to exercise the intended payload
+  boundary through `compute_buffer`.
+- The next package attempt found that the memory HTTP boundary collapsed the
+  store's `QUOTA_EXCEEDED` into `INTERNAL_ERROR`; the boundary was fixed and a
+  regression test added.
+- `pnpm.cmd test` rebuilt `dist/` and passed all 108 TypeScript tests.
+- A fresh 64-file package at `build/portable-runtime-adversarial-11` returned
+  exact `QUOTA_EXCEEDED`, proved the failure atomic, then completed confined
+  validation, installation, Tool result 42, closure, distillation, and restart.
+
 ## 2026-08-31 - test(release): reject fabricated packaged validation
 
 Purpose: prove at the copied production boundary that candidate-authored

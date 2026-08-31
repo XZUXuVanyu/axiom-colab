@@ -1,6 +1,7 @@
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { authorize, ContractError } from './laboratory-contract.js';
 import { MemoryWorkflowError, MemoryWorkflows } from './memory-workflows.js';
+import { MemoryStoreError } from './local-memory-store.js';
 const MEMORY_OPERATIONS = new Set([
     'compute.create',
     'compute.read',
@@ -170,7 +171,7 @@ export class AuthenticatedMemoryService {
     }
 }
 export function memoryServiceErrorCode(error) {
-    if (error instanceof AuthenticatedMemoryServiceError || error instanceof ContractError || error instanceof MemoryWorkflowError) return error.code;
+    if (error instanceof AuthenticatedMemoryServiceError || error instanceof ContractError || error instanceof MemoryWorkflowError || error instanceof MemoryStoreError) return error.code;
     return 'INTERNAL_ERROR';
 }
 

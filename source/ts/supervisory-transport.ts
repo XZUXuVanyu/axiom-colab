@@ -5,13 +5,14 @@ import type { SupervisoryToolExecution, SupervisoryWorkspaceSnapshot } from './s
 import type { GoalCreationResult, HiddenChallengeValidationResult, InstallationRequestBinding, InstallationResult } from './local-application-host.js'
 import type { CandidateRevision, ToolSpecification, ToolSpecificationInput } from './tool-workshop.js'
 import type { DistillationDecision, DistillationDraft, DistillationProposal, GoalClosure } from './goal-distillation.js'
+import type { WorkspaceQuota } from './local-memory-store.js'
 
 export const SUPERVISORY_TRANSPORT_VERSION = '1.1' as const
 
 export interface SupervisoryTransportHost {
   workspaces(): readonly LaboratoryId<'workspace'>[]
   goals(workspaceId: LaboratoryId<'workspace'>): readonly LaboratoryId<'goal'>[]
-  createWorkspace(workspaceId: LaboratoryId<'workspace'>): { readonly workspaceId: LaboratoryId<'workspace'> }
+  createWorkspace(workspaceId: LaboratoryId<'workspace'>, quota?: WorkspaceQuota): { readonly workspaceId: LaboratoryId<'workspace'> }
   createGoal(workspaceId: LaboratoryId<'workspace'>, goalId: LaboratoryId<'goal'>, objective: string): GoalCreationResult
   installCandidate(workspaceId: LaboratoryId<'workspace'>, binding: InstallationRequestBinding): Promise<InstallationResult> | InstallationResult
   inspect(workspaceId: LaboratoryId<'workspace'>, goalId: LaboratoryId<'goal'> | null): Promise<SupervisoryWorkspaceSnapshot>
@@ -31,7 +32,7 @@ export interface SupervisoryTransportHost {
 type Request =
   | { readonly protocolVersion: typeof SUPERVISORY_TRANSPORT_VERSION; readonly id: string; readonly operation: 'list-workspaces' }
   | { readonly protocolVersion: typeof SUPERVISORY_TRANSPORT_VERSION; readonly id: string; readonly operation: 'list-goals'; readonly workspaceId: LaboratoryId<'workspace'> }
-  | { readonly protocolVersion: typeof SUPERVISORY_TRANSPORT_VERSION; readonly id: string; readonly operation: 'create-workspace'; readonly workspaceId: LaboratoryId<'workspace'> }
+  | { readonly protocolVersion: typeof SUPERVISORY_TRANSPORT_VERSION; readonly id: string; readonly operation: 'create-workspace'; readonly workspaceId: LaboratoryId<'workspace'>; readonly quota?: WorkspaceQuota }
   | { readonly protocolVersion: typeof SUPERVISORY_TRANSPORT_VERSION; readonly id: string; readonly operation: 'create-goal'; readonly workspaceId: LaboratoryId<'workspace'>; readonly goalId: LaboratoryId<'goal'>; readonly objective: string }
   | { readonly protocolVersion: typeof SUPERVISORY_TRANSPORT_VERSION; readonly id: string; readonly operation: 'install-candidate'; readonly workspaceId: LaboratoryId<'workspace'>; readonly binding: InstallationRequestBinding }
   | { readonly protocolVersion: typeof SUPERVISORY_TRANSPORT_VERSION; readonly id: string; readonly operation: 'inspect'; readonly workspaceId: LaboratoryId<'workspace'>; readonly goalId: LaboratoryId<'goal'> | null }
@@ -170,8 +171,18 @@ function parseRequest(text: string, maxBytes: number): Request {
     return value as unknown as Request
   }
   if (value.operation === 'create-workspace') {
-    exact(value, ['protocolVersion', 'id', 'operation', 'workspaceId'])
+    exact(value, 'quota' in value
+      ? ['protocolVersion', 'id', 'operation', 'workspaceId', 'quota']
+      : ['protocolVersion', 'id', 'operation', 'workspaceId'])
     if (typeof value.workspaceId !== 'string' || !/^workspace:[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(value.workspaceId)) fail('INVALID_WORKSPACE_ID', 'workspace identity is malformed')
+    if ('quota' in value) {
+      if (!record(value.quota)) fail('INVALID_WORKSPACE_QUOTA', 'workspace quota must be an object')
+      exact(value.quota, ['maxBytes', 'maxObjects'])
+      if (!Number.isSafeInteger(value.quota.maxBytes) || (value.quota.maxBytes as number) <= 0
+          || !Number.isSafeInteger(value.quota.maxObjects) || (value.quota.maxObjects as number) <= 0) {
+        fail('INVALID_WORKSPACE_QUOTA', 'workspace quota values must be positive safe integers')
+      }
+    }
     return value as unknown as Request
   }
   if (value.operation === 'create-goal') {
@@ -296,7 +307,7 @@ export class SupervisoryTransport {
         : request.operation === 'list-goals'
           ? { workspaceId: request.workspaceId, goals: [...this.host.goals(request.workspaceId)] }
           : request.operation === 'create-workspace'
-            ? this.host.createWorkspace(request.workspaceId)
+            ? this.host.createWorkspace(request.workspaceId, request.quota)
             : request.operation === 'create-goal'
               ? this.host.createGoal(request.workspaceId, request.goalId, request.objective)
               : request.operation === 'install-candidate'

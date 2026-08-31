@@ -14,6 +14,7 @@ import {
   type ArtifactProvenance,
   type WorkflowInvocation,
 } from './memory-workflows.js'
+import { MemoryStoreError } from './local-memory-store.js'
 
 const MEMORY_OPERATIONS = new Set<Operation>([
   'compute.create', 'compute.read', 'compute.update', 'compute.snapshot',
@@ -239,6 +240,7 @@ export class AuthenticatedMemoryService {
 export function memoryServiceErrorCode(error: unknown): string {
   if (error instanceof AuthenticatedMemoryServiceError
     || error instanceof ContractError
-    || error instanceof MemoryWorkflowError) return error.code
+    || error instanceof MemoryWorkflowError
+    || error instanceof MemoryStoreError) return error.code
   return 'INTERNAL_ERROR'
 }

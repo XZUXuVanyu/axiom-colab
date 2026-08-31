@@ -214,9 +214,9 @@ export class LocalApplicationHost {
     return this.options.lifecycle.listGoals(workspaceId)
   }
 
-  createWorkspace(workspaceId: LaboratoryId<'workspace'>): { readonly workspaceId: LaboratoryId<'workspace'> } {
+  createWorkspace(workspaceId: LaboratoryId<'workspace'>, quota?: { readonly maxBytes: number; readonly maxObjects: number }): { readonly workspaceId: LaboratoryId<'workspace'> } {
     this.ensureReady()
-    this.options.store.createWorkspace(workspaceId)
+    this.options.store.createWorkspace(workspaceId, quota)
     return { workspaceId }
   }
 

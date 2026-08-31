@@ -4,6 +4,15 @@ Last updated: 2026-08-31
 
 ## Current state
 
+- Production workspace creation now accepts an optional exact positive byte and
+  object quota while preserving the existing default when omitted. Packaged
+  acceptance creates a 64-byte/one-object workspace and sends a 128-byte
+  compute payload through the real C++ `compute_buffer` Tool. The call returns
+  `QUOTA_EXCEEDED` and leaves zero payload accounting, compute objects,
+  checkpoints, or observations; the approved goal remains intact.
+- Authoritative `MemoryStoreError` codes now survive the authenticated HTTP and
+  C++ Bridge boundaries instead of being collapsed to `INTERNAL_ERROR`. This
+  preserves fail-closed quota diagnostics without exposing paths or payloads.
 - Packaged acceptance now authors a deliberately failing candidate whose CMake
   process prints plausible passed/promotable/validator JSON. The independent
   WSL runner records the real non-zero outcome, marks the run non-promotable,
@@ -1052,11 +1061,12 @@ installation controls:
 
 Automate the remaining Stage 10 adversarial acceptance at the
 production/packaged boundary: partial writes, authoritative-state corruption,
-quota exhaustion, cancellation, and misleading temporary-value manipulation.
+cancellation, and misleading temporary-value manipulation.
 The packaged boundary now covers fabricated validation output, hidden-input
 disclosure, fabricated approval evidence,
 self-approval injection, stale/replayed approval, candidate mutation after
-approval, cross-workspace proposal access, and supervisory restart. Keep
+approval, cross-workspace proposal access, quota exhaustion, and supervisory
+restart. Keep
 packaged runtime and WSL staging separate from authoritative workspace state.
 
 Keep the WSL integration suite opt-in for portable CI and run it explicitly on

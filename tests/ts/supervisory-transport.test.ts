@@ -16,7 +16,10 @@ test('supervisory transport lists workspaces and correlates immutable inspection
   const host = {
     workspaces: () => ['workspace:alpha', 'workspace:beta'] as const,
     goals: (workspaceId: string) => workspaceId === 'workspace:alpha' ? ['goal:one'] as const : [],
-    createWorkspace(workspaceId: string) { return { workspaceId } },
+    createWorkspace(workspaceId: string, quota?: { maxBytes: number; maxObjects: number }) {
+      if (workspaceId === 'workspace:beta') assert.deepEqual(quota, { maxBytes: 64, maxObjects: 1 })
+      return { workspaceId }
+    },
     createGoal(workspaceId: string, goalId: string, objective: string) {
       return { workspaceId, goalId, objective, planRevisionId: 'object:new-plan', planHash: `sha256:${'a'.repeat(64)}` }
     },
@@ -82,6 +85,8 @@ test('supervisory transport lists workspaces and correlates immutable inspection
   assert.deepEqual(goals.result, { workspaceId: 'workspace:alpha', goals: ['goal:one'] })
   const workspace = JSON.parse(await transport.handle(JSON.stringify({ protocolVersion: '1.1', id: 'workspace', operation: 'create-workspace', workspaceId: 'workspace:new' })))
   assert.deepEqual(workspace.result, { workspaceId: 'workspace:new' })
+  const bounded = JSON.parse(await transport.handle(JSON.stringify({ protocolVersion: '1.1', id: 'bounded', operation: 'create-workspace', workspaceId: 'workspace:beta', quota: { maxBytes: 64, maxObjects: 1 } })))
+  assert.deepEqual(bounded.result, { workspaceId: 'workspace:beta' })
   const goal = JSON.parse(await transport.handle(JSON.stringify({ protocolVersion: '1.1', id: 'goal', operation: 'create-goal', workspaceId: 'workspace:new', goalId: 'goal:new', objective: 'User-approved objective.' })))
   assert.equal(goal.result.objective, 'User-approved objective.')
   assert.equal(goal.result.planRevisionId, 'object:new-plan')
@@ -150,6 +155,8 @@ test('supervisory transport rejects malformed, oversized, and authority-changing
   assert.equal(unknown.error.code, 'INVALID_REQUEST')
   const malformedWorkspace = JSON.parse(await transport.handle(JSON.stringify({ protocolVersion: '1.1', id: 'goals', operation: 'list-goals', workspaceId: 'goal:wrong-kind' })))
   assert.equal(malformedWorkspace.error.code, 'INVALID_WORKSPACE_ID')
+  const malformedQuota = JSON.parse(await transport.handle(JSON.stringify({ protocolVersion: '1.1', id: 'quota', operation: 'create-workspace', workspaceId: 'workspace:alpha', quota: { maxBytes: 0, maxObjects: 1 } })))
+  assert.equal(malformedQuota.error.code, 'INVALID_WORKSPACE_QUOTA')
   const emptyObjective = JSON.parse(await transport.handle(JSON.stringify({ protocolVersion: '1.1', id: 'goal', operation: 'create-goal', workspaceId: 'workspace:alpha', goalId: 'goal:new', objective: '' })))
   assert.equal(emptyObjective.error.code, 'INVALID_GOAL_OBJECTIVE')
   const invalidInstall = JSON.parse(await transport.handle(JSON.stringify({ protocolVersion: '1.1', id: 'install', operation: 'install-candidate', workspaceId: 'workspace:alpha', binding: {} })))

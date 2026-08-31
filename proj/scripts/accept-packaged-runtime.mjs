@@ -126,9 +126,27 @@ try {
   const suffix = `${Date.now()}-${process.pid}`
   const workspaceId = `workspace:packaged-${suffix}`
   const foreignWorkspaceId = `workspace:packaged-foreign-${suffix}`
+  const quotaWorkspaceId = `workspace:packaged-quota-${suffix}`
   const goalId = `goal:packaged-${suffix}`
   await request('create-workspace', { workspaceId })
   await request('create-workspace', { workspaceId: foreignWorkspaceId })
+  await request('create-workspace', { workspaceId: quotaWorkspaceId, quota: { maxBytes: 64, maxObjects: 1 } })
+  const quotaGoal = await request('create-goal', {
+    workspaceId: quotaWorkspaceId, goalId: `goal:quota-${suffix}`,
+    objective: 'Prove compute payload quota exhaustion is atomic.',
+  })
+  await rejected('execute-tool', {
+    workspaceId: quotaWorkspaceId, goalId: quotaGoal.goalId, tool: 'compute_buffer',
+    arguments: { action: 'create', base64: Buffer.alloc(128, 7).toString('base64') },
+  }, ['QUOTA_EXCEEDED'])
+  const quotaInspection = await request('inspect', { workspaceId: quotaWorkspaceId, goalId: quotaGoal.goalId })
+  if (quotaInspection.resources.usedBytes !== 0 || quotaInspection.resources.objectCount !== 0 ||
+      quotaInspection.resources.quota.maxBytes !== 64 || quotaInspection.resources.quota.maxObjects !== 1 ||
+      quotaInspection.memory.compute.length !== 0 || quotaInspection.progress !== null || quotaInspection.observations.length !== 0) {
+    throw new Error(`quota failure left partial authoritative state: ${JSON.stringify(quotaInspection.resources)}`)
+  }
+  const quotaGoals = await request('list-goals', { workspaceId: quotaWorkspaceId })
+  if (quotaGoals.goals.length !== 1 || quotaGoals.goals[0] !== quotaGoal.goalId) throw new Error('quota failure changed goal visibility')
   const fabricated = await request('create-candidate', {
     workspaceId: foreignWorkspaceId,
     specification: { problem: 'Attempt to fabricate independent validation.', publicName: fabricatedDescriptor.name,
@@ -260,7 +278,7 @@ try {
   const finalInspection = await request('inspect', { workspaceId, goalId })
   if (finalInspection.distillation?.proposals?.[0]?.active !== false) throw new Error('accepted distillation was presented as active')
   accepted = { workspaceId, goalId, revisionId: revised.revisionId, validationId: revisedValidation.validationId,
-    fabricatedValidation: 'rejected',
+    fabricatedValidation: 'rejected', quotaExhaustion: 'atomic',
     installationId: finalInspection.candidates.find((item) => item.revisionId === revised.revisionId)?.installation?.installationId,
     result: execution.result, closureId: closed.closure.closureId, distillation: 'accepted-inactive' }
 } finally {

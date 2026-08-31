@@ -192,13 +192,29 @@ function parseRequest(text, maxBytes) {
         return value;
     }
     if (value.operation === 'create-workspace') {
-        exact(value, [
+        exact(value, 'quota' in value ? [
+            'protocolVersion',
+            'id',
+            'operation',
+            'workspaceId',
+            'quota'
+        ] : [
             'protocolVersion',
             'id',
             'operation',
             'workspaceId'
         ]);
         if (typeof value.workspaceId !== 'string' || !/^workspace:[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(value.workspaceId)) fail('INVALID_WORKSPACE_ID', 'workspace identity is malformed');
+        if ('quota' in value) {
+            if (!record(value.quota)) fail('INVALID_WORKSPACE_QUOTA', 'workspace quota must be an object');
+            exact(value.quota, [
+                'maxBytes',
+                'maxObjects'
+            ]);
+            if (!Number.isSafeInteger(value.quota.maxBytes) || value.quota.maxBytes <= 0 || !Number.isSafeInteger(value.quota.maxObjects) || value.quota.maxObjects <= 0) {
+                fail('INVALID_WORKSPACE_QUOTA', 'workspace quota values must be positive safe integers');
+            }
+        }
         return value;
     }
     if (value.operation === 'create-goal') {
@@ -445,7 +461,7 @@ export class SupervisoryTransport {
                 goals: [
                     ...this.host.goals(request.workspaceId)
                 ]
-            } : request.operation === 'create-workspace' ? this.host.createWorkspace(request.workspaceId) : request.operation === 'create-goal' ? this.host.createGoal(request.workspaceId, request.goalId, request.objective) : request.operation === 'install-candidate' ? await this.host.installCandidate(request.workspaceId, request.binding) : request.operation === 'inspect' ? await this.host.inspect(request.workspaceId, request.goalId) : request.operation === 'execute-tool' ? await this.host.executeTool(request.workspaceId, request.goalId, request.tool, request.arguments) : request.operation === 'decide-installation' ? await this.host.decideInstallation(request.workspaceId, request.proposalId, request.proposalHash, request.decision) : request.operation === 'submit-hidden-challenge' ? await this.host.submitHiddenChallenge(request.workspaceId, request.revisionId, request.candidateHash, request.fixtures, request.commands) : request.operation === 'revise-candidate' ? this.host.reviseCandidate(request.workspaceId, request.parentRevisionId, request.parentCandidateHash, request.descriptor, request.sources) : request.operation === 'create-candidate' ? this.host.createCandidate(request.workspaceId, request.specification, request.descriptor, request.sources) : request.operation === 'close-goal' ? this.host.closeGoal(request.workspaceId, request.goalId, request.planRevisionId, request.planHash, request.drafts) : request.operation === 'decide-distillation' ? this.host.decideDistillation(request.workspaceId, request.proposalId, request.proposalHash, request.decision) : request.operation === 'stop-goal' ? (await this.host.stopGoal(request.workspaceId, request.goalId, request.planRevisionId, request.planHash), {
+            } : request.operation === 'create-workspace' ? this.host.createWorkspace(request.workspaceId, request.quota) : request.operation === 'create-goal' ? this.host.createGoal(request.workspaceId, request.goalId, request.objective) : request.operation === 'install-candidate' ? await this.host.installCandidate(request.workspaceId, request.binding) : request.operation === 'inspect' ? await this.host.inspect(request.workspaceId, request.goalId) : request.operation === 'execute-tool' ? await this.host.executeTool(request.workspaceId, request.goalId, request.tool, request.arguments) : request.operation === 'decide-installation' ? await this.host.decideInstallation(request.workspaceId, request.proposalId, request.proposalHash, request.decision) : request.operation === 'submit-hidden-challenge' ? await this.host.submitHiddenChallenge(request.workspaceId, request.revisionId, request.candidateHash, request.fixtures, request.commands) : request.operation === 'revise-candidate' ? this.host.reviseCandidate(request.workspaceId, request.parentRevisionId, request.parentCandidateHash, request.descriptor, request.sources) : request.operation === 'create-candidate' ? this.host.createCandidate(request.workspaceId, request.specification, request.descriptor, request.sources) : request.operation === 'close-goal' ? this.host.closeGoal(request.workspaceId, request.goalId, request.planRevisionId, request.planHash, request.drafts) : request.operation === 'decide-distillation' ? this.host.decideDistillation(request.workspaceId, request.proposalId, request.proposalHash, request.decision) : request.operation === 'stop-goal' ? (await this.host.stopGoal(request.workspaceId, request.goalId, request.planRevisionId, request.planHash), {
                 workspaceId: request.workspaceId,
                 goalId: request.goalId,
                 action: 'stopped'

@@ -90,9 +90,9 @@ export class LocalApplicationHost {
         this.options.store.reopenWorkspace(workspaceId);
         return this.options.lifecycle.listGoals(workspaceId);
     }
-    createWorkspace(workspaceId) {
+    createWorkspace(workspaceId, quota) {
         this.ensureReady();
-        this.options.store.createWorkspace(workspaceId);
+        this.options.store.createWorkspace(workspaceId, quota);
         return {
             workspaceId
         };
