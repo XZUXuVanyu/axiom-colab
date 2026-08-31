@@ -52,8 +52,25 @@ export class LocalApplicationHost {
             executableBuiltIn: (_workspaceId, descriptor)=>!descriptor.sideEffect || (options.memoryPolicyAvailable?.(descriptor.name) ?? false),
             executableInstalled: (workspaceId, registration)=>this.installedAdapters.has(this.installedKey(workspaceId, registration.publicName)),
             lifecycle: options.lifecycle,
-            ...options.goalProgress === undefined ? {} : {
-                goalProgress: options.goalProgress
+            ...options.goalProgress === undefined && options.checkpoints === undefined ? {} : {
+                goalProgress: (workspaceId, goalId)=>{
+                    const projected = options.goalProgress?.(workspaceId, goalId) ?? {
+                        progress: null,
+                        observations: []
+                    };
+                    const checkpoint = options.checkpoints?.latest(workspaceId, goalId) ?? null;
+                    return checkpoint === null ? projected : {
+                        observations: projected.observations,
+                        progress: {
+                            revisionId: `object:checkpoint-${checkpoint.checkpointHash.slice('sha256:'.length)}`,
+                            hash: checkpoint.checkpointHash,
+                            status: checkpoint.status === 'completed' ? 'completed' : 'running',
+                            summary: checkpoint.summary,
+                            completedCalls: checkpoint.completedCalls,
+                            totalCalls: checkpoint.completedCalls
+                        }
+                    };
+                }
             },
             ...options.memory === undefined ? {} : {
                 memory: options.memory
@@ -381,6 +398,22 @@ export class LocalApplicationHost {
             softwareVersion: '1.0.0',
             validationId: null
         });
+        if (this.options.checkpoints !== undefined) {
+            const previous = this.options.checkpoints.latest(workspaceId, goalId);
+            this.options.checkpoints.append({
+                workspaceId,
+                goalId,
+                planRevisionId: goal.plan.id,
+                planHash: goal.plan.hash,
+                status: 'active',
+                completedCalls: (previous?.completedCalls ?? 0) + 1,
+                latestCallId: callId,
+                latestReportArtifactId: reportArtifact.id,
+                latestReportHash: reportArtifact.hash,
+                summary: `${toolName} completed with sealed evidence`,
+                checkpointedAt: completedAt
+            });
+        }
         return {
             workspaceId,
             goalId,
@@ -420,6 +453,7 @@ export class LocalApplicationHost {
         for (const installed of this.installedAdapters.values())installed.adapter.dispose();
         this.installedAdapters.clear();
         this.options.installedExecutables?.close();
+        this.options.checkpoints?.close();
         this.options.adapter.dispose();
         this.options.lifecycle.close();
         this.options.workflows.close();

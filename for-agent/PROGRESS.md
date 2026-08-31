@@ -4,6 +4,28 @@ Entries are chronological. Each entry corresponds to one logical Git commit and
 records its exact subject, purpose, material changes, and validation actually
 performed.
 
+## 2026-08-31 - feat(goal): checkpoint supervised execution continuously
+
+Purpose: begin Stage 9 with restart-safe progress recovery after every completed
+supervisory Tool call.
+
+Material changes:
+
+- Added an append-only SQLite checkpoint store binding workspace, goal, exact
+  approved plan, sequence, cumulative calls, latest call, and sealed report
+  artifact identity/hash.
+- Rejects stale-plan writes, evidence gaps, completed-goal mutation, and progress
+  regression; revalidates stored checkpoint hashes on read after restart.
+- Production execution appends the checkpoint immediately after the immutable
+  report artifact is sealed, and supervisory progress projects the recovered
+  checkpoint without treating it as approved knowledge.
+
+Validation actually run:
+
+- `pnpm.cmd test`: all 97 TypeScript tests passed and regenerated `dist/`.
+- `pnpm.cmd run test:integration`: five portable real-Bridge/production-host
+  tests passed; the three opt-in WSL confinement tests skipped.
+
 ## 2026-08-31 - feat(adapter): execute exact installed candidates
 
 Purpose: complete Stage 8 by making independently built installed Tools usable

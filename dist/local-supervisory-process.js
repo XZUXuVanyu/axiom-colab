@@ -6,6 +6,7 @@ import { AuthenticatedMemoryHttpServer } from './authenticated-memory-http.js';
 import { AuthenticatedMemoryService } from './authenticated-memory-service.js';
 import { CandidateValidationRunner } from './candidate-validation.js';
 import { LocalCandidateRepository } from './candidate-repository.js';
+import { LocalGoalCheckpointStore } from './goal-checkpoint.js';
 import { LocalApplicationHost } from './local-application-host.js';
 import { LocalGoalLifecycle } from './local-goal-lifecycle.js';
 import { LocalMemoryStore } from './local-memory-store.js';
@@ -435,6 +436,7 @@ export async function runLocalSupervisoryProcess(configValue) {
             store.reopenWorkspace(workspaceId);
         }
     });
+    const checkpoints = new LocalGoalCheckpointStore(join(config.stateRoot, 'goal-checkpoints.sqlite3'));
     const observer = new ToolObserver({
         info: (message)=>process.stderr.write(`${message}\n`),
         warn: (message)=>process.stderr.write(`${message}\n`),
@@ -470,6 +472,7 @@ export async function runLocalSupervisoryProcess(configValue) {
         lifecycle,
         adapter,
         validator,
+        checkpoints,
         hostActorId: config.hostActorId,
         goalProgress: createLocalGoalProgressReader(workflows, config.hostActorId, approvedPlan),
         memory: createLocalMemoryProjectionReader(workflows, config.hostActorId),

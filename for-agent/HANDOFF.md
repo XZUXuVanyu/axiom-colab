@@ -4,6 +4,12 @@ Last updated: 2026-08-31
 
 ## Current state
 
+- Stage 9 has started with an append-only, restart-safe goal checkpoint store.
+  Every successful supervisory Tool call now checkpoints the exact approved
+  plan, cumulative call count, latest call, and sealed report artifact/hash.
+  Supervisory progress prefers this operational checkpoint after restart while
+  retaining independently verified report observations. Checkpoints are
+  recovery facts, not approved knowledge or distillation decisions.
 - Stage 8 is complete. Production composition now owns a strict shell-free
   installed-executable build profile, a restart-safe SQLite evidence authority,
   byte-reverified loading, and one isolated Adapter instance per installed Tool.
@@ -962,10 +968,11 @@ installation controls:
 
 ## Exact next work
 
-Begin Stage 9 continuous checkpointing and goal distillation. Preserve the
-completed Stage 8 authority split: Qt remains a projection, installed executable
-evidence remains build-authority-owned, and goal closure must not auto-promote
-model opinion into trusted knowledge, active skills, or installed Tools.
+Continue Stage 9 by defining the exact goal-closure transaction and reviewable
+distillation proposal contract for experience, evidence-supported knowledge,
+skill/Tool candidates, unresolved questions, cleanup, retention, and immutable
+session archive. Bind closure to the current approved plan and latest checkpoint;
+do not auto-promote any proposal or rely on graceful shutdown.
 
 Keep the WSL integration suite opt-in for portable CI and run it explicitly on
 the supported Windows/Ubuntu composition before changing confinement claims.

@@ -8,6 +8,7 @@ import { AuthenticatedMemoryService } from './authenticated-memory-service.js'
 import { CandidateValidationRunner } from './candidate-validation.js'
 import { LocalCandidateRepository } from './candidate-repository.js'
 import type { GoalSessionReport } from './goal-coordinator.js'
+import { LocalGoalCheckpointStore } from './goal-checkpoint.js'
 import type { JsonValue } from './harness-types.js'
 import type { LaboratoryId } from './laboratory-contract.js'
 import { LocalApplicationHost } from './local-application-host.js'
@@ -352,6 +353,7 @@ export async function runLocalSupervisoryProcess(configValue: unknown): Promise<
     resumeGoal: async () => {},
     recoverWorkspace: async (workspaceId) => { store.reopenWorkspace(workspaceId) },
   })
+  const checkpoints = new LocalGoalCheckpointStore(join(config.stateRoot, 'goal-checkpoints.sqlite3'))
   const observer = new ToolObserver({
     info: (message) => process.stderr.write(`${message}\n`),
     warn: (message) => process.stderr.write(`${message}\n`),
@@ -369,7 +371,7 @@ export async function runLocalSupervisoryProcess(configValue: unknown): Promise<
     'actor:local-executable-builder',
   )
   const host = new LocalApplicationHost({
-    store, workflows, candidates, lifecycle, adapter, validator,
+    store, workflows, candidates, lifecycle, adapter, validator, checkpoints,
     hostActorId: config.hostActorId,
     goalProgress: createLocalGoalProgressReader(workflows, config.hostActorId, approvedPlan),
     memory: createLocalMemoryProjectionReader(workflows, config.hostActorId),
