@@ -17,6 +17,9 @@ version. Additive Bridge capabilities remain compatible within protocol 1.0.
 5. Update the package and CMake versions together, add migration notes below,
    and refresh `for-agent/HANDOFF.md` and `for-agent/PROGRESS.md`.
 6. Tag only a clean commit whose CI checks pass.
+7. Stop the supervisory host, create and verify an offline state archive using
+   `proj/scripts/state-archive.mjs`, restore it to a new root, and inspect the
+   restored workspaces through the production supervisory boundary.
 
 ## Migration notes
 

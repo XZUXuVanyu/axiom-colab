@@ -4,6 +4,14 @@ Last updated: 2026-08-31
 
 ## Current state
 
+- Stage 10 has started with a portable offline state archive and verified
+  restore boundary. `proj/scripts/state-archive.mjs` creates a complete
+  path/size/SHA-256 manifest, copies through a non-authoritative sibling staging
+  directory, verifies before promotion, and restores only to a new root after a
+  second byte verification. It rejects live SQLite WAL/SHM state, links/special
+  entries, overlapping paths, existing targets, unbound files, and corruption.
+  Operational documentation makes host shutdown and post-restore authoritative
+  inspection explicit; this is backup/recovery, not schema migration.
 - Stage 9 is complete. Qt can close the selected goal only against its exact
   displayed approved-plan revision/hash, immediately clears submitted draft
   bytes, and refreshes the immutable closure/archive plus all review proposals.
@@ -1000,11 +1008,12 @@ installation controls:
 
 ## Exact next work
 
-Begin Stage 10 by adding a clean-install end-to-end acceptance path through the
-production IDE boundary: create workspace/goal, execute a built-in, author and
-challenge a candidate, approve/install/invoke it, then close/distill the goal.
-Preserve the existing adversarial trust cases and package/migration/recovery
-documentation; do not weaken optional WSL confinement claims.
+Add a relocatable packaged-runtime layout containing the GUI, Bridge, Node
+supervisory runtime, generated `dist`, scripts, and required Qt runtime. Prove
+startup and the portable workspace/goal/built-in/closure flow from that clean
+layout without source-tree path assumptions, then extend the acceptance path
+through WSL challenge, approval, exact executable installation/invocation, and
+distillation. Do not weaken optional WSL confinement claims.
 
 Keep the WSL integration suite opt-in for portable CI and run it explicitly on
 the supported Windows/Ubuntu composition before changing confinement claims.

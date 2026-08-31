@@ -4,6 +4,29 @@ Entries are chronological. Each entry corresponds to one logical Git commit and
 records its exact subject, purpose, material changes, and validation actually
 performed.
 
+## 2026-08-31 - feat(recovery): archive authoritative state offline
+
+Purpose: start Stage 10 with a tested local backup and recovery operation that
+cannot silently copy live or corrupt authoritative state.
+
+Material changes:
+
+- Added a portable Node state-archive command for backup, verification, and
+  restore into a new root with exact relative-path, size, and SHA-256 bindings.
+- Made backup and restore stage-and-verify before atomic rename; existing
+  targets and interrupted staging never replace authoritative data.
+- Rejected SQLite WAL/SHM state, path overlap, links and special entries,
+  malformed manifests, unbound payload files, and changed bytes.
+- Added operational recovery/diagnostic documentation and refreshed the root
+  project status and release checklist.
+
+Validation actually run:
+
+- `pnpm.cmd test`: all 104 TypeScript tests passed and regenerated `dist/`.
+- `pnpm.cmd run test:integration`: five portable real-Bridge/production-host
+  tests passed; the three opt-in WSL confinement tests skipped.
+- `git diff --check`: passed with newline-conversion notices only.
+
 ## 2026-08-31 - feat(gui): complete review-only goal closure
 
 Purpose: complete Stage 9 through the daily-use Qt interface while preserving
