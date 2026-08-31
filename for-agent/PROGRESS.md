@@ -4,6 +4,29 @@ Entries are chronological. Each entry corresponds to one logical Git commit and
 records its exact subject, purpose, material changes, and validation actually
 performed.
 
+## 2026-08-31 - feat(goal): project review-only distillation
+
+Purpose: continue Stage 9 by making durable closure and review state available
+to every UI through one authoritative, integrity-checked inspection contract.
+
+Material changes:
+
+- Added workspace/goal-scoped distillation inspection that revalidates immutable
+  proposal hashes, decision attribution, closure membership, and corruption.
+- Projected exact closure, checkpoint, archive, proposal, evidence, and review
+  bindings through the production supervisory backend.
+- Cross-checked the projected archive identity/hash/operation against artifact
+  inspection and rejected misleading or incomplete state.
+- Made inactivity explicit for every proposal, including accepted cleanup and
+  retention decisions, and added immutable UI-model/adversarial coverage.
+
+Validation actually run:
+
+- `pnpm.cmd test`: all 102 TypeScript tests passed and regenerated `dist/`.
+- `pnpm.cmd run test:integration`: five portable real-Bridge/production-host
+  tests passed; the three opt-in WSL confinement tests skipped.
+- `git diff --check`: passed with newline-conversion notices only.
+
 ## 2026-08-31 - feat(goal): expose retry-safe goal closure
 
 Purpose: continue Stage 9 by making closure safe across interruption and

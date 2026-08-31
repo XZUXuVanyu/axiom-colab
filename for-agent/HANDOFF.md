@@ -25,7 +25,13 @@ Last updated: 2026-08-31
   and exact-hash `decide-distillation` operations. Closure durably completes the
   lifecycle and appends a completed checkpoint only after archive/proposals are
   committed. Protocol input is bounded and restricted to the eight review-only
-  distillation kinds. Inspection projection and Qt controls remain next.
+  distillation kinds.
+- Authoritative inspection now projects the immutable closure/archive binding
+  and every proposal's current review decision with actor/time attribution.
+  The projection verifies proposal hashes, closure membership, and the archive
+  against artifact inspection, and marks every proposal explicitly inactive;
+  accepted cleanup, retention, skill, or Tool material still has no effect.
+  Strict C++ decoding and Qt controls remain next.
 - Stage 8 is complete. Production composition now owns a strict shell-free
   installed-executable build profile, a restart-safe SQLite evidence authority,
   byte-reverified loading, and one isolated Adapter instance per installed Tool.
@@ -984,10 +990,10 @@ installation controls:
 
 ## Exact next work
 
-Project closure/archive bindings and all proposal review states through
-authoritative inspection, then add strict C++ decoders and Qt close/review
-controls. Qt must show that accepted proposals are still inactive review
-decisions, and must never execute cleanup or retention as a side effect.
+Add strict C++ decoders and Qt close/review controls for the authoritative
+closure/archive and proposal projection. Qt must show that accepted proposals
+are still inactive review decisions, and must never execute cleanup or
+retention as a side effect.
 
 Keep the WSL integration suite opt-in for portable CI and run it explicitly on
 the supported Windows/Ubuntu composition before changing confinement claims.

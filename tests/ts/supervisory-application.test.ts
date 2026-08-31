@@ -55,6 +55,7 @@ function state(): SupervisoryWorkspaceSnapshot {
       { id: 'claim', occurredAt: '2026-08-28T00:00:00.000Z', kind: 'model-claim', summary: 'Candidate should pass', subjectId: 'tool:candidate', authoritativeHash: null, detail: null },
       { id: 'observed', occurredAt: '2026-08-28T00:01:00.000Z', kind: 'validation-evidence', summary: 'Standard suite failed', subjectId: 'validation:run', authoritativeHash: `sha256:${'2'.repeat(64)}`, detail: null },
     ],
+    distillation: { closure: null, proposals: [] },
     controls: { canStopGoal: false, revocableCapabilityIds: [], canResumeGoal: false, recoveryRequired: false },
   }
 }
@@ -144,4 +145,34 @@ test('supervisory projection rejects disclosed hidden challenge output', async (
     model.selectWorkspace('workspace:alpha'),
     (error: unknown) => error instanceof SupervisoryApplicationError && error.code === 'MISLEADING_AUTHORITY',
   )
+})
+
+test('supervisory projection keeps accepted distillation review explicitly inactive', async () => {
+  const backend = new Backend()
+  const model = new SupervisoryApplicationModel(backend as unknown as SupervisoryBackend)
+  await model.selectWorkspace('workspace:alpha')
+  backend.value = {
+    ...backend.value, goalId: 'goal:one',
+    distillation: {
+      closure: {
+        closureId: 'evidence:closure', closureHash: `sha256:${'d'.repeat(64)}`,
+        checkpointHash: `sha256:${'e'.repeat(64)}`, archiveArtifactId: 'object:archive',
+        archiveHash: `sha256:${'f'.repeat(64)}`, closedAt: '2026-08-31T02:00:00.000Z',
+      },
+      proposals: [{
+        proposalId: 'proposal:distilled', proposalHash: `sha256:${'1'.repeat(64)}`,
+        kind: 'cleanup', content: { path: 'review-only' }, evidenceArtifactIds: [],
+        state: 'accepted', proposedAt: '2026-08-31T02:00:00.000Z',
+        decidedAt: '2026-08-31T03:00:00.000Z', decidedBy: 'actor:user', active: false,
+      }],
+    },
+  }
+  const snapshot = await model.selectGoal('goal:one')
+  assert.equal(snapshot.distillation.proposals[0]?.state, 'accepted')
+  assert.equal(snapshot.distillation.proposals[0]?.active, false)
+  assert.equal(Object.isFrozen(snapshot.distillation.proposals), true)
+
+  ;(backend.value.distillation.proposals[0] as any).active = true
+  await assert.rejects(model.refresh(),
+    (error: unknown) => error instanceof SupervisoryApplicationError && error.code === 'MISLEADING_AUTHORITY')
 })

@@ -200,6 +200,39 @@ export class GoalDistillationService {
         if (closure.closureHash !== contentHash(closureBinding(closure))) fail('CORRUPT_GOAL_CLOSURE', 'stored goal closure hash is invalid');
         return closure;
     }
+    inspect(workspaceId, goalId) {
+        const closure = this.inspectClosure(workspaceId, goalId);
+        const rows = this.database.prepare('SELECT public_json,state,decided_at,decided_by FROM distillation_proposals WHERE workspace_id=? AND goal_id=? ORDER BY proposal_id').all(workspaceId, goalId);
+        const proposals = rows.map((row)=>{
+            let stored;
+            try {
+                stored = JSON.parse(row.public_json);
+            } catch  {
+                fail('CORRUPT_DISTILLATION_PROPOSAL', 'stored proposal is malformed');
+            }
+            if (stored.workspaceId !== workspaceId || stored.goalId !== goalId || stored.proposalHash !== contentHash(proposalBinding(stored)) || stored.state !== 'proposed' || stored.decidedAt !== null || stored.decidedBy !== null) {
+                fail('CORRUPT_DISTILLATION_PROPOSAL', 'stored proposal binding is invalid');
+            }
+            if (row.state === 'proposed' !== (row.decided_at === null && row.decided_by === null)) {
+                fail('CORRUPT_DISTILLATION_DECISION', 'stored proposal decision is incomplete');
+            }
+            return {
+                ...stored,
+                state: row.state,
+                decidedAt: row.decided_at,
+                decidedBy: row.decided_by
+            };
+        });
+        if (closure === null) {
+            if (proposals.length > 0) fail('CORRUPT_GOAL_DISTILLATION', 'proposals exist without an immutable closure');
+        } else if (closure.proposalIds.length !== proposals.length || closure.proposalIds.some((id)=>!proposals.some((proposal)=>proposal.proposalId === id))) {
+            fail('CORRUPT_GOAL_DISTILLATION', 'closure proposal bindings do not match stored proposals');
+        }
+        return {
+            closure,
+            proposals
+        };
+    }
     close() {
         this.database.close();
     }

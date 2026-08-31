@@ -7,6 +7,7 @@ import { assertToolDescriptor, type ToolDescriptor } from './protocol.js'
 import type { InstalledToolRegistration } from './tool-installation.js'
 import type { ToolInstallationProposal, ValidationPromotionAuthority } from './tool-installation-proposal.js'
 import type { CandidateRevision } from './tool-workshop.js'
+import type { GoalDistillationService } from './goal-distillation.js'
 import type {
   SupervisoryBackend, SupervisoryCandidateProjection, SupervisoryPlanProjection,
   SupervisoryProgressProjection, SupervisoryTimelineEntry, SupervisoryToolObservation,
@@ -44,6 +45,7 @@ export interface LocalSupervisoryBackendOptions {
     readonly observations: readonly SupervisoryToolObservation[]
   }
   readonly memory?: (workspaceId: LaboratoryId<'workspace'>) => SupervisoryMemoryProjection
+  readonly distillation?: GoalDistillationService
 }
 
 export class LocalSupervisoryBackendError extends Error {
@@ -162,6 +164,16 @@ export class LocalSupervisoryBackend implements SupervisoryBackend {
       ? { progress: null, observations: [] }
       : this.options.goalProgress(workspaceId, goalId)
     const memory = this.options.memory?.(workspaceId) ?? { compute: [], working: [], artifacts: [] }
+    const inspectedDistillation = goalId === null || this.options.distillation === undefined
+      ? { closure: null, proposals: [] }
+      : this.options.distillation.inspect(workspaceId, goalId)
+    const closure = inspectedDistillation.closure
+    if (closure !== null) {
+      const archive = memory.artifacts.find((artifact) => artifact.artifactId === closure.archiveArtifactId)
+      if (archive === undefined || archive.hash !== closure.archiveHash || archive.operation !== 'goal.closure.archive') {
+        fail('UNVERIFIED_GOAL_ARCHIVE', 'goal closure archive does not match authoritative artifact inspection')
+      }
+    }
     const timeline = this.timeline(workspaceId, revisions, validations, proposals, installations)
     for (const observation of goalState.observations) timeline.push({
       id: `observation:${observation.reportArtifactId}:${observation.callId}`,
@@ -174,6 +186,19 @@ export class LocalSupervisoryBackend implements SupervisoryBackend {
       workspaceId, goalId, currentPlan: planProjection(goal), progress: goalState.progress,
       observations: [...goalState.observations], memory, tools, resources,
       candidates: projectedCandidates, timeline,
+      distillation: {
+        closure: closure === null ? null : {
+          closureId: closure.closureId, closureHash: closure.closureHash,
+          checkpointHash: closure.checkpointHash, archiveArtifactId: closure.archiveArtifactId,
+          archiveHash: closure.archiveHash, closedAt: closure.closedAt,
+        },
+        proposals: inspectedDistillation.proposals.map((proposal) => ({
+          proposalId: proposal.proposalId, proposalHash: proposal.proposalHash, kind: proposal.kind,
+          content: structuredClone(proposal.content), evidenceArtifactIds: [...proposal.evidenceArtifactIds],
+          state: proposal.state, proposedAt: proposal.proposedAt, decidedAt: proposal.decidedAt,
+          decidedBy: proposal.decidedBy, active: false,
+        })),
+      },
       controls: {
         canStopGoal: goal?.canStop ?? false,
         revocableCapabilityIds: [...this.options.lifecycle.revocableCapabilities(workspaceId, goalId)],

@@ -54,6 +54,14 @@ function freezeSnapshot(snapshot) {
     Object.freeze(copy.candidates);
     for (const entry of copy.timeline)Object.freeze(entry);
     Object.freeze(copy.timeline);
+    Object.freeze(copy.distillation.closure);
+    for (const proposal of copy.distillation.proposals){
+        Object.freeze(proposal.evidenceArtifactIds);
+        Object.freeze(proposal.content);
+        Object.freeze(proposal);
+    }
+    Object.freeze(copy.distillation.proposals);
+    Object.freeze(copy.distillation);
     Object.freeze(copy.controls.revocableCapabilityIds);
     Object.freeze(copy.controls);
     Object.freeze(copy.resources.quota);
@@ -178,6 +186,21 @@ export class SupervisoryApplicationModel {
             timelineIds.add(entry.id);
             if (entry.kind === 'model-claim' && entry.authoritativeHash !== null) {
                 fail('MISLEADING_AUTHORITY', 'model claims cannot carry an authoritative evidence hash');
+            }
+        }
+        if (snapshot.goalId === null && (snapshot.distillation.closure !== null || snapshot.distillation.proposals.length > 0)) {
+            fail('BACKEND_SELECTION_MISMATCH', 'workspace overview cannot contain goal distillation');
+        }
+        if (snapshot.distillation.closure === null && snapshot.distillation.proposals.length > 0) {
+            fail('MISLEADING_AUTHORITY', 'distillation proposals require an immutable goal closure');
+        }
+        const distillationIds = new Set();
+        for (const proposal of snapshot.distillation.proposals){
+            if (proposal.active !== false) fail('MISLEADING_AUTHORITY', 'distillation review must remain inactive');
+            if (distillationIds.has(proposal.proposalId)) fail('INVALID_DISTILLATION', 'duplicate distillation proposal identity');
+            distillationIds.add(proposal.proposalId);
+            if (proposal.state === 'proposed' !== (proposal.decidedAt === null && proposal.decidedBy === null)) {
+                fail('INVALID_DISTILLATION', 'distillation decision attribution is incomplete');
             }
         }
         for (const candidate of snapshot.candidates){

@@ -43,6 +43,11 @@ export interface GoalClosure {
   readonly closureHash: `sha256:${string}`
 }
 
+export interface GoalDistillationInspection {
+  readonly closure: GoalClosure | null
+  readonly proposals: readonly DistillationProposal[]
+}
+
 export class GoalDistillationError extends Error {
   constructor(readonly code: string, message: string) { super(`[${code}] ${message}`); this.name = 'GoalDistillationError' }
 }
@@ -164,6 +169,33 @@ export class GoalDistillationService {
     const closure = JSON.parse(row.public_json) as GoalClosure
     if (closure.closureHash !== contentHash(closureBinding(closure))) fail('CORRUPT_GOAL_CLOSURE', 'stored goal closure hash is invalid')
     return closure
+  }
+
+  inspect(workspaceId: LaboratoryId<'workspace'>, goalId: LaboratoryId<'goal'>): GoalDistillationInspection {
+    const closure = this.inspectClosure(workspaceId, goalId)
+    const rows = this.database.prepare('SELECT public_json,state,decided_at,decided_by FROM distillation_proposals WHERE workspace_id=? AND goal_id=? ORDER BY proposal_id')
+      .all(workspaceId, goalId) as ProposalRow[]
+    const proposals = rows.map((row) => {
+      let stored: DistillationProposal
+      try { stored = JSON.parse(row.public_json) as DistillationProposal } catch { fail('CORRUPT_DISTILLATION_PROPOSAL', 'stored proposal is malformed') }
+      if (stored.workspaceId !== workspaceId || stored.goalId !== goalId
+        || stored.proposalHash !== contentHash(proposalBinding(stored))
+        || stored.state !== 'proposed' || stored.decidedAt !== null || stored.decidedBy !== null) {
+        fail('CORRUPT_DISTILLATION_PROPOSAL', 'stored proposal binding is invalid')
+      }
+      if ((row.state === 'proposed') !== (row.decided_at === null && row.decided_by === null)) {
+        fail('CORRUPT_DISTILLATION_DECISION', 'stored proposal decision is incomplete')
+      }
+      return { ...stored, state: row.state, decidedAt: row.decided_at,
+        decidedBy: row.decided_by as LaboratoryId<'actor'> | null }
+    })
+    if (closure === null) {
+      if (proposals.length > 0) fail('CORRUPT_GOAL_DISTILLATION', 'proposals exist without an immutable closure')
+    } else if (closure.proposalIds.length !== proposals.length
+      || closure.proposalIds.some((id) => !proposals.some((proposal) => proposal.proposalId === id))) {
+      fail('CORRUPT_GOAL_DISTILLATION', 'closure proposal bindings do not match stored proposals')
+    }
+    return { closure, proposals }
   }
 
   close(): void { this.database.close() }

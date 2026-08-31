@@ -47,6 +47,11 @@ test('distillation review binds exact proposal and cannot replay or cross worksp
   assert.throws(() => value.service.decide('workspace:beta', proposal.proposalId, proposal.proposalHash, 'accepted', 'actor:user', 'user'), (error: unknown) => (error as any).code === 'DISTILLATION_PROPOSAL_NOT_FOUND')
   assert.throws(() => value.service.decide('workspace:alpha', proposal.proposalId, `sha256:${'f'.repeat(64)}`, 'accepted', 'actor:user', 'user'), (error: unknown) => (error as any).code === 'STALE_DISTILLATION_PROPOSAL')
   assert.equal(value.service.decide('workspace:alpha', proposal.proposalId, proposal.proposalHash, 'deferred', 'actor:user', 'user').state, 'deferred')
+  const inspection = value.service.inspect('workspace:alpha', 'goal:one')
+  assert.equal(inspection.closure?.proposalIds[0], proposal.proposalId)
+  assert.deepEqual(inspection.proposals.map((item) => ({ state: item.state, decidedBy: item.decidedBy })),
+    [{ state: 'deferred', decidedBy: 'actor:user' }])
+  assert.deepEqual(value.service.inspect('workspace:alpha', 'goal:other'), { closure: null, proposals: [] })
   assert.throws(() => value.service.decide('workspace:alpha', proposal.proposalId, proposal.proposalHash, 'accepted', 'actor:user', 'user'), (error: unknown) => (error as any).code === 'DISTILLATION_ALREADY_DECIDED')
   value.service.close(); value.checkpoints.close(); value.workflows.close(); value.memory.close()
 })

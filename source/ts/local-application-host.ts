@@ -197,6 +197,7 @@ export class LocalApplicationHost {
           },
         }),
         ...(options.memory === undefined ? {} : { memory: options.memory }),
+        ...(options.distillation === undefined ? {} : { distillation: options.distillation }),
       },
     )
     this.model = new SupervisoryApplicationModel(this.backend)
