@@ -1,12 +1,18 @@
 # Axiom CoLab Current Handoff
 
-Last updated: 2026-08-30
+Last updated: 2026-08-31
 
 ## Current state
 
-- Stage 8 now has a UI-independent installed-executable loading boundary, but
-  production composition does not yet issue executable evidence or invoke an
-  installed Tool. Source-only installations therefore remain non-executable.
+- Stage 8 is complete. Production composition now owns a strict shell-free
+  installed-executable build profile, a restart-safe SQLite evidence authority,
+  byte-reverified loading, and one isolated Adapter instance per installed Tool.
+  Source-only installation is never executable without successful trusted build
+  evidence, and caller-authored evidence remains inadmissible.
+- Installed-Tool goal reports retain workspace, installation/evidence,
+  executable-evidence, candidate, descriptor, source-manifest, and executable
+  hashes. The executable path is deliberately omitted from immutable report
+  payloads and Qt projections.
 - `InstalledExecutableLoader` accepts only evidence authenticated by an
   independently trusted build authority and bound to the exact workspace,
   installation/evidence hash, candidate, descriptor, source manifest, public
@@ -859,7 +865,7 @@ Exit gate: stale approvals and approvals for changed candidates fail; rejected
 and failed candidates remain visible; only the exact independently validated
 hash can be proposed for user-approved installation.
 
-### Stage 8 - Deliver the first usable IDE
+### Stage 8 - Deliver the first usable IDE (complete)
 
 Extend the imported Qt shell into the minimum daily-use interface. Provide
 workspace and goal creation, plan/progress views, Tool discovery and calls,
@@ -956,15 +962,10 @@ installation controls:
 
 ## Exact next work
 
-Compose the trusted executable-build authority and restart-safe evidence store
-that can produce/authenticate `InstalledExecutableEvidence` from the exact
-installed candidate. Then give each loaded executable its own Adapter instance
-and require every installed-Tool call/result record to retain workspace,
-installation/evidence, candidate, descriptor, source, and executable hashes.
-Do not make source-only installations executable, accept caller-authored build
-evidence, or rebuild the shared production Bridge from mutable later source.
+Begin Stage 9 continuous checkpointing and goal distillation. Preserve the
+completed Stage 8 authority split: Qt remains a projection, installed executable
+evidence remains build-authority-owned, and goal closure must not auto-promote
+model opinion into trusted knowledge, active skills, or installed Tools.
 
-Keep the WSL integration suite opt-in for portable CI, and run it explicitly on
-the supported Windows/Ubuntu composition before changing its confinement
-claims. The Qt layer must not implement alternate memory, validation, approval,
-installation, or registration authority.
+Keep the WSL integration suite opt-in for portable CI and run it explicitly on
+the supported Windows/Ubuntu composition before changing confinement claims.

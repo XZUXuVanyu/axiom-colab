@@ -32,7 +32,11 @@ call, the host starts a numeric-loopback-only memory service, issues a fresh
 workspace/Tool/call-bound grant with the configured operations and quotas, and
 revokes it when the Adapter call ends. The host seals the actual result in an
 immutable session-report artifact and the view refreshes inspection.
-Rediscovered installed Tools remain non-executable.
+An exact installed candidate is built only by the configured shell-free trusted
+build profile. Its executable evidence is restart-safe and binds the workspace,
+installation, candidate, descriptor, source manifest, and executable bytes.
+Each loaded installed Tool receives a separate Adapter instance, and every call
+report retains those hashes without exposing the executable path to Qt.
 
 The selected current candidate can also be revised with a descriptor and
 canonical-base64 source set. Qt binds the displayed parent revision/hash,
@@ -56,6 +60,7 @@ powershell.exe -ExecutionPolicy Bypass `
   -StateRoot D:\Axiom\state `
   -BridgePath D:\Dev\axiom-colab\build\windows\Release\cpp-tool-bridge.exe `
   -ValidationStagingRoot D:\Axiom\validation-staging `
+  -CMakePath 'C:\Program Files\CMake\bin\cmake.exe' `
   -OutputPath D:\Axiom\config\supervisory.json
 ```
 
@@ -64,7 +69,10 @@ profile: exact toolchain identity, Ubuntu distribution, a non-overlapping
 staging root, an absolute Linux executable allowlist, bounded process/resource
 policy, candidate build commands, and laboratory-standard test commands. The
 supervisory process rejects missing, unknown, duplicated, escaping, or
-overlapping profile values before opening the production host.
+overlapping profile values before opening the production host. It also contains
+the fixed host CMake build commands and expected candidate executable path;
+candidate projects must produce a Release executable named for their public
+Tool name.
 
 Then launch the GUI with
 `cpp-adapter-gui.exe --supervisory-config D:\Axiom\config\supervisory.json`.

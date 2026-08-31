@@ -36,6 +36,7 @@ export interface LocalSupervisoryBackendOptions {
   readonly executableBuiltIn?: (workspaceId: LaboratoryId<'workspace'>, descriptor: ToolDescriptor) => boolean
   /** Registrations returned by successful ToolInstallationService rediscovery. */
   readonly rediscoveredTools: (workspaceId: LaboratoryId<'workspace'>) => readonly InstalledToolRegistration[]
+  readonly executableInstalled?: (workspaceId: LaboratoryId<'workspace'>, registration: InstalledToolRegistration) => boolean
   readonly lifecycle: LocalSupervisoryLifecycle
   readonly goalProgress?: (workspaceId: LaboratoryId<'workspace'>, goalId: LaboratoryId<'goal'>) => {
     readonly progress: SupervisoryProgressProjection | null
@@ -151,7 +152,7 @@ export class LocalSupervisoryBackend implements SupervisoryBackend {
       }
       tools.push({
         name: registration.publicName, descriptor: assertToolDescriptor(registration.descriptor),
-        source: 'installed', executable: false,
+        source: 'installed', executable: this.options.executableInstalled?.(workspaceId, registration) ?? false,
         installationEvidenceHash: registration.installationEvidenceHash,
       })
     }

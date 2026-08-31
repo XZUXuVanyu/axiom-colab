@@ -20,6 +20,7 @@ import { ToolInstallationService } from './tool-installation.js';
 import { ToolInstallationProposalService } from './tool-installation-proposal.js';
 import { ToolWorkshop } from './tool-workshop.js';
 import { WslValidationBackend } from './wsl-validation-backend.js';
+import { LocalInstalledExecutableAuthority, ShellFreeInstalledExecutableBuildBackend } from './installed-executable-authority.js';
 function record(value) {
     return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
@@ -282,7 +283,8 @@ export function parseLocalSupervisoryProcessConfig(value) {
         'userActorId',
         'maxLineBytes',
         'memoryToolPolicies',
-        'validationProfile'
+        'validationProfile',
+        'executableBuild'
     ]);
     for (const key of Object.keys(value))if (!allowed.has(key)) throw new TypeError(`supervisory process config contains unknown field ${key}`);
     const bridgeArgs = value.bridgeArgs ?? [];
@@ -330,6 +332,56 @@ export function parseLocalSupervisoryProcessConfig(value) {
         });
     }
     const stateRoot = absolute(value.stateRoot, 'stateRoot');
+    if (!record(value.executableBuild)) throw new TypeError('executableBuild must be an object');
+    const buildAllowed = new Set([
+        'commands',
+        'outputPath',
+        'installedPath',
+        'limits'
+    ]);
+    for (const key of Object.keys(value.executableBuild))if (!buildAllowed.has(key)) throw new TypeError(`executableBuild contains unknown field ${key}`);
+    if (!Array.isArray(value.executableBuild.commands) || value.executableBuild.commands.length === 0) throw new TypeError('executableBuild.commands must not be empty');
+    const commands = value.executableBuild.commands.map((item, index)=>{
+        if (!record(item) || Object.keys(item).some((key)=>!new Set([
+                'executable',
+                'args',
+                'cwd'
+            ]).has(key))) throw new TypeError(`executableBuild.commands[${index}] is malformed`);
+        if (typeof item.executable !== 'string' || !isAbsolute(item.executable)) throw new TypeError(`executableBuild.commands[${index}].executable must be absolute`);
+        if (!Array.isArray(item.args) || !item.args.every((arg)=>typeof arg === 'string')) throw new TypeError(`executableBuild.commands[${index}].args must be strings`);
+        if (typeof item.cwd !== 'string' || item.cwd.length === 0 || isAbsolute(item.cwd)) throw new TypeError(`executableBuild.commands[${index}].cwd must be relative`);
+        return {
+            executable: resolve(item.executable),
+            args: [
+                ...item.args
+            ],
+            cwd: item.cwd
+        };
+    });
+    const buildPath = (field)=>{
+        const item = value.executableBuild?.[field];
+        if (typeof item !== 'string' || item.length === 0 || isAbsolute(item) || item.split(/[\\/]/).includes('..')) throw new TypeError(`executableBuild.${field} must be a contained relative path`);
+        return item;
+    };
+    if (!record(value.executableBuild.limits)) throw new TypeError('executableBuild.limits must be an object');
+    const limit = (field)=>{
+        const item = value.executableBuild?.limits;
+        const number = record(item) ? item[field] : undefined;
+        if (!Number.isSafeInteger(number) || number <= 0) throw new TypeError(`executableBuild.limits.${field} must be a positive safe integer`);
+        return number;
+    };
+    const executableBuild = {
+        commands,
+        outputPath: buildPath('outputPath'),
+        installedPath: buildPath('installedPath'),
+        limits: {
+            timeoutMs: limit('timeoutMs'),
+            maxStdinBytes: limit('maxStdinBytes'),
+            maxStdoutBytes: limit('maxStdoutBytes'),
+            maxStderrBytes: limit('maxStderrBytes'),
+            killGraceMs: limit('killGraceMs')
+        }
+    };
     const validationProfile = parseProductionValidationProfile(value.validationProfile);
     const state = stateRoot.replaceAll('\\', '/').replace(/\/$/, '').toLowerCase();
     const staging = validationProfile.stagingRoot.replaceAll('\\', '/').replace(/\/$/, '').toLowerCase();
@@ -349,7 +401,8 @@ export function parseLocalSupervisoryProcessConfig(value) {
         userActorId: userActorId,
         maxLineBytes: maxLineBytes,
         memoryToolPolicies,
-        validationProfile
+        validationProfile,
+        executableBuild
     };
 }
 export async function runLocalSupervisoryProcess(configValue) {
@@ -409,6 +462,7 @@ export async function runLocalSupervisoryProcess(configValue) {
         descriptorLimits: limits,
         callLimits: limits
     });
+    const executableAuthority = new LocalInstalledExecutableAuthority(join(config.stateRoot, 'installed-executables.sqlite3'), new ShellFreeInstalledExecutableBuildBackend(config.executableBuild), 'actor:local-executable-builder');
     const host = new LocalApplicationHost({
         store,
         workflows,
@@ -443,6 +497,15 @@ export async function runLocalSupervisoryProcess(configValue) {
         createInstallation: (registry)=>new ToolInstallationService(candidates, validator, {
                 installationRoot: join(config.stateRoot, 'installed'),
                 registry
+            }),
+        installedExecutables: executableAuthority,
+        createInstalledAdapter: (binding)=>new AdapterService(new ProcessRunner(), observer, {
+                bridge: {
+                    executable: binding.executable,
+                    prefixArgs: []
+                },
+                descriptorLimits: limits,
+                callLimits: limits
             })
     });
     let closed = false;

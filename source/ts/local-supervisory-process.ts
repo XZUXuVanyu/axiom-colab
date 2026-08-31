@@ -24,6 +24,10 @@ import { ToolInstallationService } from './tool-installation.js'
 import { ToolInstallationProposalService } from './tool-installation-proposal.js'
 import { ToolWorkshop } from './tool-workshop.js'
 import { WslValidationBackend } from './wsl-validation-backend.js'
+import {
+  LocalInstalledExecutableAuthority, ShellFreeInstalledExecutableBuildBackend,
+  type InstalledExecutableBuildCommand,
+} from './installed-executable-authority.js'
 import type {
   SupervisoryMemoryProjection, SupervisoryProgressProjection, SupervisoryToolObservation,
 } from './supervisory-application.js'
@@ -38,6 +42,12 @@ export interface LocalSupervisoryProcessConfig {
   readonly userActorId: LaboratoryId<'actor'>
   readonly memoryToolPolicies: ReadonlyMap<string, MemoryToolGrantPolicy>
   readonly validationProfile: ProductionValidationProfile
+  readonly executableBuild: {
+    readonly commands: readonly InstalledExecutableBuildCommand[]
+    readonly outputPath: string
+    readonly installedPath: string
+    readonly limits: { readonly timeoutMs: number; readonly maxStdinBytes: number; readonly maxStdoutBytes: number; readonly maxStderrBytes: number; readonly killGraceMs: number }
+  }
 }
 
 function record(value: unknown): value is Record<string, unknown> {
@@ -235,7 +245,7 @@ export function createLocalMemoryProjectionReader(
 
 export function parseLocalSupervisoryProcessConfig(value: unknown): LocalSupervisoryProcessConfig {
   if (!record(value)) throw new TypeError('supervisory process config must be an object')
-  const allowed = new Set(['stateRoot', 'bridgePath', 'bridgeArgs', 'bridgeWorkingDirectory', 'hostActorId', 'userActorId', 'maxLineBytes', 'memoryToolPolicies', 'validationProfile'])
+  const allowed = new Set(['stateRoot', 'bridgePath', 'bridgeArgs', 'bridgeWorkingDirectory', 'hostActorId', 'userActorId', 'maxLineBytes', 'memoryToolPolicies', 'validationProfile', 'executableBuild'])
   for (const key of Object.keys(value)) if (!allowed.has(key)) throw new TypeError(`supervisory process config contains unknown field ${key}`)
   const bridgeArgs = value.bridgeArgs ?? []
   if (!Array.isArray(bridgeArgs) || !bridgeArgs.every((item) => typeof item === 'string')) throw new TypeError('bridgeArgs must be an array of strings')
@@ -269,6 +279,33 @@ export function parseLocalSupervisoryProcessConfig(value: unknown): LocalSupervi
     })
   }
   const stateRoot = absolute(value.stateRoot, 'stateRoot')
+  if (!record(value.executableBuild)) throw new TypeError('executableBuild must be an object')
+  const buildAllowed = new Set(['commands', 'outputPath', 'installedPath', 'limits'])
+  for (const key of Object.keys(value.executableBuild)) if (!buildAllowed.has(key)) throw new TypeError(`executableBuild contains unknown field ${key}`)
+  if (!Array.isArray(value.executableBuild.commands) || value.executableBuild.commands.length === 0) throw new TypeError('executableBuild.commands must not be empty')
+  const commands = value.executableBuild.commands.map((item, index) => {
+    if (!record(item) || Object.keys(item).some((key) => !new Set(['executable', 'args', 'cwd']).has(key))) throw new TypeError(`executableBuild.commands[${index}] is malformed`)
+    if (typeof item.executable !== 'string' || !isAbsolute(item.executable)) throw new TypeError(`executableBuild.commands[${index}].executable must be absolute`)
+    if (!Array.isArray(item.args) || !item.args.every((arg) => typeof arg === 'string')) throw new TypeError(`executableBuild.commands[${index}].args must be strings`)
+    if (typeof item.cwd !== 'string' || item.cwd.length === 0 || isAbsolute(item.cwd)) throw new TypeError(`executableBuild.commands[${index}].cwd must be relative`)
+    return { executable: resolve(item.executable), args: [...item.args] as string[], cwd: item.cwd }
+  })
+  const buildPath = (field: 'outputPath' | 'installedPath'): string => {
+    const item = value.executableBuild?.[field]
+    if (typeof item !== 'string' || item.length === 0 || isAbsolute(item) || item.split(/[\\/]/).includes('..')) throw new TypeError(`executableBuild.${field} must be a contained relative path`)
+    return item
+  }
+  if (!record(value.executableBuild.limits)) throw new TypeError('executableBuild.limits must be an object')
+  const limit = (field: 'timeoutMs' | 'maxStdinBytes' | 'maxStdoutBytes' | 'maxStderrBytes' | 'killGraceMs'): number => {
+    const item = value.executableBuild?.limits
+    const number = record(item) ? item[field] : undefined
+    if (!Number.isSafeInteger(number) || (number as number) <= 0) throw new TypeError(`executableBuild.limits.${field} must be a positive safe integer`)
+    return number as number
+  }
+  const executableBuild = { commands, outputPath: buildPath('outputPath'), installedPath: buildPath('installedPath'), limits: {
+    timeoutMs: limit('timeoutMs'), maxStdinBytes: limit('maxStdinBytes'), maxStdoutBytes: limit('maxStdoutBytes'),
+    maxStderrBytes: limit('maxStderrBytes'), killGraceMs: limit('killGraceMs'),
+  } }
   const validationProfile = parseProductionValidationProfile(value.validationProfile)
   const state = stateRoot.replaceAll('\\', '/').replace(/\/$/, '').toLowerCase()
   const staging = validationProfile.stagingRoot.replaceAll('\\', '/').replace(/\/$/, '').toLowerCase()
@@ -285,6 +322,7 @@ export function parseLocalSupervisoryProcessConfig(value: unknown): LocalSupervi
     maxLineBytes: maxLineBytes as number,
     memoryToolPolicies,
     validationProfile,
+    executableBuild,
   }
 }
 
@@ -325,6 +363,11 @@ export async function runLocalSupervisoryProcess(configValue: unknown): Promise<
     descriptorLimits: limits,
     callLimits: limits,
   })
+  const executableAuthority = new LocalInstalledExecutableAuthority(
+    join(config.stateRoot, 'installed-executables.sqlite3'),
+    new ShellFreeInstalledExecutableBuildBackend(config.executableBuild),
+    'actor:local-executable-builder',
+  )
   const host = new LocalApplicationHost({
     store, workflows, candidates, lifecycle, adapter, validator,
     hostActorId: config.hostActorId,
@@ -345,6 +388,10 @@ export async function runLocalSupervisoryProcess(configValue: unknown): Promise<
     workshopActorId: config.hostActorId,
     createInstallation: (registry) => new ToolInstallationService(candidates, validator, {
       installationRoot: join(config.stateRoot, 'installed'), registry,
+    }),
+    installedExecutables: executableAuthority,
+    createInstalledAdapter: (binding) => new AdapterService(new ProcessRunner(), observer, {
+      bridge: { executable: binding.executable, prefixArgs: [] }, descriptorLimits: limits, callLimits: limits,
     }),
   })
   let closed = false

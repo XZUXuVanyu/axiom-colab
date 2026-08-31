@@ -215,6 +215,48 @@ test('application host executes a side-effecting built-in only with a call-scope
   host.close()
 })
 
+test('application host executes an installed Tool in its own Adapter and seals executable bindings', async () => {
+  const value = fixture()
+  value.lifecycle.close()
+  const plan = { id: 'object:installed-plan', key: 'goal:installed:plan', revision: 1,
+    value: { goalId: 'goal:installed', objective: 'Run installed Tool.' }, hash: `sha256:${'a'.repeat(64)}`,
+    proposalId: 'proposal:installed-plan', committedAt: '2026-08-31T00:00:00.000Z' } as const
+  const lifecycle = new LocalGoalLifecycle(join(value.root, 'installed-lifecycle.sqlite3'), {
+    approvedPlan: () => plan, async stopGoal() {}, async resumeGoal() {}, async revokeCapability() {}, async recoverWorkspace() {},
+  })
+  lifecycle.registerGoal('workspace:alpha', 'goal:installed')
+  const descriptor = { name: 'installed_tool', description: 'Installed.', whenToUse: 'For testing.', parameters: { type: 'object' }, output: { type: 'object' }, timeoutMs: 1000, allowParallel: true, sideEffect: false }
+  const registration = { workspaceId: 'workspace:alpha', installationId: 'evidence:installation', candidateId: 'tool:candidate',
+    candidateHash: `sha256:${'1'.repeat(64)}`, descriptorHash: contentHash(descriptor), sourceHash: `sha256:${'2'.repeat(64)}`,
+    sources: [], publicName: 'installed_tool', descriptor, requestedPermissions: [], installationEvidenceHash: `sha256:${'3'.repeat(64)}`,
+    installedRoot: join(value.root, 'installed') }
+  const binding = { executable: join(value.root, 'installed', 'bin', 'tool.exe'), workspaceId: 'workspace:alpha',
+    installationId: registration.installationId, installationEvidenceHash: registration.installationEvidenceHash,
+    executableEvidenceId: 'evidence:executable', executableEvidenceHash: `sha256:${'4'.repeat(64)}`,
+    candidateId: registration.candidateId, candidateHash: registration.candidateHash, descriptorHash: registration.descriptorHash,
+    sourceHash: registration.sourceHash, executableHash: `sha256:${'5'.repeat(64)}`, publicName: registration.publicName }
+  const ledger = new InvocationLedger()
+  let installedInvocations = 0
+  const installedAdapter = { ledger, async initialize() { return [descriptor] }, async invoke(tool: string, args: unknown, callId: string) {
+    installedInvocations += 1; ledger.start(callId, tool); ledger.succeed(callId, 1); return { args }
+  }, dispose() {} }
+  const host = new LocalApplicationHost({ ...value, lifecycle, validator: { isPromotionEligible: () => false }, hostActorId: 'actor:host',
+    createInstallation: (registry: any) => ({ rediscover(context: any) { if (context.workspaceId === registration.workspaceId) registry.register(registration); return [] } }),
+    installedExecutables: { async prepare() { return binding }, close() {} }, createInstalledAdapter: () => installedAdapter,
+  } as any)
+  await host.initialize()
+  const result = await host.executeTool('workspace:alpha', 'goal:installed', 'installed_tool', { exact: true })
+  assert.equal(installedInvocations, 1)
+  const report = JSON.parse(Buffer.from(value.workflows.readArtifact({ authority: 'trusted-host',
+    context: { workspaceId: 'workspace:alpha', actorId: 'actor:test', callId: 'call:read-installed', toolId: 'tool:test' },
+    capability: { protocolVersion: '1.0', capabilityId: 'capability:read-installed', workspaceId: 'workspace:alpha', actorId: 'actor:test', toolId: 'tool:test', callId: 'call:read-installed', operations: ['artifact.read'], issuedAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 60_000).toISOString(), nonce: 'read-installed' },
+  } as any, result.reportArtifactId)).toString('utf8'))
+  assert.equal(report.installedExecutable.executableEvidenceHash, binding.executableEvidenceHash)
+  assert.equal(report.installedExecutable.candidateHash, binding.candidateHash)
+  assert.equal(report.installedExecutable.executable, undefined)
+  host.close()
+})
+
 test('application host binds a user decision to the exact visible proposal hash', async () => {
   const value = fixture()
   const proposalBase = {
@@ -284,8 +326,8 @@ test('application host installs only the exact visible approval and evidence bin
     candidateHash: proposal.candidateHash, validationId: proposal.validationId,
     validationRecordHash: proposal.validationRecordHash, candidateSnapshotHash: proposal.candidateSnapshotHash,
     permissionsHash: proposal.permissionsHash }
-  assert.throws(() => host.installCandidate('workspace:alpha', { ...binding, approvalHash: `sha256:${'f'.repeat(64)}` } as any), (error: unknown) => (error as any).code === 'STALE_INSTALLATION_BINDING')
-  const result = host.installCandidate('workspace:alpha', binding as any)
+  await assert.rejects(host.installCandidate('workspace:alpha', { ...binding, approvalHash: `sha256:${'f'.repeat(64)}` } as any), (error: unknown) => (error as any).code === 'STALE_INSTALLATION_BINDING')
+  const result = await host.installCandidate('workspace:alpha', binding as any)
   assert.equal(result.installationId, 'evidence:installed')
   assert.deepEqual(installs, ['trusted-host:proposal:install'])
   assert.doesNotMatch(JSON.stringify(result), /relativeLocation|installedRoot|descriptor|source/)

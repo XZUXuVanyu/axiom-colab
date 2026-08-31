@@ -7,6 +7,8 @@ param(
     [string]$OutputPath,
     [Parameter(Mandatory = $true)]
     [string]$ValidationStagingRoot,
+    [Parameter(Mandatory = $true)]
+    [string]$CMakePath,
     [string]$BridgeWorkingDirectory = '',
     [switch]$Force
 )
@@ -27,6 +29,7 @@ $state = Resolve-AbsolutePath $StateRoot 'StateRoot' $false
 $bridge = Resolve-AbsolutePath $BridgePath 'BridgePath' $true
 $output = Resolve-AbsolutePath $OutputPath 'OutputPath' $false
 $validationStaging = Resolve-AbsolutePath $ValidationStagingRoot 'ValidationStagingRoot' $false
+$cmake = Resolve-AbsolutePath $CMakePath 'CMakePath' $true
 $statePrefix = $state.TrimEnd([System.IO.Path]::DirectorySeparatorChar) +
     [System.IO.Path]::DirectorySeparatorChar
 if ($output.StartsWith($statePrefix, [System.StringComparison]::OrdinalIgnoreCase) -or
@@ -44,6 +47,18 @@ $config = [ordered]@{
     hostActorId = 'actor:local-host'
     userActorId = 'actor:local-user'
     maxLineBytes = 65536
+    executableBuild = [ordered]@{
+        commands = @(
+            [ordered]@{ executable = $cmake; args = @('-S', '.', '-B', 'build'); cwd = 'source' },
+            [ordered]@{ executable = $cmake; args = @('--build', 'build', '--config', 'Release'); cwd = 'source' }
+        )
+        outputPath = 'source/build/Release/{publicName}.exe'
+        installedPath = 'bin/{publicName}.exe'
+        limits = [ordered]@{
+            timeoutMs = 120000; maxStdinBytes = 1048576
+            maxStdoutBytes = 8388608; maxStderrBytes = 4194304; killGraceMs = 500
+        }
+    }
     validationProfile = [ordered]@{
         toolchain = [ordered]@{ name = 'cmake'; version = 'system'; target = 'linux-x86_64' }
         wslDistribution = 'Ubuntu-24.04'

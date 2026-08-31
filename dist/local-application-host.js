@@ -40,6 +40,7 @@ export class LocalApplicationHost {
     registry = new VerifiedInstalledRegistry();
     installation;
     descriptors = [];
+    installedAdapters = new Map();
     initialized = false;
     closed = false;
     constructor(options){
@@ -49,6 +50,7 @@ export class LocalApplicationHost {
             builtInTools: ()=>this.descriptors,
             rediscoveredTools: (workspaceId)=>this.registry.list(workspaceId),
             executableBuiltIn: (_workspaceId, descriptor)=>!descriptor.sideEffect || (options.memoryPolicyAvailable?.(descriptor.name) ?? false),
+            executableInstalled: (workspaceId, registration)=>this.installedAdapters.has(this.installedKey(workspaceId, registration.publicName)),
             lifecycle: options.lifecycle,
             ...options.goalProgress === undefined ? {} : {
                 goalProgress: options.goalProgress
@@ -175,7 +177,7 @@ export class LocalApplicationHost {
             decision
         };
     }
-    installCandidate(workspaceId, binding) {
+    async installCandidate(workspaceId, binding) {
         this.ensureReady();
         this.options.store.reopenWorkspace(workspaceId);
         const proposal = this.options.candidates.inspectInstallationProposal(workspaceId, binding.proposalId);
@@ -189,6 +191,8 @@ export class LocalApplicationHost {
             authority: 'trusted-host'
         }, binding.proposalId);
         if (evidence.outcome !== 'installed') fail('INSTALLATION_FAILED', 'installer did not produce successful immutable evidence');
+        const registration = this.registry.list(workspaceId).find((item)=>item.installationId === evidence.installationId);
+        if (registration !== undefined) await this.prepareInstalled(registration);
         return {
             workspaceId,
             installationId: evidence.installationId,
@@ -303,7 +307,8 @@ export class LocalApplicationHost {
         const goal = this.options.lifecycle.inspectGoal(workspaceId, goalId);
         if (goal?.plan === null || goal === null) fail('GOAL_NOT_FOUND', 'selected goal has no authoritative approved plan');
         if (!goal.canStop) fail('GOAL_NOT_ACTIVE', 'selected goal is not active');
-        const descriptor = this.descriptors.find((item)=>item.name === toolName);
+        const installed = this.installedAdapters.get(this.installedKey(workspaceId, toolName));
+        const descriptor = installed?.descriptor ?? this.descriptors.find((item)=>item.name === toolName);
         if (descriptor === undefined) fail('TOOL_NOT_EXECUTABLE', 'Tool is not executable by the production Adapter');
         const callId = `call:${randomUUID()}`;
         const memorySession = this.options.memorySession?.(workspaceId, toolName, callId);
@@ -311,9 +316,10 @@ export class LocalApplicationHost {
             fail('TOOL_REQUIRES_POLICY', 'side-effecting Tool execution requires an explicit host policy');
         }
         const startedAt = new Date().toISOString();
-        const result = await this.options.adapter.invoke(toolName, args, callId, signal, memorySession);
+        const executionAdapter = installed?.adapter ?? this.options.adapter;
+        const result = await executionAdapter.invoke(toolName, args, callId, signal, memorySession);
         const completedAt = new Date().toISOString();
-        const calls = this.options.adapter.ledger.snapshot().filter((record)=>record.callId === callId);
+        const calls = executionAdapter.ledger.snapshot().filter((record)=>record.callId === callId);
         if (calls.length !== 1 || calls[0]?.tool !== toolName || calls[0].status !== 'succeeded') {
             fail('INVALID_TOOL_EVIDENCE', 'Adapter ledger does not contain one successful record for the exact host-issued call');
         }
@@ -324,6 +330,10 @@ export class LocalApplicationHost {
             startedAt,
             completedAt,
             calls,
+            installedExecutable: installed === undefined ? null : {
+                ...installed.binding,
+                executable: undefined
+            },
             observations: [
                 {
                     callId,
@@ -394,6 +404,7 @@ export class LocalApplicationHost {
                     actorId: this.options.hostActorId,
                     authority: 'trusted-host'
                 });
+                for (const registration of this.registry.list(workspaceId))await this.prepareInstalled(registration, signal);
             }
             this.initialized = true;
         } catch (error) {
@@ -406,6 +417,9 @@ export class LocalApplicationHost {
         if (this.closed) return;
         this.closed = true;
         this.registry.clear();
+        for (const installed of this.installedAdapters.values())installed.adapter.dispose();
+        this.installedAdapters.clear();
+        this.options.installedExecutables?.close();
         this.options.adapter.dispose();
         this.options.lifecycle.close();
         this.options.workflows.close();
@@ -415,6 +429,30 @@ export class LocalApplicationHost {
     ensureReady() {
         if (this.closed) fail('HOST_CLOSED', 'application host is closed');
         if (!this.initialized) fail('HOST_NOT_INITIALIZED', 'application host is not initialized');
+    }
+    installedKey(workspaceId, publicName) {
+        return `${workspaceId}\0${publicName}`;
+    }
+    async prepareInstalled(registration, signal) {
+        if (this.options.installedExecutables === undefined || this.options.createInstalledAdapter === undefined) return;
+        const key = this.installedKey(registration.workspaceId, registration.publicName);
+        if (this.installedAdapters.has(key)) return;
+        const binding = await this.options.installedExecutables.prepare(registration);
+        const adapter = this.options.createInstalledAdapter(binding);
+        try {
+            const descriptors = await adapter.initialize(signal);
+            if (descriptors.length !== 1 || descriptors[0]?.name !== registration.publicName || contentHash(descriptors[0]) !== registration.descriptorHash) {
+                fail('INSTALLED_DESCRIPTOR_MISMATCH', 'installed executable did not expose the exact installed descriptor');
+            }
+            this.installedAdapters.set(key, {
+                binding,
+                adapter,
+                descriptor: descriptors[0]
+            });
+        } catch (error) {
+            adapter.dispose();
+            throw error;
+        }
     }
     workflowInvocation(workspaceId, actorId, authority, operations) {
         const issued = new Date();

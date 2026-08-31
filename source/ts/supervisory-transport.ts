@@ -12,7 +12,7 @@ export interface SupervisoryTransportHost {
   goals(workspaceId: LaboratoryId<'workspace'>): readonly LaboratoryId<'goal'>[]
   createWorkspace(workspaceId: LaboratoryId<'workspace'>): { readonly workspaceId: LaboratoryId<'workspace'> }
   createGoal(workspaceId: LaboratoryId<'workspace'>, goalId: LaboratoryId<'goal'>, objective: string): GoalCreationResult
-  installCandidate(workspaceId: LaboratoryId<'workspace'>, binding: InstallationRequestBinding): InstallationResult
+  installCandidate(workspaceId: LaboratoryId<'workspace'>, binding: InstallationRequestBinding): Promise<InstallationResult> | InstallationResult
   inspect(workspaceId: LaboratoryId<'workspace'>, goalId: LaboratoryId<'goal'> | null): Promise<SupervisoryWorkspaceSnapshot>
   executeTool(workspaceId: LaboratoryId<'workspace'>, goalId: LaboratoryId<'goal'>, tool: string, args: Record<string, JsonValue>): Promise<SupervisoryToolExecution>
   decideInstallation(workspaceId: LaboratoryId<'workspace'>, proposalId: LaboratoryId<'proposal'>, proposalHash: `sha256:${string}`, decision: 'approved' | 'rejected'): Promise<JsonValue>

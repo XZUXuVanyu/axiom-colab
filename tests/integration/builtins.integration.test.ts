@@ -87,6 +87,11 @@ test('production supervisory process executes a configured memory-dependent buil
   const configPath = join(root, 'config.json')
   writeFileSync(configPath, JSON.stringify({
     stateRoot, bridgePath: bridge, bridgeArgs: [], bridgeWorkingDirectory: resolve('.'),
+    executableBuild: {
+      commands: [{ executable: process.execPath, args: ['--version'], cwd: 'source' }],
+      outputPath: 'source/build/tool.exe', installedPath: 'bin/tool.exe',
+      limits: { timeoutMs: 30_000, maxStdinBytes: 1024, maxStdoutBytes: 1_048_576, maxStderrBytes: 1_048_576, killGraceMs: 250 },
+    },
     validationProfile: {
       toolchain: { name: 'cmake', version: 'system', target: 'linux-x86_64' },
       wslDistribution: 'Ubuntu-24.04', stagingRoot: join(root, 'validation-staging'),

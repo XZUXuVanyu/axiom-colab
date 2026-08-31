@@ -135,7 +135,7 @@ export class LocalSupervisoryBackend {
                 name: registration.publicName,
                 descriptor: assertToolDescriptor(registration.descriptor),
                 source: 'installed',
-                executable: false,
+                executable: this.options.executableInstalled?.(workspaceId, registration) ?? false,
                 installationEvidenceHash: registration.installationEvidenceHash
             });
         }

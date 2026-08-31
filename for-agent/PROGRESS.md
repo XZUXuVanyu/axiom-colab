@@ -4,6 +4,32 @@ Entries are chronological. Each entry corresponds to one logical Git commit and
 records its exact subject, purpose, material changes, and validation actually
 performed.
 
+## 2026-08-31 - feat(adapter): execute exact installed candidates
+
+Purpose: complete Stage 8 by making independently built installed Tools usable
+through the supervisory IDE without weakening installation or evidence authority.
+
+Material changes:
+
+- Added a restart-safe SQLite executable-evidence authority that invokes only a
+  fixed shell-free host build profile and binds exact installed candidate bytes.
+- Re-verifies descriptor, source, and executable bytes on every load; rejects
+  path escape, changed bytes, unauthenticated evidence, and cross-installation
+  replay.
+- Gives each loaded installed executable its own Adapter and ledger, verifies
+  its sole discovered descriptor against the installed descriptor hash, and
+  exposes executability only after that path succeeds.
+- Seals all installation, candidate, descriptor, source, and executable hashes
+  into installed-Tool goal reports while withholding executable paths from Qt.
+- Extended strict production configuration and generation with the trusted
+  build commands, limits, expected output, and installed executable location.
+
+Validation actually run:
+
+- `pnpm.cmd test`: all 95 TypeScript tests passed and regenerated `dist/`.
+- `pnpm.cmd run test:integration`: five portable real-Bridge/production-host
+  tests passed; the three opt-in WSL confinement tests skipped.
+
 ## 2026-08-30 - feat(adapter): bind installed executable loading
 
 Purpose: begin the final Stage 8 installed-Tool execution path with a narrow
