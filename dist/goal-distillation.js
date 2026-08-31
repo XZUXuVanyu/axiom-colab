@@ -26,12 +26,14 @@ export class GoalDistillationService {
     workflows;
     now;
     idFactory;
+    afterArchive;
     database;
-    constructor(path, checkpoints, workflows, now = ()=>new Date(), idFactory = randomUUID){
+    constructor(path, checkpoints, workflows, now = ()=>new Date(), idFactory = randomUUID, afterArchive){
         this.checkpoints = checkpoints;
         this.workflows = workflows;
         this.now = now;
         this.idFactory = idFactory;
+        this.afterArchive = afterArchive;
         const databasePath = resolve(path);
         mkdirSync(dirname(databasePath), {
             recursive: true
@@ -39,6 +41,7 @@ export class GoalDistillationService {
         this.database = new DatabaseSync(databasePath);
         this.database.exec(`PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL;
       CREATE TABLE IF NOT EXISTS goal_closures(workspace_id TEXT NOT NULL,goal_id TEXT NOT NULL,public_json TEXT NOT NULL,PRIMARY KEY(workspace_id,goal_id)) STRICT;
+      CREATE TABLE IF NOT EXISTS goal_closure_claims(workspace_id TEXT NOT NULL,goal_id TEXT NOT NULL,request_hash TEXT NOT NULL,claim_json TEXT NOT NULL,state TEXT NOT NULL CHECK(state IN ('claimed','completed')),PRIMARY KEY(workspace_id,goal_id)) STRICT;
       CREATE TABLE IF NOT EXISTS distillation_proposals(workspace_id TEXT NOT NULL,goal_id TEXT NOT NULL,proposal_id TEXT PRIMARY KEY,proposal_hash TEXT NOT NULL UNIQUE,public_json TEXT NOT NULL,state TEXT NOT NULL CHECK(state IN ('proposed','accepted','rejected','deferred')),decided_at TEXT,decided_by TEXT) STRICT;`);
     }
     closeGoal(workspaceId, goalId, planRevisionId, planHash, drafts, invocation) {
@@ -48,63 +51,101 @@ export class GoalDistillationService {
         const checkpoint = this.checkpoints.latest(workspaceId, goalId);
         this.assertCheckpoint(checkpoint, planRevisionId, planHash);
         if (drafts.length === 0) fail('DISTILLATION_REQUIRED', 'goal closure requires reviewable distillation proposals');
-        const proposedAt = this.now().toISOString();
-        const proposals = drafts.map((draft)=>{
-            if (draft.evidenceArtifactIds.some((id)=>!id.startsWith('object:'))) fail('INVALID_DISTILLATION_EVIDENCE', 'proposal evidence identity is malformed');
-            for (const artifactId of draft.evidenceArtifactIds)this.workflows.inspectArtifact(invocation, artifactId);
-            const base = {
-                proposalId: `proposal:${this.idFactory()}`,
-                workspaceId,
-                goalId,
-                kind: draft.kind,
-                content: draft.content,
-                evidenceArtifactIds: [
-                    ...draft.evidenceArtifactIds
-                ],
-                proposedAt
-            };
-            return {
-                ...base,
-                proposalHash: contentHash(base),
-                state: 'proposed',
-                decidedAt: null,
-                decidedBy: null
-            };
-        });
-        const closureId = `evidence:${this.idFactory()}`;
-        const archivePayload = {
-            protocolVersion: '1.0',
-            closureId,
+        const requestHash = contentHash({
             workspaceId,
             goalId,
             planRevisionId,
             planHash,
-            checkpoint,
-            proposals: proposals.map((proposal)=>({
+            checkpointHash: checkpoint.checkpointHash,
+            drafts
+        });
+        const existingClaim = this.database.prepare('SELECT request_hash,claim_json,state FROM goal_closure_claims WHERE workspace_id=? AND goal_id=?').get(workspaceId, goalId);
+        let claim;
+        if (existingClaim !== undefined) {
+            if (existingClaim.request_hash !== requestHash) fail('STALE_GOAL_CLOSURE_REQUEST', 'an interrupted closure binds different inputs');
+            try {
+                claim = JSON.parse(existingClaim.claim_json);
+            } catch  {
+                fail('CORRUPT_GOAL_CLOSURE_CLAIM', 'stored closure claim is malformed');
+            }
+            if (claim.requestHash !== requestHash || claim.checkpoint.checkpointHash !== checkpoint.checkpointHash) fail('CORRUPT_GOAL_CLOSURE_CLAIM', 'stored closure claim binding is invalid');
+        } else {
+            const proposedAt = this.now().toISOString();
+            const proposals = drafts.map((draft)=>{
+                if (draft.evidenceArtifactIds.some((id)=>!id.startsWith('object:'))) fail('INVALID_DISTILLATION_EVIDENCE', 'proposal evidence identity is malformed');
+                for (const artifactId of draft.evidenceArtifactIds)this.workflows.inspectArtifact(invocation, artifactId);
+                const base = {
+                    proposalId: `proposal:${this.idFactory()}`,
+                    workspaceId,
+                    goalId,
+                    kind: draft.kind,
+                    content: draft.content,
+                    evidenceArtifactIds: [
+                        ...draft.evidenceArtifactIds
+                    ],
+                    proposedAt
+                };
+                return {
+                    ...base,
+                    proposalHash: contentHash(base),
+                    state: 'proposed',
+                    decidedAt: null,
+                    decidedBy: null
+                };
+            });
+            claim = {
+                requestHash,
+                closureId: `evidence:${this.idFactory()}`,
+                checkpoint,
+                proposals,
+                proposedAt
+            };
+            this.database.prepare('INSERT INTO goal_closure_claims VALUES (?,?,?,?,?)').run(workspaceId, goalId, requestHash, canonicalJson(claim), 'claimed');
+        }
+        const archivePayload = {
+            protocolVersion: '1.0',
+            closureId: claim.closureId,
+            workspaceId,
+            goalId,
+            planRevisionId,
+            planHash,
+            checkpoint: claim.checkpoint,
+            proposals: claim.proposals.map((proposal)=>({
                     ...proposal
                 }))
         };
-        const archiveParents = [
-            ...new Set([
-                checkpoint.latestReportArtifactId,
-                ...proposals.flatMap((proposal)=>proposal.evidenceArtifactIds)
-            ])
-        ];
-        const archive = this.workflows.deriveArtifact(invocation, archiveParents, Buffer.from(canonicalJson(archivePayload), 'utf8'), {
-            type: 'object',
-            title: 'Axiom immutable goal session archive',
-            protocolVersion: '1.0'
-        }, {
-            operation: 'goal.closure.archive',
-            parametersHash: contentHash({
-                closureId,
-                checkpointHash: checkpoint.checkpointHash
-            }),
-            softwareVersion: '1.0.0',
-            validationId: null
+        const archiveBytes = Buffer.from(canonicalJson(archivePayload), 'utf8');
+        const archiveParametersHash = contentHash({
+            closureId: claim.closureId,
+            checkpointHash: checkpoint.checkpointHash
         });
+        const existingArchive = this.workflows.listArtifacts(invocation).find((artifact)=>artifact.provenance.operation === 'goal.closure.archive' && artifact.provenance.parametersHash === archiveParametersHash);
+        let archive;
+        if (existingArchive !== undefined) {
+            const bytes = this.workflows.readArtifact(invocation, existingArchive.id);
+            if (!Buffer.from(bytes).equals(archiveBytes)) fail('CORRUPT_GOAL_CLOSURE_ARCHIVE', 'claimed archive bytes do not match the closure request');
+            archive = existingArchive;
+        } else {
+            const archiveParents = [
+                ...new Set([
+                    checkpoint.latestReportArtifactId,
+                    ...claim.proposals.flatMap((proposal)=>proposal.evidenceArtifactIds)
+                ])
+            ];
+            archive = this.workflows.deriveArtifact(invocation, archiveParents, archiveBytes, {
+                type: 'object',
+                title: 'Axiom immutable goal session archive',
+                protocolVersion: '1.0'
+            }, {
+                operation: 'goal.closure.archive',
+                parametersHash: archiveParametersHash,
+                softwareVersion: '1.0.0',
+                validationId: null
+            });
+            this.afterArchive?.(archive);
+        }
         const closureBase = {
-            closureId,
+            closureId: claim.closureId,
             workspaceId,
             goalId,
             planRevisionId,
@@ -112,8 +153,8 @@ export class GoalDistillationService {
             checkpointHash: checkpoint.checkpointHash,
             archiveArtifactId: archive.id,
             archiveHash: archive.hash,
-            proposalIds: proposals.map((proposal)=>proposal.proposalId),
-            closedAt: proposedAt
+            proposalIds: claim.proposals.map((proposal)=>proposal.proposalId),
+            closedAt: claim.proposedAt
         };
         const closure = {
             ...closureBase,
@@ -123,7 +164,8 @@ export class GoalDistillationService {
         try {
             this.database.prepare('INSERT INTO goal_closures VALUES (?,?,?)').run(workspaceId, goalId, canonicalJson(closure));
             const statement = this.database.prepare('INSERT INTO distillation_proposals VALUES (?,?,?,?,?,?,?,?)');
-            for (const proposal of proposals)statement.run(workspaceId, goalId, proposal.proposalId, proposal.proposalHash, canonicalJson(proposal), proposal.state, null, null);
+            for (const proposal of claim.proposals)statement.run(workspaceId, goalId, proposal.proposalId, proposal.proposalHash, canonicalJson(proposal), proposal.state, null, null);
+            this.database.prepare("UPDATE goal_closure_claims SET state='completed' WHERE workspace_id=? AND goal_id=? AND state='claimed'").run(workspaceId, goalId);
             this.database.exec('COMMIT');
         } catch (error) {
             this.database.exec('ROLLBACK');
@@ -131,7 +173,7 @@ export class GoalDistillationService {
         }
         return {
             closure,
-            proposals,
+            proposals: claim.proposals,
             archive
         };
     }

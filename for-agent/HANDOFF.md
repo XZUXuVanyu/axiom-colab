@@ -18,6 +18,14 @@ Last updated: 2026-08-31
   or defer an exact proposal, but no decision activates content or performs
   cleanup/retention by itself. Production host/transport/Qt composition is the
   immediate continuation.
+- Closure is now partial-write retry-safe: a durable exact-input claim precedes
+  archive creation, and retry reuses the one hash-verified archive if the process
+  stopped before proposal/closure commit. Changed retry inputs fail closed.
+- Production host and supervisory protocol now compose exact-plan `close-goal`
+  and exact-hash `decide-distillation` operations. Closure durably completes the
+  lifecycle and appends a completed checkpoint only after archive/proposals are
+  committed. Protocol input is bounded and restricted to the eight review-only
+  distillation kinds. Inspection projection and Qt controls remain next.
 - Stage 8 is complete. Production composition now owns a strict shell-free
   installed-executable build profile, a restart-safe SQLite evidence authority,
   byte-reverified loading, and one isolated Adapter instance per installed Tool.
@@ -976,12 +984,10 @@ installation controls:
 
 ## Exact next work
 
-Compose the goal-distillation service into the production host, add exact
-closure and proposal-review transport operations, project closure/archive and
-proposal states for inspection, and add Qt controls. Complete lifecycle state
-only after the archive and proposals are durable; make partial closure retry-safe
-before exposing the operation. Do not auto-promote accepted content or execute
-cleanup/retention decisions as part of review.
+Project closure/archive bindings and all proposal review states through
+authoritative inspection, then add strict C++ decoders and Qt close/review
+controls. Qt must show that accepted proposals are still inactive review
+decisions, and must never execute cleanup or retention as a side effect.
 
 Keep the WSL integration suite opt-in for portable CI and run it explicitly on
 the supported Windows/Ubuntu composition before changing confinement claims.

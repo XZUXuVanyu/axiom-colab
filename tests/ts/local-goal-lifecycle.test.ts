@@ -49,6 +49,10 @@ test('goal lifecycle persists stop, capability, and recovery state across restar
   assert.deepEqual(lifecycle.revocableCapabilities('workspace:alpha', 'goal:one'), [])
   assert.equal(lifecycle.recoveryRequired('workspace:alpha'), false)
   assert.deepEqual(goalActions, ['stop', 'resume'])
+  lifecycle.completeGoal('workspace:alpha', 'goal:one')
+  assert.equal(lifecycle.inspectGoal('workspace:alpha', 'goal:one')?.canStop, false)
+  assert.equal(lifecycle.inspectGoal('workspace:alpha', 'goal:one')?.canResume, false)
+  lifecycle.completeGoal('workspace:alpha', 'goal:one')
   lifecycle.close()
 })
 

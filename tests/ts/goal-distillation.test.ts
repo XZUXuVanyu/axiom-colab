@@ -57,3 +57,23 @@ test('goal closure rejects stale plans and closure without sealed evidence', () 
   assert.throws(() => value.service.closeGoal('workspace:alpha', 'goal:one', 'object:plan', `sha256:${'2'.repeat(64)}`, [{ kind: 'knowledge', content: { claim: 'unsupported' }, evidenceArtifactIds: ['object:missing'] }], value.invocation), (error: unknown) => (error as any).code === 'ARTIFACT_NOT_FOUND')
   value.service.close(); value.checkpoints.close(); value.workflows.close(); value.memory.close()
 })
+
+test('goal closure retry reuses an archive created before an interrupted commit', () => {
+  const value = fixture()
+  value.service.close()
+  const database = join(value.memory.root, '..', 'distillation.sqlite3')
+  const draft = [{ kind: 'experience' as const, content: { summary: 'retry exact closure' }, evidenceArtifactIds: [value.report.id] }]
+  const interrupted = new GoalDistillationService(database, value.checkpoints, value.workflows,
+    () => new Date('2026-08-31T02:00:00.000Z'), () => crypto.randomUUID(), () => { throw Object.assign(new Error('simulated crash'), { code: 'SIMULATED_CRASH' }) })
+  assert.throws(() => interrupted.closeGoal('workspace:alpha', 'goal:one', 'object:plan', `sha256:${'2'.repeat(64)}`, draft, value.invocation), /simulated crash/)
+  interrupted.close()
+  const recovered = new GoalDistillationService(database, value.checkpoints, value.workflows,
+    () => new Date('2026-08-31T03:00:00.000Z'), () => crypto.randomUUID())
+  assert.throws(() => recovered.closeGoal('workspace:alpha', 'goal:one', 'object:plan', `sha256:${'2'.repeat(64)}`, [{ ...draft[0]!, content: { changed: true } }], value.invocation), (error: unknown) => (error as any).code === 'STALE_GOAL_CLOSURE_REQUEST')
+  const result = recovered.closeGoal('workspace:alpha', 'goal:one', 'object:plan', `sha256:${'2'.repeat(64)}`, draft, value.invocation)
+  const archives = value.workflows.listArtifacts(value.invocation).filter((artifact) => artifact.provenance.operation === 'goal.closure.archive')
+  assert.equal(archives.length, 1)
+  assert.equal(result.archive.id, archives[0]?.id)
+  assert.throws(() => recovered.closeGoal('workspace:alpha', 'goal:one', 'object:plan', `sha256:${'2'.repeat(64)}`, [{ ...draft[0]!, content: { changed: true } }], value.invocation), (error: unknown) => (error as any).code === 'GOAL_ALREADY_CLOSED')
+  recovered.close(); value.checkpoints.close(); value.workflows.close(); value.memory.close()
+})

@@ -63,6 +63,17 @@ test('supervisory transport lists workspaces and correlates immutable inspection
       assert.deepEqual([workspaceId, goalId, capabilityId], ['workspace:alpha', 'goal:one', 'capability:active'])
     },
     async recoverWorkspace() {},
+    closeGoal(workspaceId: string, goalId: string, planRevisionId: string, planHash: string, drafts: any[]) {
+      return { closure: { closureId: 'evidence:closure', workspaceId, goalId, planRevisionId, planHash,
+        checkpointHash: `sha256:${'c'.repeat(64)}`, archiveArtifactId: 'object:archive', archiveHash: `sha256:${'d'.repeat(64)}`,
+        proposalIds: ['proposal:distilled'], closedAt: '2026-08-31T03:00:00.000Z', closureHash: `sha256:${'e'.repeat(64)}` },
+        proposals: [{ proposalId: 'proposal:distilled', workspaceId, goalId, kind: drafts[0].kind, content: drafts[0].content,
+          evidenceArtifactIds: drafts[0].evidenceArtifactIds, proposalHash: `sha256:${'f'.repeat(64)}`, state: 'proposed',
+          proposedAt: '2026-08-31T03:00:00.000Z', decidedAt: null, decidedBy: null }] }
+    },
+    decideDistillation(workspaceId: string, proposalId: string, proposalHash: string, decision: string) {
+      return { workspaceId, goalId: 'goal:one', proposalId, proposalHash, kind: 'experience', content: {}, evidenceArtifactIds: [], state: decision, proposedAt: '2026-08-31T03:00:00.000Z', decidedAt: '2026-08-31T04:00:00.000Z', decidedBy: 'actor:user' }
+    },
   }
   const transport = new SupervisoryTransport(host as any)
   const listed = JSON.parse(await transport.handle(JSON.stringify({ protocolVersion: '1.1', id: 'one', operation: 'list-workspaces' })))
@@ -114,6 +125,11 @@ test('supervisory transport lists workspaces and correlates immutable inspection
   })))
   assert.equal(created.result.candidate.revision, 1)
   assert.equal(created.result.candidate.specificationId, created.result.specification.specificationId)
+  const closed = JSON.parse(await transport.handle(JSON.stringify({ protocolVersion: '1.1', id: 'close', operation: 'close-goal', workspaceId: 'workspace:alpha', goalId: 'goal:one', planRevisionId: 'object:plan', planHash: `sha256:${'1'.repeat(64)}`, drafts: [{ kind: 'experience', content: { summary: 'done' }, evidenceArtifactIds: ['object:report'] }] })))
+  assert.equal(closed.result.closure.archiveArtifactId, 'object:archive')
+  assert.equal(closed.result.proposals[0].state, 'proposed')
+  const reviewed = JSON.parse(await transport.handle(JSON.stringify({ protocolVersion: '1.1', id: 'review', operation: 'decide-distillation', workspaceId: 'workspace:alpha', proposalId: 'proposal:distilled', proposalHash: `sha256:${'f'.repeat(64)}`, decision: 'deferred' })))
+  assert.equal(reviewed.result.state, 'deferred')
   const stopped = JSON.parse(await transport.handle(JSON.stringify({ protocolVersion: '1.1', id: 'eight', operation: 'stop-goal', workspaceId: 'workspace:alpha', goalId: 'goal:one', planRevisionId: 'object:plan', planHash: `sha256:${'1'.repeat(64)}` })))
   assert.deepEqual(stopped.result, { workspaceId: 'workspace:alpha', goalId: 'goal:one', action: 'stopped' })
   const revoked = JSON.parse(await transport.handle(JSON.stringify({ protocolVersion: '1.1', id: 'nine', operation: 'revoke-capability', workspaceId: 'workspace:alpha', goalId: 'goal:one', capabilityId: 'capability:active' })))
@@ -151,6 +167,8 @@ test('supervisory transport rejects malformed, oversized, and authority-changing
   assert.equal(invalidSpecification.error.code, 'INVALID_REQUEST')
   const invalidLifecycle = JSON.parse(await challengeTransport.handle(JSON.stringify({ protocolVersion: '1.1', id: 'stop', operation: 'stop-goal', workspaceId: 'workspace:alpha', goalId: 'goal:one', planRevisionId: 'object:plan', planHash: 'sha256:bad' })))
   assert.equal(invalidLifecycle.error.code, 'INVALID_PLAN_HASH')
+  const invalidDistillation = JSON.parse(await challengeTransport.handle(JSON.stringify({ protocolVersion: '1.1', id: 'close', operation: 'close-goal', workspaceId: 'workspace:alpha', goalId: 'goal:one', planRevisionId: 'object:plan', planHash: `sha256:${'2'.repeat(64)}`, drafts: [{ kind: 'active-skill', content: {}, evidenceArtifactIds: [] }] })))
+  assert.equal(invalidDistillation.error.code, 'INVALID_DISTILLATION')
 })
 
 test('supervisory transport preserves deterministic host failure codes', async () => {

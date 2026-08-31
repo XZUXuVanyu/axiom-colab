@@ -4,6 +4,7 @@ import type { LaboratoryId } from './laboratory-contract.js'
 import type { SupervisoryToolExecution, SupervisoryWorkspaceSnapshot } from './supervisory-application.js'
 import type { GoalCreationResult, HiddenChallengeValidationResult, InstallationRequestBinding, InstallationResult } from './local-application-host.js'
 import type { CandidateRevision, ToolSpecification, ToolSpecificationInput } from './tool-workshop.js'
+import type { DistillationDecision, DistillationDraft, DistillationProposal, GoalClosure } from './goal-distillation.js'
 
 export const SUPERVISORY_TRANSPORT_VERSION = '1.1' as const
 
@@ -23,6 +24,8 @@ export interface SupervisoryTransportHost {
   resumeGoal(workspaceId: LaboratoryId<'workspace'>, goalId: LaboratoryId<'goal'>, planRevisionId: LaboratoryId<'object'>, planHash: `sha256:${string}`): Promise<void>
   revokeCapability(workspaceId: LaboratoryId<'workspace'>, goalId: LaboratoryId<'goal'> | null, capabilityId: LaboratoryId<'capability'>): Promise<void>
   recoverWorkspace(workspaceId: LaboratoryId<'workspace'>): Promise<void>
+  closeGoal(workspaceId: LaboratoryId<'workspace'>, goalId: LaboratoryId<'goal'>, planRevisionId: LaboratoryId<'object'>, planHash: `sha256:${string}`, drafts: readonly DistillationDraft[]): { readonly closure: GoalClosure; readonly proposals: readonly DistillationProposal[] }
+  decideDistillation(workspaceId: LaboratoryId<'workspace'>, proposalId: LaboratoryId<'proposal'>, proposalHash: `sha256:${string}`, decision: DistillationDecision): DistillationProposal
 }
 
 type Request =
@@ -40,6 +43,8 @@ type Request =
   | { readonly protocolVersion: typeof SUPERVISORY_TRANSPORT_VERSION; readonly id: string; readonly operation: 'stop-goal' | 'resume-goal'; readonly workspaceId: LaboratoryId<'workspace'>; readonly goalId: LaboratoryId<'goal'>; readonly planRevisionId: LaboratoryId<'object'>; readonly planHash: `sha256:${string}` }
   | { readonly protocolVersion: typeof SUPERVISORY_TRANSPORT_VERSION; readonly id: string; readonly operation: 'revoke-capability'; readonly workspaceId: LaboratoryId<'workspace'>; readonly goalId: LaboratoryId<'goal'> | null; readonly capabilityId: LaboratoryId<'capability'> }
   | { readonly protocolVersion: typeof SUPERVISORY_TRANSPORT_VERSION; readonly id: string; readonly operation: 'recover-workspace'; readonly workspaceId: LaboratoryId<'workspace'> }
+  | { readonly protocolVersion: typeof SUPERVISORY_TRANSPORT_VERSION; readonly id: string; readonly operation: 'close-goal'; readonly workspaceId: LaboratoryId<'workspace'>; readonly goalId: LaboratoryId<'goal'>; readonly planRevisionId: LaboratoryId<'object'>; readonly planHash: `sha256:${string}`; readonly drafts: readonly DistillationDraft[] }
+  | { readonly protocolVersion: typeof SUPERVISORY_TRANSPORT_VERSION; readonly id: string; readonly operation: 'decide-distillation'; readonly workspaceId: LaboratoryId<'workspace'>; readonly proposalId: LaboratoryId<'proposal'>; readonly proposalHash: `sha256:${string}`; readonly decision: DistillationDecision }
 
 interface ErrorPayload { readonly code: string; readonly message: string }
 type Response =
@@ -134,6 +139,20 @@ function parseHiddenCommands(value: unknown): readonly ValidationCommand[] {
   })
 }
 
+function parseDistillationDrafts(value: unknown): readonly DistillationDraft[] {
+  const kinds = new Set(['experience', 'knowledge', 'skill-candidate', 'tool-candidate', 'tool-reference', 'unresolved-question', 'cleanup', 'retention'])
+  if (!Array.isArray(value) || value.length === 0 || value.length > 128) fail('INVALID_DISTILLATION', 'distillation must contain 1..128 drafts')
+  return value.map((item, index) => {
+    if (!record(item)) fail('INVALID_DISTILLATION', `distillation draft ${index} must be an object`)
+    exact(item, ['kind', 'content', 'evidenceArtifactIds'])
+    if (typeof item.kind !== 'string' || !kinds.has(item.kind) || !Array.isArray(item.evidenceArtifactIds)
+        || !item.evidenceArtifactIds.every((id) => typeof id === 'string' && /^object:[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(id))) {
+      fail('INVALID_DISTILLATION', `distillation draft ${index} is malformed`)
+    }
+    return item as unknown as DistillationDraft
+  })
+}
+
 function parseRequest(text: string, maxBytes: number): Request {
   if (Buffer.byteLength(text, 'utf8') > maxBytes) fail('REQUEST_TOO_LARGE', `request exceeds ${maxBytes} bytes`)
   let value: unknown
@@ -210,6 +229,22 @@ function parseRequest(text: string, maxBytes: number): Request {
     if (!record(value.descriptor)) fail('INVALID_CANDIDATE_DESCRIPTOR', 'candidate descriptor must be an object')
     return { ...value, specification: parseSpecification(value.specification), sources: parseCandidateSources(value.sources) } as unknown as Request
   }
+  if (value.operation === 'close-goal') {
+    exact(value, ['protocolVersion', 'id', 'operation', 'workspaceId', 'goalId', 'planRevisionId', 'planHash', 'drafts'])
+    if (typeof value.workspaceId !== 'string' || !/^workspace:[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(value.workspaceId)) fail('INVALID_WORKSPACE_ID', 'workspace identity is malformed')
+    if (typeof value.goalId !== 'string' || !/^goal:[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(value.goalId)) fail('INVALID_GOAL_ID', 'goal identity is malformed')
+    if (typeof value.planRevisionId !== 'string' || !/^object:[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(value.planRevisionId)) fail('INVALID_PLAN_REVISION_ID', 'plan revision identity is malformed')
+    if (typeof value.planHash !== 'string' || !/^sha256:[0-9a-f]{64}$/.test(value.planHash)) fail('INVALID_PLAN_HASH', 'plan hash is malformed')
+    return { ...value, drafts: parseDistillationDrafts(value.drafts) } as unknown as Request
+  }
+  if (value.operation === 'decide-distillation') {
+    exact(value, ['protocolVersion', 'id', 'operation', 'workspaceId', 'proposalId', 'proposalHash', 'decision'])
+    if (typeof value.workspaceId !== 'string' || !/^workspace:[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(value.workspaceId)) fail('INVALID_WORKSPACE_ID', 'workspace identity is malformed')
+    if (typeof value.proposalId !== 'string' || !/^proposal:[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(value.proposalId)) fail('INVALID_PROPOSAL_ID', 'proposal identity is malformed')
+    if (typeof value.proposalHash !== 'string' || !/^sha256:[0-9a-f]{64}$/.test(value.proposalHash)) fail('INVALID_PROPOSAL_HASH', 'proposal hash is malformed')
+    if (value.decision !== 'accepted' && value.decision !== 'rejected' && value.decision !== 'deferred') fail('INVALID_DECISION', 'distillation decision is malformed')
+    return value as unknown as Request
+  }
   if (value.operation === 'stop-goal' || value.operation === 'resume-goal') {
     exact(value, ['protocolVersion', 'id', 'operation', 'workspaceId', 'goalId', 'planRevisionId', 'planHash'])
     if (typeof value.workspaceId !== 'string' || !/^workspace:[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(value.workspaceId)) fail('INVALID_WORKSPACE_ID', 'workspace identity is malformed')
@@ -278,6 +313,10 @@ export class SupervisoryTransport {
                     ? this.host.reviseCandidate(request.workspaceId, request.parentRevisionId, request.parentCandidateHash, request.descriptor, request.sources)
                     : request.operation === 'create-candidate'
                       ? this.host.createCandidate(request.workspaceId, request.specification, request.descriptor, request.sources)
+                      : request.operation === 'close-goal'
+                        ? this.host.closeGoal(request.workspaceId, request.goalId, request.planRevisionId, request.planHash, request.drafts)
+                        : request.operation === 'decide-distillation'
+                          ? this.host.decideDistillation(request.workspaceId, request.proposalId, request.proposalHash, request.decision)
                       : request.operation === 'stop-goal'
                         ? (await this.host.stopGoal(request.workspaceId, request.goalId, request.planRevisionId, request.planHash), { workspaceId: request.workspaceId, goalId: request.goalId, action: 'stopped' })
                         : request.operation === 'resume-goal'

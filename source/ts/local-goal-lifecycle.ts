@@ -175,6 +175,16 @@ export class LocalGoalLifecycle implements LocalSupervisoryLifecycle {
     if (changed.changes !== 1) fail('STALE_RECOVERY_STATE', 'workspace recovery state changed during recovery')
   }
 
+  completeGoal(workspaceId: LaboratoryId<'workspace'>, goalId: LaboratoryId<'goal'>): void {
+    this.assertCurrentPlan(workspaceId, goalId)
+    const row = this.goalRow(workspaceId, goalId)
+    if (row?.state === 'completed') return
+    if (row?.state !== 'active' && row?.state !== 'stopped') fail('GOAL_NOT_CLOSABLE', 'goal cannot be completed from its current state')
+    const changed = this.database.prepare("UPDATE goals SET state='completed',updated_at=? WHERE workspace_id=? AND goal_id=? AND state IN ('active','stopped')")
+      .run(this.now().toISOString(), workspaceId, goalId)
+    if (changed.changes !== 1) fail('STALE_GOAL_STATE', 'goal state changed during completion')
+  }
+
   close(): void { if (!this.closed) { this.database.close(); this.closed = true } }
 
   private assertCurrentPlan(workspaceId: LaboratoryId<'workspace'>, goalId: LaboratoryId<'goal'>): void {

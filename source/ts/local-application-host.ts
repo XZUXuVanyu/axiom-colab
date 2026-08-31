@@ -4,6 +4,7 @@ import type { AdapterService } from './adapter-service.js'
 import type { TrustedInvocationSession } from './adapter-service.js'
 import type { JsonValue } from './harness-types.js'
 import type { LocalGoalCheckpointStore } from './goal-checkpoint.js'
+import type { DistillationDecision, DistillationDraft, DistillationProposal, GoalClosure, GoalDistillationService } from './goal-distillation.js'
 import type {
   CandidateFile, CandidateValidationRequest, CandidateValidationResult, ValidationCommand,
 } from './candidate-validation.js'
@@ -101,6 +102,7 @@ export interface LocalApplicationHostOptions {
   readonly validator: ValidationPromotionAuthority
   readonly createInstallation: (registry: InstalledToolRegistry) => InstalledToolRediscovery
   readonly checkpoints?: LocalGoalCheckpointStore
+  readonly distillation?: GoalDistillationService
   readonly installedExecutables?: {
     prepare(registration: InstalledToolRegistration): Promise<LoadedToolExecutableBinding>
     close(): void
@@ -513,6 +515,49 @@ export class LocalApplicationHost {
     return { workspaceId, goalId, callId, tool: toolName, result, reportArtifactId: reportArtifact.id, reportHash: reportArtifact.hash }
   }
 
+  closeGoal(
+    workspaceId: LaboratoryId<'workspace'>, goalId: LaboratoryId<'goal'>,
+    planRevisionId: LaboratoryId<'object'>, planHash: `sha256:${string}`,
+    drafts: readonly DistillationDraft[],
+  ): { readonly closure: GoalClosure; readonly proposals: readonly DistillationProposal[] } {
+    this.ensureReady()
+    if (this.options.distillation === undefined || this.options.checkpoints === undefined
+        || this.options.lifecycle.completeGoal === undefined) fail('OPERATION_NOT_AVAILABLE', 'goal closure is not composed')
+    const goal = this.options.lifecycle.inspectGoal(workspaceId, goalId)
+    if (goal?.plan === null || goal === null || goal.plan.id !== planRevisionId || goal.plan.hash !== planHash) {
+      fail('STALE_APPROVED_PLAN', 'goal closure does not bind the exact approved plan')
+    }
+    const existing = this.options.distillation.inspectClosure(workspaceId, goalId)
+    let closure: GoalClosure
+    let proposals: readonly DistillationProposal[]
+    if (existing !== null) {
+      if (existing.planRevisionId !== planRevisionId || existing.planHash !== planHash) fail('STALE_GOAL_CLOSURE', 'stored closure binds another plan')
+      closure = existing; proposals = []
+    } else {
+      const result = this.options.distillation.closeGoal(workspaceId, goalId, planRevisionId, planHash, drafts,
+        this.workflowInvocation(workspaceId, this.options.hostActorId, 'trusted-host', ['artifact.read', 'artifact.derive']))
+      closure = result.closure; proposals = result.proposals
+    }
+    this.options.lifecycle.completeGoal(workspaceId, goalId)
+    const checkpoint = this.options.checkpoints.latest(workspaceId, goalId)
+    if (checkpoint !== null && checkpoint.status !== 'completed') this.options.checkpoints.append({
+      workspaceId, goalId, planRevisionId, planHash, status: 'completed', completedCalls: checkpoint.completedCalls,
+      latestCallId: checkpoint.latestCallId, latestReportArtifactId: checkpoint.latestReportArtifactId,
+      latestReportHash: checkpoint.latestReportHash, summary: 'Goal closed with immutable archive and reviewable distillation',
+      checkpointedAt: closure.closedAt,
+    })
+    return { closure, proposals }
+  }
+
+  decideDistillation(
+    workspaceId: LaboratoryId<'workspace'>, proposalId: LaboratoryId<'proposal'>,
+    proposalHash: `sha256:${string}`, decision: DistillationDecision,
+  ): DistillationProposal {
+    this.ensureReady()
+    if (this.options.distillation === undefined || this.options.userActorId === undefined) fail('OPERATION_NOT_AVAILABLE', 'distillation review is not composed')
+    return this.options.distillation.decide(workspaceId, proposalId, proposalHash, decision, this.options.userActorId, 'user')
+  }
+
   async initialize(signal?: AbortSignal): Promise<void> {
     if (this.closed) fail('HOST_CLOSED', 'application host is closed')
     if (this.initialized) fail('HOST_ALREADY_INITIALIZED', 'application host is already initialized')
@@ -537,6 +582,7 @@ export class LocalApplicationHost {
     for (const installed of this.installedAdapters.values()) installed.adapter.dispose()
     this.installedAdapters.clear()
     this.options.installedExecutables?.close()
+    this.options.distillation?.close()
     this.options.checkpoints?.close()
     this.options.adapter.dispose()
     this.options.lifecycle.close()

@@ -29,6 +29,7 @@ export interface LocalSupervisoryLifecycle {
   revokeCapability(workspaceId: LaboratoryId<'workspace'>, capabilityId: LaboratoryId<'capability'>): Promise<void>
   resumeGoal(workspaceId: LaboratoryId<'workspace'>, goalId: LaboratoryId<'goal'>): Promise<void>
   recoverWorkspace(workspaceId: LaboratoryId<'workspace'>): Promise<void>
+  completeGoal?(workspaceId: LaboratoryId<'workspace'>, goalId: LaboratoryId<'goal'>): void
 }
 
 export interface LocalSupervisoryBackendOptions {

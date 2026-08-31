@@ -9,6 +9,7 @@ import { CandidateValidationRunner } from './candidate-validation.js'
 import { LocalCandidateRepository } from './candidate-repository.js'
 import type { GoalSessionReport } from './goal-coordinator.js'
 import { LocalGoalCheckpointStore } from './goal-checkpoint.js'
+import { GoalDistillationService } from './goal-distillation.js'
 import type { JsonValue } from './harness-types.js'
 import type { LaboratoryId } from './laboratory-contract.js'
 import { LocalApplicationHost } from './local-application-host.js'
@@ -354,6 +355,7 @@ export async function runLocalSupervisoryProcess(configValue: unknown): Promise<
     recoverWorkspace: async (workspaceId) => { store.reopenWorkspace(workspaceId) },
   })
   const checkpoints = new LocalGoalCheckpointStore(join(config.stateRoot, 'goal-checkpoints.sqlite3'))
+  const distillation = new GoalDistillationService(join(config.stateRoot, 'goal-distillation.sqlite3'), checkpoints, workflows)
   const observer = new ToolObserver({
     info: (message) => process.stderr.write(`${message}\n`),
     warn: (message) => process.stderr.write(`${message}\n`),
@@ -371,7 +373,7 @@ export async function runLocalSupervisoryProcess(configValue: unknown): Promise<
     'actor:local-executable-builder',
   )
   const host = new LocalApplicationHost({
-    store, workflows, candidates, lifecycle, adapter, validator, checkpoints,
+    store, workflows, candidates, lifecycle, adapter, validator, checkpoints, distillation,
     hostActorId: config.hostActorId,
     goalProgress: createLocalGoalProgressReader(workflows, config.hostActorId, approvedPlan),
     memory: createLocalMemoryProjectionReader(workflows, config.hostActorId),

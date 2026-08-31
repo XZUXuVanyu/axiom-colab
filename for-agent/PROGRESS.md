@@ -4,6 +4,30 @@ Entries are chronological. Each entry corresponds to one logical Git commit and
 records its exact subject, purpose, material changes, and validation actually
 performed.
 
+## 2026-08-31 - feat(goal): expose retry-safe goal closure
+
+Purpose: continue Stage 9 by making closure safe across interruption and
+available through the production supervisory boundary.
+
+Material changes:
+
+- Added durable exact-input closure claims before archive creation; retry finds
+  and verifies the one matching immutable archive instead of duplicating it.
+- Rejects changed inputs for an interrupted closure and corrupt claimed archive
+  bytes, while retaining exact proposal identities across retry.
+- Added restart-safe lifecycle completion and a final completed checkpoint only
+  after archive and proposal persistence succeeds.
+- Composed distillation in the production host and added bounded strict
+  `close-goal` and exact-hash `decide-distillation` protocol operations.
+- Kept review decisions side-effect free: accepted proposals remain inactive
+  review records and cannot install, delete, retain, or activate anything.
+
+Validation actually run:
+
+- `pnpm.cmd test`: all 101 TypeScript tests passed and regenerated `dist/`.
+- `pnpm.cmd run test:integration`: five portable real-Bridge/production-host
+  tests passed; the three opt-in WSL confinement tests skipped.
+
 ## 2026-08-31 - feat(goal): create reviewable goal distillation
 
 Purpose: continue Stage 9 with an authority-safe closure and distillation
