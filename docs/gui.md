@@ -25,9 +25,9 @@ the request to the displayed revision and candidate hash, clears the private
 editor immediately after submission, and displays only validation hashes,
 outcome, promotability, and salted suite commitments. It does not retain or
 display fixture bytes, definitions, salts, or command output after completion.
-A selected goal may execute an
-Adapter-discovered pure built-in or a built-in covered by an explicit
-`memoryToolPolicies` entry, using JSON object arguments. For a memory-dependent
+A selected goal may execute any host-projected executable Tool, including an
+Adapter-discovered pure built-in, a built-in covered by an explicit
+`memoryToolPolicies` entry, or a verified installed Tool, using JSON object arguments. For a memory-dependent
 call, the host starts a numeric-loopback-only memory service, issues a fresh
 workspace/Tool/call-bound grant with the configured operations and quotas, and
 revokes it when the Adapter call ends. The host seals the actual result in an

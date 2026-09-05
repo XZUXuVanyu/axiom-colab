@@ -4,6 +4,132 @@ Entries are chronological. Each entry corresponds to one logical Git commit and
 records its exact subject, purpose, material changes, and validation actually
 performed.
 
+## 2026-09-05 - chore(repo): prepare GitHub publication
+
+Purpose: publish the complete relevant Axiom CoLab source, design, test, and
+durable agent context without exposing generated runtime workspaces.
+
+Material changes:
+
+- Added the local `ide-test/` workspace to the ignore boundary because it
+  contains SQLite state, installed runtime artifacts, and memory payloads.
+- Retained source code, tests, documentation, versioned `dist/`, repository
+  automation, and durable agent files in the publishable tree.
+
+Validation actually run:
+
+- `git diff --check` passed before the publication commit.
+- A common secret-pattern scan of non-ignored files found only an intentional
+  redaction-test string.
+## 2026-08-31 - fix(gui): offer verified installed Tools for execution
+
+Purpose: allow users to call a validated and installed executable candidate
+from the Laboratory execution selector.
+
+Material changes:
+
+- Removed the presentation-only `source == built-in` filter from the selector;
+  it now follows the host's authoritative `executable` projection.
+- Updated the execution panel wording and GUI boundary documentation to cover
+  both built-in and verified installed Tools.
+- Made the supervisory fixture expose an executable installed candidate and
+  asserted the selector contains it after installation.
+
+Validation actually run:
+
+- Rebuilt `cpp-adapter-gui` and `axiom-supervisory-view-tests` in
+  `build/windows-qt612` Release.
+- The supervisory process and view CTest suite passed 2/2.
+- `git diff --check` passed.
+- Packaged the verified runtime at `build/portable-runtime-scroll-18`.
+
+## 2026-08-31 - fix(gui): decode fractional validation durations
+
+Purpose: keep the Laboratory available when WSL validation reports elapsed
+time with fractional milliseconds.
+
+Material changes:
+
+- Changed the strict candidate-evidence decoder to accept non-negative finite
+  JSON numbers for `durationMs` and display them to one decimal place.
+- Changed the supervisory GUI fixture to emit a fractional duration, covering
+  the real WSL response shape.
+
+Validation actually run:
+
+- Rebuilt `cpp-adapter-gui` and `axiom-supervisory-view-tests` in
+  `build/windows-qt612` Release.
+- The supervisory process and view CTest suite passed 2/2.
+- `git diff --check` passed.
+
+## 2026-08-31 - fix(gui): wait for supervisory process startup
+
+Purpose: prevent the IDE from sending its initial workspace request before the
+local supervisory process is ready to receive it.
+
+Material changes:
+
+- Made the Qt supervisory client wait for successful child-process startup,
+  with a bounded five-second failure diagnostic, before reporting a connection
+  or issuing requests.
+
+Validation actually run:
+
+- Rebuilt `cpp-adapter-gui` and `axiom-supervisory-view-tests` in
+  `build/windows-qt612` Release.
+- The supervisory process and view CTest suite passed 2/2.
+- `git diff --check` passed.
+
+## 2026-08-31 - fix(gui): make IDE tabs scroll on short displays
+
+Purpose: keep lower IDE controls, hints, and output reachable when the window
+height is smaller than the fixed page content.
+
+Material changes:
+
+- Wrapped the Tool authoring tab in a widget-resizing scroll area.
+- Wrapped the Laboratory supervisory view in a separate widget-resizing scroll
+  area without changing its host-owned controls or projections.
+- Added a GUI regression assertion for the Laboratory scroll boundary.
+
+Validation actually run:
+
+- Rebuilt `cpp-adapter-gui` in `build/windows-qt612` Release.
+- Rebuilt `axiom-supervisory-view-tests`; the supervisory process and view CTest
+  suite passed 2/2.
+- `git diff --check` passed.
+
+## 2026-08-31 - test(release): complete packaged state adversaries
+
+Purpose: finish the named Stage 10 adversarial acceptance at the copied
+production runtime boundary without treating mutable temporary state or
+filesystem contents as evidence.
+
+Material changes:
+
+- Extended the packaged acceptance driver to create an exact compute payload,
+  externally tamper with its authoritative bytes, require `CORRUPT_PAYLOAD`,
+  and verify the unusable payload leaves usable accounting while retained
+  evidence remains inspectable.
+- Added an immutable temporary-compute check: create, update, and release the
+  same object, then require the original and replacement result hashes in their
+  respective sealed observations and the compute object to be released.
+- Added stopped-goal execution rejection without a new observation, followed
+  by exact-plan resume.
+- Added a simulated uncommitted payload staging file before supervisory
+  shutdown and required restart recovery to remove it before reporting success.
+
+Validation actually run:
+
+- `node --check proj/scripts/accept-packaged-runtime.mjs` passed.
+- `pnpm.cmd test` rebuilt `dist/` and passed all 108 TypeScript tests.
+- A fresh 64-file package at `build/portable-runtime-adversarial-14` completed
+  the real WSL-constrained candidate lifecycle. Its final record reports
+  `corruption:"contained"`,
+  `temporaryValueMutation:"sealed-evidence-preserved"`,
+  `cancellation:"gated-without-evidence"`,
+  `partialWriteRecovery:"verified"`, `result:42`, and `restart:"verified"`.
+
 ## 2026-08-31 - test(release): prove packaged quota exhaustion
 
 Purpose: exercise authoritative workspace payload quotas through the real

@@ -9,6 +9,7 @@
 #include <QLineEdit>
 #include <QPlainTextEdit>
 #include <QPushButton>
+#include <QScrollArea>
 #include <QThread>
 
 #include <iostream>
@@ -33,6 +34,7 @@ int main(int argc, char* argv[]) {
     auto* working = view.findChild<QListWidget*>("workingMemory");
     auto* artifacts = view.findChild<QListWidget*>("artifactLineage");
     auto* discovered_tools = view.findChild<QListWidget*>("discoveredTools");
+    auto* execution_tools = view.findChild<QComboBox*>("executionToolSelector");
     auto* execute = view.findChild<QPushButton*>("executeTool");
     auto* arguments = view.findChild<QPlainTextEdit*>("executionArguments");
     auto* execution_result = view.findChild<QLabel*>("executionResult");
@@ -67,9 +69,11 @@ int main(int argc, char* argv[]) {
     auto* closure_result = view.findChild<QLabel*>("closureResult");
     auto* distillation = view.findChild<QListWidget*>("distillationProposals");
     auto* accept_distillation = view.findChild<QPushButton*>("acceptDistillation");
+    auto* scroll = view.findChild<QScrollArea*>("laboratoryScrollArea");
     if (workspaces == nullptr || goals == nullptr || resources == nullptr
         || plan == nullptr || status == nullptr || compute == nullptr
-        || working == nullptr || artifacts == nullptr || discovered_tools == nullptr) {
+        || working == nullptr || artifacts == nullptr || discovered_tools == nullptr
+        || execution_tools == nullptr) {
         std::cerr << "[FAIL] supervisory widgets are not inspectable\n";
         return 1;
     }
@@ -94,6 +98,11 @@ int main(int argc, char* argv[]) {
         || closure_result == nullptr || distillation == nullptr
         || accept_distillation == nullptr) {
         std::cerr << "[FAIL] workspace and goal creation widgets are not inspectable\n";
+        return 1;
+    }
+    if (scroll == nullptr || !scroll->widgetResizable()
+        || scroll->verticalScrollBarPolicy() != Qt::ScrollBarAsNeeded) {
+        std::cerr << "[FAIL] laboratory content is not vertically scrollable\n";
         return 1;
     }
 
@@ -242,7 +251,8 @@ int main(int argc, char* argv[]) {
     if (!installation_result->toolTip().contains("evidence:installed")
         || install_candidate->isEnabled() || discovered_tools->count() != 2
         || !discovered_tools->item(1)->text().contains("candidate_tool  [installed]")
-        || !discovered_tools->item(1)->toolTip().contains("Verified installation evidence")) {
+        || !discovered_tools->item(1)->toolTip().contains("Verified installation evidence")
+        || execution_tools->findText("candidate_tool") < 0) {
         std::cerr << "[FAIL] exact candidate installation did not refresh authoritative evidence\n";
         return 1;
     }

@@ -12,12 +12,14 @@
 #include <QListWidget>
 #include <QPushButton>
 #include <QPlainTextEdit>
+#include <QScrollArea>
 #include <QVBoxLayout>
 #include <QVariant>
 
 #include <optional>
 #include <algorithm>
 #include <cctype>
+#include <cmath>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -49,6 +51,16 @@ std::int64_t integer_field(const Json& value, std::string_view field) {
         throw SupervisoryResponseError(std::string(field) + " must be an integer");
     }
     return member.as_integer();
+}
+
+double duration_field(const Json& value, std::string_view field) {
+    const Json& member = value.at(field);
+    if (!member.is_number() || !std::isfinite(member.as_number())
+        || member.as_number() < 0.0) {
+        throw SupervisoryResponseError(std::string(field)
+            + " must be a non-negative finite number");
+    }
+    return member.as_number();
 }
 
 bool boolean_field(const Json& value, std::string_view field) {
@@ -135,7 +147,17 @@ SupervisoryView::SupervisoryView(SupervisoryProcessLaunch launch,
 }
 
 void SupervisoryView::build_ui() {
-    auto* page = new QVBoxLayout(this);
+    auto* outer = new QVBoxLayout(this);
+    outer->setContentsMargins(0, 0, 0, 0);
+    auto* scroll = new QScrollArea(this);
+    scroll->setObjectName("laboratoryScrollArea");
+    scroll->setWidgetResizable(true);
+    scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    scroll->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    outer->addWidget(scroll);
+    auto* content = new QWidget(scroll);
+    scroll->setWidget(content);
+    auto* page = new QVBoxLayout(content);
     page->setContentsMargins(20, 18, 20, 18);
     page->setSpacing(12);
 
@@ -282,7 +304,7 @@ void SupervisoryView::build_ui() {
     distillation_layout->addWidget(defer_distillation_, 3, 2);
     page->addWidget(distillation_group);
 
-    auto* execution_group = new QGroupBox("Execute host-authorized built-in Tool", this);
+    auto* execution_group = new QGroupBox("Execute host-authorized Tool", this);
     auto* execution_layout = new QGridLayout(execution_group);
     execution_tool_selector_ = new QComboBox(execution_group);
     execution_tool_selector_->setObjectName("executionToolSelector");
@@ -291,7 +313,7 @@ void SupervisoryView::build_ui() {
     execution_arguments_->setMaximumHeight(90);
     execute_button_ = new QPushButton("Execute", execution_group);
     execute_button_->setObjectName("executeTool");
-    execution_result_ = new QLabel("Select a goal and a host-authorized built-in Tool.", execution_group);
+    execution_result_ = new QLabel("Select a goal and a host-authorized executable Tool.", execution_group);
     execution_result_->setObjectName("executionResult");
     execution_result_->setWordWrap(true);
     execution_result_->setTextInteractionFlags(Qt::TextSelectableByMouse);
@@ -1226,7 +1248,7 @@ void SupervisoryView::render(const SupervisoryWorkspaceInspection& inspection) {
         const QString name = text(string_field(tool, "name"));
         const QString source = text(string_field(tool, "source"));
         auto* item = new QListWidgetItem(QString("%1  [%2]").arg(name, source), tools_);
-        if (source == "built-in" && boolean_field(tool, "executable")) {
+        if (boolean_field(tool, "executable")) {
             execution_tool_selector_->addItem(name);
         }
         const Json& evidence = tool.at("installationEvidenceHash");
@@ -1323,7 +1345,7 @@ void SupervisoryView::render(const SupervisoryWorkspaceInspection& inspection) {
                     detail += QString("\n  - %1: %2, exit=%3, %4 ms\n    stdout=%5 stderr=%6")
                         .arg(text(string_field(process, "commandId")), text(string_field(process, "outcome")))
                         .arg(process.at("exitCode").is_null() ? "none" : QString::number(integer_field(process, "exitCode")))
-                        .arg(integer_field(process, "durationMs"))
+                        .arg(QString::number(duration_field(process, "durationMs"), 'f', 1))
                         .arg(text(string_field(process, "stdoutHash")), text(string_field(process, "stderrHash")));
                 }
             }

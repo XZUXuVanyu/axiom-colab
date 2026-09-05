@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process'
-import { existsSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createInterface } from 'node:readline'
@@ -57,6 +57,10 @@ async function rejected(operation, fields, expectedCodes) {
 
 function source(text) { return Buffer.from(text, 'utf8').toString('base64') }
 function requireValue(value, message) { if (!value) throw new Error(message); return value }
+function exactHash(value, message) {
+  if (typeof value !== 'string' || !/^sha256:[a-f0-9]{64}$/.test(value)) throw new Error(message)
+  return value
+}
 
 async function inspectAfterRestart(workspaceId, goalId) {
   const restarted = spawn(node, [runner, resolve(configPath)], {
@@ -123,10 +127,14 @@ const fabricatedCmake = `cmake_minimum_required(VERSION 3.24)\nmessage(STATUS "{
 
 let accepted = null
 try {
+  const configured = JSON.parse(readFileSync(resolve(configPath), 'utf8'))
+  if (typeof configured.stateRoot !== 'string') throw new Error('packaged configuration does not bind an authoritative state root')
+  const memoryRoot = resolve(configured.stateRoot, 'memory')
   const suffix = `${Date.now()}-${process.pid}`
   const workspaceId = `workspace:packaged-${suffix}`
   const foreignWorkspaceId = `workspace:packaged-foreign-${suffix}`
   const quotaWorkspaceId = `workspace:packaged-quota-${suffix}`
+  const corruptionWorkspaceId = `workspace:packaged-corruption-${suffix}`
   const goalId = `goal:packaged-${suffix}`
   await request('create-workspace', { workspaceId })
   await request('create-workspace', { workspaceId: foreignWorkspaceId })
@@ -147,6 +155,31 @@ try {
   }
   const quotaGoals = await request('list-goals', { workspaceId: quotaWorkspaceId })
   if (quotaGoals.goals.length !== 1 || quotaGoals.goals[0] !== quotaGoal.goalId) throw new Error('quota failure changed goal visibility')
+  await request('create-workspace', { workspaceId: corruptionWorkspaceId })
+  const corruptionGoal = await request('create-goal', {
+    workspaceId: corruptionWorkspaceId, goalId: `goal:corruption-${suffix}`,
+    objective: 'Detect tampering with authoritative compute payload bytes.',
+  })
+  const corruptible = await request('execute-tool', {
+    workspaceId: corruptionWorkspaceId, goalId: corruptionGoal.goalId, tool: 'compute_buffer',
+    arguments: { action: 'create', base64: source('authoritative bytes before tamper') },
+  })
+  const corruptibleHash = exactHash(corruptible.result?.hash, 'compute creation did not return an authoritative payload hash')
+  const corruptibleId = requireValue(corruptible.result?.id, 'compute creation did not return an object identity')
+  if (!Number.isSafeInteger(corruptible.result?.size) || corruptible.result.size <= 0) throw new Error('compute creation did not return a positive payload size')
+  const beforeTamper = await request('inspect', { workspaceId: corruptionWorkspaceId, goalId: corruptionGoal.goalId })
+  const payloadHex = corruptibleHash.slice('sha256:'.length)
+  writeFileSync(resolve(memoryRoot, 'payloads', payloadHex.slice(0, 2), payloadHex), 'tampered authoritative bytes')
+  await rejected('execute-tool', {
+    workspaceId: corruptionWorkspaceId, goalId: corruptionGoal.goalId, tool: 'compute_buffer',
+    arguments: { action: 'read', id: corruptibleId },
+  }, ['CORRUPT_PAYLOAD'])
+  const corruptionInspection = await request('inspect', { workspaceId: corruptionWorkspaceId, goalId: corruptionGoal.goalId })
+  if (corruptionInspection.resources.usedBytes !== beforeTamper.resources.usedBytes - corruptible.result.size
+      || corruptionInspection.resources.objectCount !== beforeTamper.resources.objectCount - 1
+      || corruptionInspection.resources.corruptObjects !== 1 || corruptionInspection.observations.length !== 1) {
+    throw new Error(`payload tampering was not contained as corrupt non-authoritative state: ${JSON.stringify({ resources: corruptionInspection.resources, observations: corruptionInspection.observations })}`)
+  }
   const fabricated = await request('create-candidate', {
     workspaceId: foreignWorkspaceId,
     specification: { problem: 'Attempt to fabricate independent validation.', publicName: fabricatedDescriptor.name,
@@ -177,6 +210,42 @@ try {
     throw new Error('failed fabricated validation gained proposal, approval, or installation authority')
   }
   const goal = await request('create-goal', { workspaceId, goalId, objective: 'Validate, approve, install, invoke, and distill an exact candidate.' })
+  const temporaryOriginal = await request('execute-tool', {
+    workspaceId, goalId, tool: 'compute_buffer',
+    arguments: { action: 'create', base64: source('temporary original value') },
+  })
+  const temporaryId = requireValue(temporaryOriginal.result?.id, 'temporary compute creation did not return an object identity')
+  const temporaryOriginalHash = exactHash(temporaryOriginal.result?.hash, 'temporary compute creation did not return a payload hash')
+  const temporaryUpdated = await request('execute-tool', {
+    workspaceId, goalId, tool: 'compute_buffer',
+    arguments: { action: 'update', id: temporaryId, base64: source('temporary replacement value') },
+  })
+  const temporaryUpdatedHash = exactHash(temporaryUpdated.result?.hash, 'temporary compute update did not return a payload hash')
+  if (temporaryUpdatedHash === temporaryOriginalHash) throw new Error('temporary-value mutation did not produce a distinct immutable payload identity')
+  await request('execute-tool', {
+    workspaceId, goalId, tool: 'compute_buffer', arguments: { action: 'release', id: temporaryId },
+  })
+  const temporaryInspection = await request('inspect', { workspaceId, goalId })
+  const originalObservation = temporaryInspection.observations.find((item) => item.callId === temporaryOriginal.callId)
+  const updatedObservation = temporaryInspection.observations.find((item) => item.callId === temporaryUpdated.callId)
+  const releasedCompute = temporaryInspection.memory.compute.find((item) => item.objectId === temporaryId)
+  if (releasedCompute?.state !== 'released' || originalObservation?.result?.hash !== temporaryOriginalHash
+      || updatedObservation?.result?.hash !== temporaryUpdatedHash) {
+    throw new Error('temporary-value mutation retroactively changed sealed evidence or retained active compute state')
+  }
+  await request('stop-goal', {
+    workspaceId, goalId, planRevisionId: goal.planRevisionId, planHash: goal.planHash,
+  })
+  await rejected('execute-tool', {
+    workspaceId, goalId, tool: 'add_numbers', arguments: { a: 20, b: 22 },
+  }, ['GOAL_NOT_ACTIVE'])
+  const stoppedInspection = await request('inspect', { workspaceId, goalId })
+  if (stoppedInspection.observations.length !== temporaryInspection.observations.length) {
+    throw new Error('cancelled goal execution produced partial evidence')
+  }
+  await request('resume-goal', {
+    workspaceId, goalId, planRevisionId: goal.planRevisionId, planHash: goal.planHash,
+  })
   const authored = await request('create-candidate', {
     workspaceId,
     specification: { problem: 'Need a portable exact-candidate acceptance Tool.', publicName: 'portable_sum', description: descriptor.description,
@@ -277,8 +346,15 @@ try {
   await request('decide-distillation', { workspaceId, proposalId: distilled.proposalId, proposalHash: distilled.proposalHash, decision: 'accepted' })
   const finalInspection = await request('inspect', { workspaceId, goalId })
   if (finalInspection.distillation?.proposals?.[0]?.active !== false) throw new Error('accepted distillation was presented as active')
+  // This simulates a process interruption after a payload stage write but before
+  // promotion/metadata commit. Recovery occurs only when the packaged host restarts.
+  mkdirSync(resolve(memoryRoot, 'staging'), { recursive: true })
+  const partialStage = resolve(memoryRoot, 'staging', `partial-write-${suffix}.tmp`)
+  writeFileSync(partialStage, 'uncommitted staged bytes')
   accepted = { workspaceId, goalId, revisionId: revised.revisionId, validationId: revisedValidation.validationId,
-    fabricatedValidation: 'rejected', quotaExhaustion: 'atomic',
+    fabricatedValidation: 'rejected', quotaExhaustion: 'atomic', corruption: 'contained',
+    temporaryValueMutation: 'sealed-evidence-preserved', cancellation: 'gated-without-evidence',
+    partialWriteRecovery: { path: partialStage },
     installationId: finalInspection.candidates.find((item) => item.revisionId === revised.revisionId)?.installation?.installationId,
     result: execution.result, closureId: closed.closure.closureId, distillation: 'accepted-inactive' }
 } finally {
@@ -294,5 +370,7 @@ if (restartedCandidate.installation?.installationId !== accepted.installationId 
   throw new Error('restart did not preserve exact installation, closure, and inactive distillation authority')
 }
 delete accepted.revisionId
+if (existsSync(accepted.partialWriteRecovery.path)) throw new Error('restart left an uncommitted partial payload staging file behind')
+accepted.partialWriteRecovery = 'verified'
 accepted.restart = 'verified'
 process.stdout.write(`${JSON.stringify(accepted)}\n`)

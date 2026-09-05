@@ -15,7 +15,7 @@ const candidate = {
     suites: ['candidate', 'standard', 'challenge'].map((kind) => ({
       suiteId: `${kind}-suite`, kind, definitionHash: hash(kind === 'candidate' ? '1' : kind === 'standard' ? '2' : '3'),
       hidden: kind === 'challenge', commandCount: 1, outcome: kind === 'standard' ? 'failed' : 'passed',
-      processes: [{ commandId: `${kind}-command`, commandHash: hash('4'), outcome: kind === 'standard' ? 'failed' : 'passed', exitCode: kind === 'standard' ? 1 : 0, signalName: null, errorCode: null, durationMs: 5, stdoutBytes: 0, stderrBytes: 0, stdoutHash: hash('5'), stderrHash: hash('6'), stdout: kind === 'challenge' ? null : '', stderr: kind === 'challenge' ? null : '' }],
+      processes: [{ commandId: `${kind}-command`, commandHash: hash('4'), outcome: kind === 'standard' ? 'failed' : 'passed', exitCode: kind === 'standard' ? 1 : 0, signalName: null, errorCode: null, durationMs: 5.25, stdoutBytes: 0, stderrBytes: 0, stdoutHash: hash('5'), stderrHash: hash('6'), stdout: kind === 'challenge' ? null : '', stderr: kind === 'challenge' ? null : '' }],
     })),
   },
   proposal: {
@@ -186,7 +186,7 @@ const host = {
       },
       tools: [
         { name: 'add_numbers', source: 'built-in', executable: true, installationEvidenceHash: null, descriptor: { name: 'add_numbers', description: 'Adds values.', whenToUse: 'For addition.', parameters: { type: 'object' }, output: { type: 'object' }, timeoutMs: 1000, allowParallel: true, sideEffect: false } },
-        ...(candidate.installation?.outcome === 'installed' ? [{ name: 'candidate_tool', source: 'installed', executable: false, installationEvidenceHash: candidate.installation.evidenceHash, descriptor: candidate.descriptor }] : []),
+        ...(candidate.installation?.outcome === 'installed' ? [{ name: 'candidate_tool', source: 'installed', executable: true, installationEvidenceHash: candidate.installation.evidenceHash, descriptor: candidate.descriptor }] : []),
       ], candidates: [candidate], timeline: [],
       distillation: goalId === null ? { closure: null, proposals: [] } : {
         closure: goalClosure === null ? null : {

@@ -69,6 +69,11 @@ void SupervisoryProcessClient::start(const QString& program,
         process_.setWorkingDirectory(working_directory);
     }
     process_.start(program, arguments, QIODevice::ReadWrite);
+    if (!process_.waitForStarted(5000)) {
+        throw std::runtime_error(
+            "failed to start supervisory process: "
+            + process_.errorString().toStdString());
+    }
 }
 
 void SupervisoryProcessClient::start_local_supervisory_process(

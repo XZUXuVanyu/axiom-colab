@@ -1,9 +1,115 @@
 # Axiom CoLab Current Handoff
 
-Last updated: 2026-08-31
+Last updated: 2026-09-05
+
+## Product direction agreed for the refactor
+
+**Product boundary:** Axiom CoLab must not become another C++ IDE. Visual
+Studio remains the home for editing, IntelliSense, CMake/MSBuild, compiler
+diagnostics, test running, debugging, profiling, refactoring, and Git. Axiom
+adds the capabilities a traditional IDE lacks: intent/goals, agent proposals
+and review, independent candidate validation, provenance and promotion,
+installed-Tool governance, shared memory/artifacts, and repeatable multi-Tool
+composition.
+
+**Core philosophy:** optimize for an evidence-backed path from idea to solid
+implementation, not merely code generation:
+
+`intent -> editable design -> normal C++ project -> build/test/debug ->
+validation -> versioned Tool -> composition/run -> retained evidence`.
+
+The user must always be able to inspect and edit ordinary source, set a
+breakpoint, run conventional tests, and understand why a Tool was accepted.
+Agents propose reviewable plans and diffs; they do not silently install or
+mutate authoritative state.
+
+**Authoring UX:** strict JSON remains an internal/exportable protocol but is
+not the primary user interface. The first refactor milestone is to link or
+create a normal CMake C++ Tool project from a folder, with conventional files
+such as `CMakeLists.txt`, `src/`, `include/`, and `tests/`. Use a friendly
+metadata form (with optional YAML/advanced source view) to generate the exact
+candidate envelope. Keep JSON import/export for automation and advanced users.
+
+**Primary modules:** replace the long Laboratory page with four focused areas:
+
+1. **Project & intent** — workspace, goals, requirements, plans, decisions,
+   and relevant memory/artifacts.
+2. **Design & implementation** — project files, C++ source, build/test
+   evidence, candidate interface metadata, and revision history. In the final
+   product these operations should primarily open or integrate with Visual
+   Studio rather than reimplement it.
+3. **Agent & review** — model/status selection, prompts, plans, proposed
+   patches, explanations, and explicit approval actions.
+4. **Compose & run** — manual typed calls plus a Blender-like typed dataflow
+   graph, live/cached previews where safe, artifacts, and execution history.
+
+**Composition:** Tools do not directly trust or invoke each other. The host
+coordinates a typed dataflow graph. Small values can flow as JSON; larger or
+durable values are host-managed compute memory, working memory, or immutable
+artifacts. Nodes declare schemas and execution traits (pure/previewable,
+cacheable, side-effecting), so incompatible connections are rejected and only
+safe nodes are auto-rerun.
+
+**Architecture/refactor choice:** retain and stabilize the trusted backend:
+supervisory lifecycle, validation, exact approval/installation, provenance,
+tool registry, execution policy, memory/artifacts, and audit records. Replace
+the Qt JSON-first authoring/Laboratory UX and add new project-registration,
+source/build/test-evidence, agent-diff, and graph-execution contracts. Do not
+do a full rewrite; the current GUI is a prototype client over a backend worth
+preserving.
+
+**Delivery order:**
+
+1. Project-folder/CMake candidate creation and friendly metadata authoring.
+2. Focused UI/modules, with advanced evidence in an inspector rather than the
+   primary path.
+3. Visual Studio extension/thin client over the same backend APIs.
+4. Typed manual call UI and dataflow graph with recorded runs.
+5. Agent proposes reviewable patches and tests; later add model selection and
+   multi-Tool planning.
+
+**Traceability requirement:** every installed Tool should expose a clear
+chain: `goal -> approved design -> source revision -> build -> tests ->
+validation -> installation -> executions`.
 
 ## Current state
 
+- The repository is prepared for its initial GitHub publication as
+  `axiom-colab`. Local `ide-test/` runtime state is explicitly ignored with
+  build products, dependencies, logs, generated overlays, and machine-local
+  configuration; source, versioned runtime output, design documents, tests,
+  and durable agent context remain versioned.
+- The Laboratory's execution selector now includes every authoritative Tool
+  projection whose `executable` flag is true, rather than incorrectly limiting
+  the list to the `built-in` source. Verified installed candidates such as the
+  user's `quick_sine` are therefore callable from the same selected-goal Tool
+  panel. The selector and documentation now describe this broader, host-owned
+  authorization boundary, and the GUI regression fixture verifies an installed
+  executable candidate is included.
+- The Qt candidate-evidence decoder now accepts the authoritative fractional
+  millisecond `durationMs` values emitted by WSL validation. Previously it
+  required an integer and could render the Laboratory unavailable while a
+  valid, promotable candidate had a pending installation proposal.
+- The Qt supervisory client now waits up to five seconds for its local
+  supervisory child process to enter the running state before sending the
+  initial workspace request. This removes the launch race that could leave a
+  valid configuration showing `Unavailable: supervisory process is not
+  running` and disable workspace/goal creation controls.
+- Both IDE tabs now place their complete content in widget-resizing Qt scroll
+  areas with vertical scrollbars as needed. On a short laptop display the
+  Laboratory's lower candidate/evidence controls and the Tool authoring build
+  output remain reachable rather than being clipped beneath fixed content.
+  The supervisory-view test now asserts the Laboratory scroll boundary.
+- The packaged Stage 10 adversarial acceptance now covers all named remaining
+  boundary cases through the copied runtime. It simulates an uncommitted memory
+  staging write and verifies restart recovery removes it; tampers with the
+  exact on-disk payload bytes and observes `CORRUPT_PAYLOAD` with the corrupt
+  payload excluded from usable accounting; proves a released temporary compute
+  value cannot rewrite the distinct hashes retained in earlier sealed Tool
+  reports; and stops a goal, verifies a subsequent Tool request is rejected
+  without a new observation, then resumes the exact plan. The complete WSL
+  run still installs `portable_sum`, returns 42, closes/distills the goal, and
+  preserves the exact records after restart.
 - Production workspace creation now accepts an optional exact positive byte and
   object quota while preserving the existing default when omitted. Packaged
   acceptance creates a 64-byte/one-object workspace and sends a 128-byte
@@ -1059,15 +1165,14 @@ installation controls:
 
 ## Exact next work
 
-Automate the remaining Stage 10 adversarial acceptance at the
-production/packaged boundary: partial writes, authoritative-state corruption,
-cancellation, and misleading temporary-value manipulation.
-The packaged boundary now covers fabricated validation output, hidden-input
-disclosure, fabricated approval evidence,
-self-approval injection, stale/replayed approval, candidate mutation after
-approval, cross-workspace proposal access, quota exhaustion, and supervisory
-restart. Keep
-packaged runtime and WSL staging separate from authoritative workspace state.
+Treat the complete Stage 10 packaged acceptance as the release gate after
+changes to runtime packaging, memory persistence, supervisory execution,
+candidate validation, installation, or goal closure. It now covers fabricated
+validation output, hidden-input disclosure, fabricated/self/replayed approval,
+candidate mutation after approval, cross-workspace proposal access, quota
+exhaustion, partial writes, payload corruption, goal cancellation gating,
+temporary-value mutation, and supervisory restart. Keep packaged runtime and
+WSL staging separate from authoritative workspace state.
 
 Keep the WSL integration suite opt-in for portable CI and run it explicitly on
 the supported Windows/Ubuntu composition before changing confinement claims.

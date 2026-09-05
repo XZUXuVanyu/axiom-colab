@@ -19,6 +19,7 @@
 #include <QPlainTextEdit>
 #include <QProcess>
 #include <QPushButton>
+#include <QScrollArea>
 #include <QSet>
 #include <QStatusBar>
 #include <QTextCursor>
@@ -58,7 +59,13 @@ MainWindow::MainWindow(QString supervisory_config_path, QWidget* parent)
     setAcceptDrops(true);
 
     auto* tabs = new QTabWidget(this);
-    auto* central = new QWidget(tabs);
+    auto* authoring_scroll = new QScrollArea(tabs);
+    authoring_scroll->setObjectName("authoringScrollArea");
+    authoring_scroll->setWidgetResizable(true);
+    authoring_scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    authoring_scroll->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    auto* central = new QWidget(authoring_scroll);
+    authoring_scroll->setWidget(central);
     auto* page = new QVBoxLayout(central);
     page->setContentsMargins(20, 18, 20, 18);
     page->setSpacing(14);
@@ -165,7 +172,7 @@ MainWindow::MainWindow(QString supervisory_config_path, QWidget* parent)
                      supervisory_runtime_directory(),
                      std::move(supervisory_config_path), tabs),
                  "Laboratory");
-    tabs->addTab(central, "Tool authoring");
+    tabs->addTab(authoring_scroll, "Tool authoring");
     setCentralWidget(tabs);
     statusBar()->showMessage("Ready");
 
