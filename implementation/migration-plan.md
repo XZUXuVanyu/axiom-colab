@@ -81,6 +81,42 @@ a79f4780ac7c25db53ad0c738e48674359fd742f	refs/tags/legacy-v0-20260909-a79f478^{}
 
 ## 6. 本记录不声称的内容
 
-- 未编译任何 C++、未配置 CMake、未运行 ctest：G00 中与构建/测试相关的部分为 `not_run`。
-- 未迁移远端 `main`，未删除任何 legacy 跟踪文件，未创建新版内容提交。
+- 未编译任何 C++、未配置 CMake、未运行 ctest：G00 中与构建/测试相关的部分为 `not_run`（T01 已另行建立并运行，见 `records/T01.md`）。
 - 提示包本身与 `state/progress.json` 不携带任何验收结论；本文件不继承旧项目“已通过”状态。
+
+## 7. 新 main 落地记录（2026-09-09，T01 完成后）
+
+用户指令原文：`ok, commit to main, record T01 and I will continue T02 in a new conversation`。
+
+执行（真实命令与结果）：
+
+```text
+git checkout main                      exit=0  （Switched to branch 'main'）
+git merge --ff-only v1-rebuild-prep    exit=0  （Updating a79f478..d3848c1  Fast-forward）
+git -c http.sslBackend=openssl push origin refs/heads/main:refs/heads/main
+                                       exit=0  （a79f478..d3848c1  main -> main）
+```
+
+未使用 `--force`、未 orphan、未 reset 远端。推送前已核对远端 `main` 仍为 `a79f4780…`。
+
+结果状态：
+
+| ref | SHA | 说明 |
+| --- | --- | --- |
+| `refs/heads/main` | `d3848c1638b45c73ec72066ae5f4b28a6c3b1f90` | 新版内容；祖先为 `a79f4780…` |
+| `refs/heads/legacy` | `a79f4780ac7c25db53ad0c738e48674359fd742f` | 原 legacy 快照，未动 |
+| `refs/tags/legacy-v0-20260909-a79f478` | `a80ddfb7…` → peeled `a79f4780…` | 归档标签，未动 |
+| `refs/heads/v1-rebuild-prep` | `d3848c1…` | 与 main 同点 |
+
+内容差异：
+
+- 跟踪文件 192 → 267：**新增 75，删除 0**。
+- 被修改的既有文件仅 4 个：`.gitignore`、`AGENTS.md`、`CMakeLists.txt`、`README.md`。
+- 因此 `main` 上**没有任何 legacy 跟踪文件被删除**；legacy 内容完整存在于 `a79f4780…`（本地 `legacy` 分支、远端 `legacy` 分支、归档标签三处可访问）。
+
+未完成的部分（不得据此声称新版内容完整）：
+
+- 12 个业务组件仍未实现；`main` 上这些目标在 configure 时列为 pending。
+- legacy 的 TypeScript/旧 C++ 源码与 `dist/`、`proj/`、`tests/ts` 等目录**仍在 main 跟踪树内**，属未清理的旧内容。
+  按 `specs/15`「只移除tracked旧文件」，其移除需要一次明确的后续提交（尚未执行，未获指令）。
+- 根 `LICENSE`、`deps/THIRD-PARTY-NOTICES.md` 未创建。
