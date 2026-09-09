@@ -54,18 +54,22 @@ and `docs/LICENSE-DECISION.md`.
 - Linkage: **shared** (`QT_CONFIG += shared`). LGPLv3 requires that users can
   replace the Qt libraries, so Axiom V1 must stay dynamically linked against Qt.
 
-## Dependencies not yet fetched
+## Dependencies fetched for the audio product (not yet linked)
 
-### JUCE — 8.0.14 — AGPLv3 (open-source option) — **terms not yet verified**
+### JUCE — 8.0.14 — **AGPLv3 or commercial (dual-licensed)**
 
-- Declared in `contracts/dependencies-baseline.json`; needed by the audio
-  product targets (T15–T17).
-- **Not yet downloaded**, so no digest is recorded here and its exact licence
-  text has not been read: this machine's DNS blocks `juce.com` and
-  `raw.githubusercontent.com`.
-- Before the audio targets are built, its bytes must be fetched, hashed into
-  `deps/lock.json`, and its `LICENSE.md` read and summarised here. Until then,
-  no compliance claim is made for JUCE.
+- Source: <https://github.com/juce-framework/JUCE/archive/refs/tags/8.0.14.tar.gz>
+- Archive SHA-256: `ceb18e4ac9ab5ea71f3f20240d5852707767a1789ab43d06656a296da9e62f3e`
+- Extracted tree SHA-256: `2ceee3c3a757c2aba82f37cfe9289f0f44f79dd7c6e27ca98ca8329fd055f331`
+- Extracted tree: `deps/sources/JUCE` (4,425 files); CMake project version verified as `8.0.14`
+- Licence text: `deps/sources/JUCE/LICENSE.md` (4,971 bytes, sha256
+  `2633539bb26d244f0966fbc4df59400ea99bdf575fa96291851c1c3ff3456146`).
+  Verbatim: the JUCE Framework modules are **dual-licensed under AGPLv3 and the
+  commercial JUCE licence**.
+- Axiom V1 uses the **AGPLv3** option, which is why the project itself is
+  AGPL-3.0-or-later (DCR-0002). No commercial JUCE licence is purchased.
+- Not yet linked into any target; the audio smoke shell and product targets
+  (T02, T15–T17) will consume it. Keep this notice in sync if the version changes.
 
 ## Runtime/system components
 

@@ -42,6 +42,20 @@
                                         "license":  "public-domain",
                                         "fetched_utc":  "2026-09-09T13:30:00Z",
                                         "fetched_by":  "T01 bootstrap (tools/bootstrap-deps.ps1), user-authorised, offline build reads this cache"
-                                    }
+                                    },
+                         "JUCE":  {
+                                      "version":  "8.0.14",
+                                      "source":  "https://github.com/juce-framework/JUCE/archive/refs/tags/8.0.14.tar.gz",
+                                      "source_dir":  "sources/JUCE",
+                                      "archive_name":  "JUCE-8.0.14.tar.gz",
+                                      "archive_kind":  "tar.gz",
+                                      "sha256":  "ceb18e4ac9ab5ea71f3f20240d5852707767a1789ab43d06656a296da9e62f3e",
+                                      "tree_sha256":  "2ceee3c3a757c2aba82f37cfe9289f0f44f79dd7c6e27ca98ca8329fd055f331",
+                                      "file_count":  4425,
+                                      "license":  "AGPLv3 or commercial (JUCE 8 EULA); LICENSE.md sha256 2633539bb26d244f0966fbc4df59400ea99bdf575fa96291851c1c3ff3456146",
+                                      "fetched_utc":  "2026-09-09T14:05:00Z",
+                                      "fetched_by":  "user-authorised fetch into deps/sources; offline build reads this cache",
+                                      "notes":  "Dual-licensed: project uses the AGPLv3 option (DCR-0002). CMake project version 8.0.14 verified from its CMakeLists.txt."
+                                  }
                      }
 }
