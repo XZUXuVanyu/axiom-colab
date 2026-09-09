@@ -36,6 +36,32 @@ bootstrap: may I pre-fetch the locked official bytes under D:\
 | C1 仓库路径 | **approved：保留 `D:\axiom-colab`**；以远端仓库一致性为准 | 规范文本 `D:\Dev\axiom-colab` 未改；T00 已在该路径实施，远端 `origin` 与预期一致 |
 | bootstrap 预取 | **approved：依赖放在 D: 盘** | 允许在沙箱外按锁定官方字节预取；预取后须逐字节校验 hash 并写入 F012 `deps/lock.json`，禁止编造 SHA |
 
+## 2b. 追加裁定（同日第二轮）
+
+| 项 | 裁定原文 | 结论 |
+| --- | --- | --- |
+| 许可证文本 | `1. use the one that fits both Qt and JUCE's rules` | **项目采用 AGPL-3.0-or-later**（推导见第 2c 节）；JUCE 8.0.14 的精确条款须在 T01 bootstrap 时从其 `LICENSE.md` 核实并写入 `deps/lock.json` |
+| 依赖缓存路径 | `2. D:\axiom-colab\deps\sources` | F016 bootstrap 与 F009 `cmake/Dependencies.cmake` 的固定只读目录；`.gitignore` 已排除跟踪（`/deps/sources/`） |
+
+## 2c. 许可证选择推导（工程判定，非法律意见）
+
+事实：
+
+- Qt 6.11.2 安装为 `License type [Opensource]`；qtbase 与 qtdeclarative 的 SBOM license id 为 `LGPL-3.0-only`、`GPL-3.0-only`、`GPL-2.0-only`、`Qt-GPL-exception-1.0`；构建配置 `QT_CONFIG += shared`（动态链接）。
+- JUCE 8.0.14 由 `contracts/dependencies-baseline.json` 锁定；JUCE 8 的开源路线为 AGPLv3 系（精确条款待 bootstrap 核实）。
+- 项目已批准开源；`specs/01` 明确不做云服务与多租户。
+
+推导：
+
+1. 宽松许可（MIT/Apache-2.0）需 Qt 商业许可 + JUCE 商业许可 → 与「开源、不购买许可」冲突，排除。
+2. GPL-3.0 可与 Qt 的 `GPL-3.0-only` 兼容，但 AGPLv3 作品不可并入 GPLv3-only 作品（方向性不兼容）→ 排除，除非 JUCE 实际条款不同。
+3. **AGPL-3.0-or-later** 同时满足：JUCE 8 的 AGPLv3 分支直接适用；Qt 走 LGPLv3 选项，LGPLv3 作为 GPLv3 的补充允许并入 AGPLv3 作品（须保持动态链接、提供 Qt 源码与修改、保留声明与许可证文本）。
+
+结论：**项目整体 AGPL-3.0-or-later**；Qt 以 LGPLv3 使用且必须动态链接（当前 Qt 为 shared，符合）；JUCE 以 AGPLv3 使用。
+若所有者改为闭源/商业分发，必须购买 JUCE 商业许可并重新评估 Qt 许可——该变更需新 DCR。
+
+仍未核实项（不得据此声称已合规）：JUCE 8.0.14 的 `LICENSE.md` 原文尚未取得（本机 DNS 阻止 `juce.com` 与 `raw.githubusercontent.com`），须在 T01 bootstrap 取得锁定字节后核对；Qt LGPLv3 的发布义务（Qt 源码/修改提供、许可证文本随包、可替换动态库）须在 F011/F015 与 T18 打包中落实。
+
 ## 3. Qt 安装验证（只读探针，2026-09-09）
 
 ```text

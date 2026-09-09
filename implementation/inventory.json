@@ -170,10 +170,16 @@
     "items": [
       {"id": "C4-a", "approved": "switch toolchain version to VS Build Tools 2026 18.9.12120.119 / MSVC 14.51.36231 / CMake 4.3.1-msvc1"},
       {"id": "C4-b", "approved": "Qt 6.11.2 installed at C:\\Qt; installation verified by read-only probe"},
-      {"id": "C4-c", "approved": "project will be open source; exact licence text still to be chosen by owner"},
+      {"id": "C4-c", "approved": "project will be open source; licence text determined as AGPL-3.0-or-later (fits both Qt LGPLv3 option and JUCE 8 AGPLv3 option); JUCE terms to be verified from its LICENSE.md during bootstrap"},
       {"id": "C1", "approved": "keep local repo at D:\\axiom-colab; remote repository consistency is the authority"},
-      {"id": "bootstrap", "approved": "dependency pre-fetch allowed on D: drive, official locked bytes only"}
+      {"id": "bootstrap", "approved": "dependency pre-fetch allowed; fixed read-only cache directory D:\\axiom-colab\\deps\\sources (git-ignored)"}
     ],
+    "project_licence_decision": {
+      "licence": "AGPL-3.0-or-later",
+      "rationale": "Only open-source option compatible with both Qt 6.11.2 (LGPL-3.0-only / GPL-3.0-only options, shared linkage) and JUCE 8.0.14 (AGPLv3 route); permissive licences would require commercial Qt and JUCE licences.",
+      "obligations": ["keep Qt dynamically linked (QT_CONFIG += shared)", "ship Qt licence texts and source/modification offer", "preserve copyright notices", "reassess if distribution model changes to closed source"],
+      "unverified": "JUCE 8.0.14 LICENSE.md text not yet obtained (DNS blocks juce.com and raw.githubusercontent.com); verify from locked bytes in T01 bootstrap before claiming compliance"
+    },
     "conflicts_closed": ["C1", "C4-a", "C4-b", "C4-c"],
     "conflicts_open": ["C2 (D:\\Dev\\tools reference projects unreachable)", "C3 (for-agent/HANDOFF.md vs pack rule 16)"]
   },
