@@ -1,0 +1,1671 @@
+{
+  "schema_version": 1,
+  "production_files": [
+    {
+      "file_id": "F001",
+      "task": "T00",
+      "component": "C12",
+      "path": "AGENTS.md",
+      "kind": "config",
+      "responsibility": "复制固定生产实现约束，保留适用本地规则并记录冲突",
+      "verification": "G00"
+    },
+    {
+      "file_id": "F002",
+      "task": "T00",
+      "component": "C12",
+      "path": "implementation/progress.json",
+      "kind": "config",
+      "responsibility": "真实任务与门禁状态；初始not_started",
+      "verification": "G00"
+    },
+    {
+      "file_id": "F003",
+      "task": "T00",
+      "component": "C12",
+      "path": "implementation/inventory.json",
+      "kind": "config",
+      "responsibility": "实际路径、远端、分支、脏文件、Windows与工具能力清单",
+      "verification": "G00"
+    },
+    {
+      "file_id": "F004",
+      "task": "T00",
+      "component": "C12",
+      "path": "implementation/migration-plan.md",
+      "kind": "config",
+      "responsibility": "legacy SHA/远端证据/正常提交迁移计划",
+      "verification": "G00"
+    },
+    {
+      "file_id": "F005",
+      "task": "T00",
+      "component": "C12",
+      "path": "README.md",
+      "kind": "config",
+      "responsibility": "项目目标、构建、实际完成状态与规范入口",
+      "verification": "G00"
+    },
+    {
+      "file_id": "F006",
+      "task": "T00",
+      "component": "C12",
+      "path": ".gitignore",
+      "kind": "config",
+      "responsibility": "排除build/dist/deps缓存、运行数据、密钥、用户预设，保留规范与锁",
+      "verification": "G00"
+    },
+    {
+      "file_id": "F007",
+      "task": "T01",
+      "component": "C12",
+      "path": "CMakeLists.txt",
+      "kind": "config",
+      "responsibility": "显式targets、源码清单、依赖方向与最小分阶段开启",
+      "verification": "G01"
+    },
+    {
+      "file_id": "F008",
+      "task": "T01",
+      "component": "C12",
+      "path": "CMakePresets.json",
+      "kind": "config",
+      "responsibility": "win-debug/win-release configure build test三组",
+      "verification": "G01"
+    },
+    {
+      "file_id": "F009",
+      "task": "T01",
+      "component": "C12",
+      "path": "cmake/Dependencies.cmake",
+      "kind": "config",
+      "responsibility": "精确离线依赖位置与hash/版本门禁",
+      "verification": "G01"
+    },
+    {
+      "file_id": "F010",
+      "task": "T01",
+      "component": "C12",
+      "path": "cmake/Warnings.cmake",
+      "kind": "config",
+      "responsibility": "MSVC/CRT/precise/UTF-8一致选项",
+      "verification": "G01"
+    },
+    {
+      "file_id": "F011",
+      "task": "T01",
+      "component": "C12",
+      "path": "cmake/Packaging.cmake",
+      "kind": "config",
+      "responsibility": "带许可证的install规则，T18仅补最终产物清单",
+      "verification": "G01"
+    },
+    {
+      "file_id": "F012",
+      "task": "T01",
+      "component": "C12",
+      "path": "deps/lock.json",
+      "kind": "config",
+      "responsibility": "真实完整依赖hash、许可、来源与构建选项",
+      "verification": "G01"
+    },
+    {
+      "file_id": "F013",
+      "task": "T01",
+      "component": "C12",
+      "path": "implementation/toolchain.json",
+      "kind": "config",
+      "responsibility": "真实cl/SDK/cmake/ninja/Qt路径与fingerprint",
+      "verification": "G01"
+    },
+    {
+      "file_id": "F014",
+      "task": "T01",
+      "component": "C12",
+      "path": "docs/BUILD.md",
+      "kind": "config",
+      "responsibility": "普通VS打开/F5与命令行同源构建",
+      "verification": "G01"
+    },
+    {
+      "file_id": "F015",
+      "task": "T01",
+      "component": "C12",
+      "path": "docs/LICENSE-DECISION.md",
+      "kind": "config",
+      "responsibility": "实际许可证据与所有者待决定事项，不代签",
+      "verification": "G01"
+    },
+    {
+      "file_id": "F016",
+      "task": "T01",
+      "component": "C12",
+      "path": "cmake/BootstrapDependencies.cmake",
+      "kind": "config",
+      "responsibility": "只从锁定官方版本预取并核对字节；不执行模型命令字符串",
+      "verification": "G01"
+    },
+    {
+      "file_id": "F017",
+      "task": "T02",
+      "component": "C07",
+      "path": "libs/runner/windows_sandbox.hpp",
+      "kind": "header",
+      "responsibility": "AppContainer token/ACL/security attributes与Job启动原语；仅公开/私有类型声明，禁止实现跨层业务",
+      "verification": "G02"
+    },
+    {
+      "file_id": "F018",
+      "task": "T02",
+      "component": "C07",
+      "path": "libs/runner/windows_sandbox.cpp",
+      "kind": "source",
+      "responsibility": "AppContainer token/ACL/security attributes与Job启动原语；按同名头文件实现，不增加公共入口",
+      "verification": "G02"
+    },
+    {
+      "file_id": "F019",
+      "task": "T02",
+      "component": "C07",
+      "path": "tests/fixtures/sandbox_probe.cpp",
+      "kind": "source",
+      "responsibility": "受控probe尝试文件/网络/子进程/资源行为，绝无真实破坏",
+      "verification": "G02"
+    },
+    {
+      "file_id": "F020",
+      "task": "T02",
+      "component": "C07",
+      "path": "tests/platform_probe.cpp",
+      "kind": "source",
+      "responsibility": "真实受限CMake编译调用与取消，oracle在父进程",
+      "verification": "G02"
+    },
+    {
+      "file_id": "F021",
+      "task": "T02",
+      "component": "C12",
+      "path": "examples/audio-smoke/CMakeLists.txt",
+      "kind": "config",
+      "responsibility": "JUCE空壳M0构建入口，不包含正式DSP",
+      "verification": "G02"
+    },
+    {
+      "file_id": "F022",
+      "task": "T02",
+      "component": "C12",
+      "path": "examples/audio-smoke/PluginProcessor.cpp",
+      "kind": "source",
+      "responsibility": "临时静音processor检查VST3/Standalone入口，明确非最终产品",
+      "verification": "G02"
+    },
+    {
+      "file_id": "F023",
+      "task": "T03",
+      "component": "C01",
+      "path": "libs/domain/ids.hpp",
+      "kind": "header",
+      "responsibility": "强类型ID/revision/hash与无损解析；仅公开/私有类型声明，禁止实现跨层业务",
+      "verification": "G03"
+    },
+    {
+      "file_id": "F024",
+      "task": "T03",
+      "component": "C01",
+      "path": "libs/domain/ids.cpp",
+      "kind": "source",
+      "responsibility": "强类型ID/revision/hash与无损解析；按同名头文件实现，不增加公共入口",
+      "verification": "G03"
+    },
+    {
+      "file_id": "F025",
+      "task": "T03",
+      "component": "C01",
+      "path": "libs/domain/error.hpp",
+      "kind": "header",
+      "responsibility": "错误枚举与Result类型；仅公开/私有类型声明，禁止实现跨层业务",
+      "verification": "G03"
+    },
+    {
+      "file_id": "F026",
+      "task": "T03",
+      "component": "C01",
+      "path": "libs/domain/error.cpp",
+      "kind": "source",
+      "responsibility": "错误枚举与Result类型；按同名头文件实现，不增加公共入口",
+      "verification": "G03"
+    },
+    {
+      "file_id": "F027",
+      "task": "T03",
+      "component": "C01",
+      "path": "libs/domain/records.hpp",
+      "kind": "header",
+      "responsibility": "data-model记录和序列化，闭合字段校验；仅公开/私有类型声明，禁止实现跨层业务",
+      "verification": "G03"
+    },
+    {
+      "file_id": "F028",
+      "task": "T03",
+      "component": "C01",
+      "path": "libs/domain/records.cpp",
+      "kind": "source",
+      "responsibility": "data-model记录和序列化，闭合字段校验；按同名头文件实现，不增加公共入口",
+      "verification": "G03"
+    },
+    {
+      "file_id": "F029",
+      "task": "T03",
+      "component": "C01",
+      "path": "libs/domain/schema.hpp",
+      "kind": "header",
+      "responsibility": "固定JSON Schema子集与typed value校验；仅公开/私有类型声明，禁止实现跨层业务",
+      "verification": "G03"
+    },
+    {
+      "file_id": "F030",
+      "task": "T03",
+      "component": "C01",
+      "path": "libs/domain/schema.cpp",
+      "kind": "source",
+      "responsibility": "固定JSON Schema子集与typed value校验；按同名头文件实现，不增加公共入口",
+      "verification": "G03"
+    },
+    {
+      "file_id": "F031",
+      "task": "T03",
+      "component": "C01",
+      "path": "libs/domain/science.hpp",
+      "kind": "header",
+      "responsibility": "V1单位/量种/策略/未知不确定度元数据；仅公开/私有类型声明，禁止实现跨层业务",
+      "verification": "G03"
+    },
+    {
+      "file_id": "F032",
+      "task": "T03",
+      "component": "C01",
+      "path": "libs/domain/science.cpp",
+      "kind": "source",
+      "responsibility": "V1单位/量种/策略/未知不确定度元数据；按同名头文件实现，不增加公共入口",
+      "verification": "G03"
+    },
+    {
+      "file_id": "F033",
+      "task": "T03",
+      "component": "C01",
+      "path": "libs/domain/hash.hpp",
+      "kind": "header",
+      "responsibility": "AXH1规范编码与BCrypt SHA-256；仅公开/私有类型声明，禁止实现跨层业务",
+      "verification": "G03"
+    },
+    {
+      "file_id": "F034",
+      "task": "T03",
+      "component": "C01",
+      "path": "libs/domain/hash.cpp",
+      "kind": "source",
+      "responsibility": "AXH1规范编码与BCrypt SHA-256；按同名头文件实现，不增加公共入口",
+      "verification": "G03"
+    },
+    {
+      "file_id": "F035",
+      "task": "T03",
+      "component": "C01",
+      "path": "libs/domain/state.hpp",
+      "kind": "header",
+      "responsibility": "合法状态转移与结果判定；仅公开/私有类型声明，禁止实现跨层业务",
+      "verification": "G03"
+    },
+    {
+      "file_id": "F036",
+      "task": "T03",
+      "component": "C01",
+      "path": "libs/domain/state.cpp",
+      "kind": "source",
+      "responsibility": "合法状态转移与结果判定；按同名头文件实现，不增加公共入口",
+      "verification": "G03"
+    },
+    {
+      "file_id": "F037",
+      "task": "T03",
+      "component": "C01",
+      "path": "libs/domain/ports.hpp",
+      "kind": "header",
+      "responsibility": "IToolInvoker/IProcessRunner/IWorkspaceRepository隔离端口定义",
+      "verification": "G03"
+    },
+    {
+      "file_id": "F038",
+      "task": "T03",
+      "component": "C01",
+      "path": "tests/domain_tests.cpp",
+      "kind": "source",
+      "responsibility": "独立AXH1 golden、无损整数、单位/状态非法路径",
+      "verification": "G03"
+    },
+    {
+      "file_id": "F039",
+      "task": "T04",
+      "component": "C10",
+      "path": "libs/store/sqlite.hpp",
+      "kind": "header",
+      "responsibility": "SQLite handle/statement/transaction RAII与schema版本检查；仅公开/私有类型声明，禁止实现跨层业务",
+      "verification": "G04"
+    },
+    {
+      "file_id": "F040",
+      "task": "T04",
+      "component": "C10",
+      "path": "libs/store/sqlite.cpp",
+      "kind": "source",
+      "responsibility": "SQLite handle/statement/transaction RAII与schema版本检查；按同名头文件实现，不增加公共入口",
+      "verification": "G04"
+    },
+    {
+      "file_id": "F041",
+      "task": "T04",
+      "component": "C10",
+      "path": "libs/store/object_store.hpp",
+      "kind": "header",
+      "responsibility": "staging、内容寻址、chunk读取与配额；仅公开/私有类型声明，禁止实现跨层业务",
+      "verification": "G04"
+    },
+    {
+      "file_id": "F042",
+      "task": "T04",
+      "component": "C10",
+      "path": "libs/store/object_store.cpp",
+      "kind": "source",
+      "responsibility": "staging、内容寻址、chunk读取与配额；按同名头文件实现，不增加公共入口",
+      "verification": "G04"
+    },
+    {
+      "file_id": "F043",
+      "task": "T04",
+      "component": "C10",
+      "path": "libs/store/workspace_repository.hpp",
+      "kind": "header",
+      "responsibility": "对象revision/working/artifact/audit typed查询；仅公开/私有类型声明，禁止实现跨层业务",
+      "verification": "G04"
+    },
+    {
+      "file_id": "F044",
+      "task": "T04",
+      "component": "C10",
+      "path": "libs/store/workspace_repository.cpp",
+      "kind": "source",
+      "responsibility": "对象revision/working/artifact/audit typed查询；按同名头文件实现，不增加公共入口",
+      "verification": "G04"
+    },
+    {
+      "file_id": "F045",
+      "task": "T04",
+      "component": "C10",
+      "path": "libs/store/path_guard.hpp",
+      "kind": "header",
+      "responsibility": "Windows最终handle路径、重解析点与大小写冲突检查；仅公开/私有类型声明，禁止实现跨层业务",
+      "verification": "G04"
+    },
+    {
+      "file_id": "F046",
+      "task": "T04",
+      "component": "C10",
+      "path": "libs/store/path_guard.cpp",
+      "kind": "source",
+      "responsibility": "Windows最终handle路径、重解析点与大小写冲突检查；按同名头文件实现，不增加公共入口",
+      "verification": "G04"
+    },
+    {
+      "file_id": "F047",
+      "task": "T04",
+      "component": "C10",
+      "path": "libs/store/migrations/workspace_v1.sql",
+      "kind": "sql",
+      "responsibility": "workspace schema1规范建表",
+      "verification": "G04"
+    },
+    {
+      "file_id": "F048",
+      "task": "T04",
+      "component": "C10",
+      "path": "libs/store/migrations/library_v1.sql",
+      "kind": "sql",
+      "responsibility": "独立library schema1规范建表",
+      "verification": "G04"
+    },
+    {
+      "file_id": "F049",
+      "task": "T04",
+      "component": "C10",
+      "path": "tests/store_tests.cpp",
+      "kind": "source",
+      "responsibility": "revision冲突、原子可见性、非法路径、配额、schema拒绝",
+      "verification": "G04"
+    },
+    {
+      "file_id": "F050",
+      "task": "T05",
+      "component": "C02",
+      "path": "libs/ipc/framing.hpp",
+      "kind": "header",
+      "responsibility": "QLocalSocket长度帧/有界解析/事件序列；仅公开/私有类型声明，禁止实现跨层业务",
+      "verification": "G05"
+    },
+    {
+      "file_id": "F051",
+      "task": "T05",
+      "component": "C02",
+      "path": "libs/ipc/framing.cpp",
+      "kind": "source",
+      "responsibility": "QLocalSocket长度帧/有界解析/事件序列；按同名头文件实现，不增加公共入口",
+      "verification": "G05"
+    },
+    {
+      "file_id": "F052",
+      "task": "T05",
+      "component": "C02",
+      "path": "libs/ipc/host_client.hpp",
+      "kind": "header",
+      "responsibility": "UI/MCP异步传输客户端，无业务授权判断；仅公开/私有类型声明，禁止实现跨层业务",
+      "verification": "G05"
+    },
+    {
+      "file_id": "F053",
+      "task": "T05",
+      "component": "C02",
+      "path": "libs/ipc/host_client.cpp",
+      "kind": "source",
+      "responsibility": "UI/MCP异步传输客户端，无业务授权判断；按同名头文件实现，不增加公共入口",
+      "verification": "G05"
+    },
+    {
+      "file_id": "F054",
+      "task": "T05",
+      "component": "C02",
+      "path": "libs/host/session.hpp",
+      "kind": "header",
+      "responsibility": "host授予model/reviewer身份与workspace能力；仅公开/私有类型声明，禁止实现跨层业务",
+      "verification": "G05"
+    },
+    {
+      "file_id": "F055",
+      "task": "T05",
+      "component": "C02",
+      "path": "libs/host/session.cpp",
+      "kind": "source",
+      "responsibility": "host授予model/reviewer身份与workspace能力；按同名头文件实现，不增加公共入口",
+      "verification": "G05"
+    },
+    {
+      "file_id": "F056",
+      "task": "T05",
+      "component": "C02",
+      "path": "libs/host/host_service.hpp",
+      "kind": "header",
+      "responsibility": "typed命令分发、service composition root、权威串行通道；仅公开/私有类型声明，禁止实现跨层业务",
+      "verification": "G05"
+    },
+    {
+      "file_id": "F057",
+      "task": "T05",
+      "component": "C02",
+      "path": "libs/host/host_service.cpp",
+      "kind": "source",
+      "responsibility": "typed命令分发、service composition root、权威串行通道；按同名头文件实现，不增加公共入口",
+      "verification": "G05"
+    },
+    {
+      "file_id": "F058",
+      "task": "T05",
+      "component": "C02",
+      "path": "libs/host/job_queue.hpp",
+      "kind": "header",
+      "responsibility": "每workspace并发1、幂等提交、cancel/poll与真实状态；仅公开/私有类型声明，禁止实现跨层业务",
+      "verification": "G05"
+    },
+    {
+      "file_id": "F059",
+      "task": "T05",
+      "component": "C02",
+      "path": "libs/host/job_queue.cpp",
+      "kind": "source",
+      "responsibility": "每workspace并发1、幂等提交、cancel/poll与真实状态；按同名头文件实现，不增加公共入口",
+      "verification": "G05"
+    },
+    {
+      "file_id": "F060",
+      "task": "T05",
+      "component": "C02",
+      "path": "apps/host/main.cpp",
+      "kind": "source",
+      "responsibility": "单host实例、启动review的私有能力管道、参数与退出",
+      "verification": "G05"
+    },
+    {
+      "file_id": "F061",
+      "task": "T05",
+      "component": "C02",
+      "path": "tests/authority_tests.cpp",
+      "kind": "source",
+      "responsibility": "actor伪造/跨workspace/重放/错误批准主体拒绝",
+      "verification": "G05"
+    },
+    {
+      "file_id": "F062",
+      "task": "T06",
+      "component": "C06",
+      "path": "libs/sdk/tool.hpp",
+      "kind": "header",
+      "responsibility": "ITool/CallContext/输入输出和SDK版本；仅公开/私有类型声明，禁止实现跨层业务",
+      "verification": "G06"
+    },
+    {
+      "file_id": "F063",
+      "task": "T06",
+      "component": "C06",
+      "path": "libs/sdk/tool.cpp",
+      "kind": "source",
+      "responsibility": "ITool/CallContext/输入输出和SDK版本；按同名头文件实现，不增加公共入口",
+      "verification": "G06"
+    },
+    {
+      "file_id": "F064",
+      "task": "T06",
+      "component": "C06",
+      "path": "libs/sdk/registry.hpp",
+      "kind": "header",
+      "responsibility": "显式factory/服务依赖拓扑/unique_ptr装配；仅公开/私有类型声明，禁止实现跨层业务",
+      "verification": "G06"
+    },
+    {
+      "file_id": "F065",
+      "task": "T06",
+      "component": "C06",
+      "path": "libs/sdk/registry.cpp",
+      "kind": "source",
+      "responsibility": "显式factory/服务依赖拓扑/unique_ptr装配；按同名头文件实现，不增加公共入口",
+      "verification": "G06"
+    },
+    {
+      "file_id": "F066",
+      "task": "T06",
+      "component": "C06",
+      "path": "libs/sdk/worker_protocol.hpp",
+      "kind": "header",
+      "responsibility": "单次worker请求、staging访问、结构化结果；仅公开/私有类型声明，禁止实现跨层业务",
+      "verification": "G06"
+    },
+    {
+      "file_id": "F067",
+      "task": "T06",
+      "component": "C06",
+      "path": "libs/sdk/worker_protocol.cpp",
+      "kind": "source",
+      "responsibility": "单次worker请求、staging访问、结构化结果；按同名头文件实现，不增加公共入口",
+      "verification": "G06"
+    },
+    {
+      "file_id": "F068",
+      "task": "T06",
+      "component": "C06",
+      "path": "apps/worker/main.cpp",
+      "kind": "source",
+      "responsibility": "SDK demo worker入口，启动后一次请求退出",
+      "verification": "G06"
+    },
+    {
+      "file_id": "F069",
+      "task": "T06",
+      "component": "C06",
+      "path": "examples/probe-tools/probe_tools.hpp",
+      "kind": "header",
+      "responsibility": "ScaleTool与OffsetTool两个公开类，仅系统样例；仅公开/私有类型声明，禁止实现跨层业务",
+      "verification": "G06"
+    },
+    {
+      "file_id": "F070",
+      "task": "T06",
+      "component": "C06",
+      "path": "examples/probe-tools/probe_tools.cpp",
+      "kind": "source",
+      "responsibility": "ScaleTool与OffsetTool两个公开类，仅系统样例；按同名头文件实现，不增加公共入口",
+      "verification": "G06"
+    },
+    {
+      "file_id": "F071",
+      "task": "T06",
+      "component": "C06",
+      "path": "examples/probe-tools/tool-descriptors.json",
+      "kind": "config",
+      "responsibility": "两probe的精确类型/权限/界限",
+      "verification": "G06"
+    },
+    {
+      "file_id": "F072",
+      "task": "T06",
+      "component": "C06",
+      "path": "tests/sdk_tests.cpp",
+      "kind": "source",
+      "responsibility": "缺依赖/循环/非法输入/独立worker无共享状态",
+      "verification": "G06"
+    },
+    {
+      "file_id": "F073",
+      "task": "T07",
+      "component": "C07",
+      "path": "libs/runner/process_runner.hpp",
+      "kind": "header",
+      "responsibility": "IProcessRunner实现、受控argv、取消和观察；仅公开/私有类型声明，禁止实现跨层业务",
+      "verification": "G07"
+    },
+    {
+      "file_id": "F074",
+      "task": "T07",
+      "component": "C07",
+      "path": "libs/runner/process_runner.cpp",
+      "kind": "source",
+      "responsibility": "IProcessRunner实现、受控argv、取消和观察；按同名头文件实现，不增加公共入口",
+      "verification": "G07"
+    },
+    {
+      "file_id": "F075",
+      "task": "T07",
+      "component": "C07",
+      "path": "libs/runner/job_staging.hpp",
+      "kind": "header",
+      "responsibility": "精确输入/依赖复制与输出检查导入；仅公开/私有类型声明，禁止实现跨层业务",
+      "verification": "G07"
+    },
+    {
+      "file_id": "F076",
+      "task": "T07",
+      "component": "C07",
+      "path": "libs/runner/job_staging.cpp",
+      "kind": "source",
+      "responsibility": "精确输入/依赖复制与输出检查导入；按同名头文件实现，不增加公共入口",
+      "verification": "G07"
+    },
+    {
+      "file_id": "F077",
+      "task": "T07",
+      "component": "C07",
+      "path": "libs/runner/resource_budget.hpp",
+      "kind": "header",
+      "responsibility": "墙钟/内存/日志/进程配额统一执行；仅公开/私有类型声明，禁止实现跨层业务",
+      "verification": "G07"
+    },
+    {
+      "file_id": "F078",
+      "task": "T07",
+      "component": "C07",
+      "path": "libs/runner/resource_budget.cpp",
+      "kind": "source",
+      "responsibility": "墙钟/内存/日志/进程配额统一执行；按同名头文件实现，不增加公共入口",
+      "verification": "G07"
+    },
+    {
+      "file_id": "F079",
+      "task": "T07",
+      "component": "C07",
+      "path": "tests/runner_tests.cpp",
+      "kind": "source",
+      "responsibility": "真实工具树超时/输出洪泛/不受信输出hash/网络越界拒绝",
+      "verification": "G07"
+    },
+    {
+      "file_id": "F080",
+      "task": "T08",
+      "component": "C03",
+      "path": "libs/mcp/json_rpc.hpp",
+      "kind": "header",
+      "responsibility": "stdio换行JSONRPC、ID无损、固定错误码和取消；仅公开/私有类型声明，禁止实现跨层业务",
+      "verification": "G08"
+    },
+    {
+      "file_id": "F081",
+      "task": "T08",
+      "component": "C03",
+      "path": "libs/mcp/json_rpc.cpp",
+      "kind": "source",
+      "responsibility": "stdio换行JSONRPC、ID无损、固定错误码和取消；按同名头文件实现，不增加公共入口",
+      "verification": "G08"
+    },
+    {
+      "file_id": "F082",
+      "task": "T08",
+      "component": "C03",
+      "path": "libs/mcp/gateway.hpp",
+      "kind": "header",
+      "responsibility": "initialize/tools/list/tools/call、动态绑定与schema投影；仅公开/私有类型声明，禁止实现跨层业务",
+      "verification": "G08"
+    },
+    {
+      "file_id": "F083",
+      "task": "T08",
+      "component": "C03",
+      "path": "libs/mcp/gateway.cpp",
+      "kind": "source",
+      "responsibility": "initialize/tools/list/tools/call、动态绑定与schema投影；按同名头文件实现，不增加公共入口",
+      "verification": "G08"
+    },
+    {
+      "file_id": "F084",
+      "task": "T08",
+      "component": "C03",
+      "path": "apps/mcp/main.cpp",
+      "kind": "source",
+      "responsibility": "仅stdio MCP到host的model连接，workspace启动参数",
+      "verification": "G08"
+    },
+    {
+      "file_id": "F085",
+      "task": "T08",
+      "component": "C03",
+      "path": "tests/mcp_tests.cpp",
+      "kind": "source",
+      "responsibility": "真实子进程协议一致性、分页、非法JSON和越权方法",
+      "verification": "G08"
+    },
+    {
+      "file_id": "F086",
+      "task": "T08",
+      "component": "C03",
+      "path": "plugins/axiom-colab/.codex-plugin/plugin.json",
+      "kind": "config",
+      "responsibility": "固定元数据/skills/MCP companion引用",
+      "verification": "G08"
+    },
+    {
+      "file_id": "F087",
+      "task": "T08",
+      "component": "C03",
+      "path": "plugins/axiom-colab/.mcp.json.in",
+      "kind": "config",
+      "responsibility": "安装时生成真实路径和workspace，不含能力secret",
+      "verification": "G08"
+    },
+    {
+      "file_id": "F088",
+      "task": "T08",
+      "component": "C03",
+      "path": "plugins/axiom-colab/skills/axiom-workflow/SKILL.md",
+      "kind": "config",
+      "responsibility": "工具调用流程与用户批准边界，外部客户端无需本包历史",
+      "verification": "G08"
+    },
+    {
+      "file_id": "F089",
+      "task": "T08",
+      "component": "C03",
+      "path": "docs/MCP-CLIENT.md",
+      "kind": "config",
+      "responsibility": "真实客户端安装与配置检查，不冒称模型均兼容",
+      "verification": "G08"
+    },
+    {
+      "file_id": "F090",
+      "task": "T09",
+      "component": "C05",
+      "path": "libs/project/snapshot.hpp",
+      "kind": "header",
+      "responsibility": "已保存字节捕获/设计依赖绑定；仅公开/私有类型声明，禁止实现跨层业务",
+      "verification": "G09"
+    },
+    {
+      "file_id": "F091",
+      "task": "T09",
+      "component": "C05",
+      "path": "libs/project/snapshot.cpp",
+      "kind": "source",
+      "responsibility": "已保存字节捕获/设计依赖绑定；按同名头文件实现，不增加公共入口",
+      "verification": "G09"
+    },
+    {
+      "file_id": "F092",
+      "task": "T09",
+      "component": "C05",
+      "path": "libs/project/context.hpp",
+      "kind": "header",
+      "responsibility": "脱敏有界context导出和分块读取；仅公开/私有类型声明，禁止实现跨层业务",
+      "verification": "G09"
+    },
+    {
+      "file_id": "F093",
+      "task": "T09",
+      "component": "C05",
+      "path": "libs/project/context.cpp",
+      "kind": "source",
+      "responsibility": "脱敏有界context导出和分块读取；按同名头文件实现，不增加公共入口",
+      "verification": "G09"
+    },
+    {
+      "file_id": "F094",
+      "task": "T09",
+      "component": "C05",
+      "path": "libs/project/revision.hpp",
+      "kind": "header",
+      "responsibility": "worktree/白名单/marker/diff/apply journal及冲突；仅公开/私有类型声明，禁止实现跨层业务",
+      "verification": "G09"
+    },
+    {
+      "file_id": "F095",
+      "task": "T09",
+      "component": "C05",
+      "path": "libs/project/revision.cpp",
+      "kind": "source",
+      "responsibility": "worktree/白名单/marker/diff/apply journal及冲突；按同名头文件实现，不增加公共入口",
+      "verification": "G09"
+    },
+    {
+      "file_id": "F096",
+      "task": "T09",
+      "component": "C05",
+      "path": "libs/project/vs_launcher.hpp",
+      "kind": "header",
+      "responsibility": "固定本机VS入口和项目路径打开，不读IDE缓冲；仅公开/私有类型声明，禁止实现跨层业务",
+      "verification": "G09"
+    },
+    {
+      "file_id": "F097",
+      "task": "T09",
+      "component": "C05",
+      "path": "libs/project/vs_launcher.cpp",
+      "kind": "source",
+      "responsibility": "固定本机VS入口和项目路径打开，不读IDE缓冲；按同名头文件实现，不增加公共入口",
+      "verification": "G09"
+    },
+    {
+      "file_id": "F098",
+      "task": "T09",
+      "component": "C05",
+      "path": "tests/project_tests.cpp",
+      "kind": "source",
+      "responsibility": "模式A/B、文件级冲突与多文件恢复不覆盖新改动",
+      "verification": "G09"
+    },
+    {
+      "file_id": "F099",
+      "task": "T09",
+      "component": "C05",
+      "path": "templates/tool-project/CMakeLists.txt.in",
+      "kind": "config",
+      "responsibility": "普通用户项目依赖exact SDK的CMake模板",
+      "verification": "G09"
+    },
+    {
+      "file_id": "F100",
+      "task": "T09",
+      "component": "C05",
+      "path": "templates/tool-project/tool.hpp.in",
+      "kind": "config",
+      "responsibility": "公开Tool壳的契约声明，不填领域实现",
+      "verification": "G09"
+    },
+    {
+      "file_id": "F101",
+      "task": "T10",
+      "component": "C08",
+      "path": "libs/validation/candidate.hpp",
+      "kind": "header",
+      "responsibility": "immutable候选和精确build recipe绑定；仅公开/私有类型声明，禁止实现跨层业务",
+      "verification": "G10"
+    },
+    {
+      "file_id": "F102",
+      "task": "T10",
+      "component": "C08",
+      "path": "libs/validation/candidate.cpp",
+      "kind": "source",
+      "responsibility": "immutable候选和精确build recipe绑定；按同名头文件实现，不增加公共入口",
+      "verification": "G10"
+    },
+    {
+      "file_id": "F103",
+      "task": "T10",
+      "component": "C08",
+      "path": "libs/validation/coordinator.hpp",
+      "kind": "header",
+      "responsibility": "受信runner观察、suite执行、二进制hash结论；仅公开/私有类型声明，禁止实现跨层业务",
+      "verification": "G10"
+    },
+    {
+      "file_id": "F104",
+      "task": "T10",
+      "component": "C08",
+      "path": "libs/validation/coordinator.cpp",
+      "kind": "source",
+      "responsibility": "受信runner观察、suite执行、二进制hash结论；按同名头文件实现，不增加公共入口",
+      "verification": "G10"
+    },
+    {
+      "file_id": "F105",
+      "task": "T10",
+      "component": "C08",
+      "path": "libs/validation/oracle.hpp",
+      "kind": "header",
+      "responsibility": "typed_exact/numeric_tolerance/artifact_properties参考检查；仅公开/私有类型声明，禁止实现跨层业务",
+      "verification": "G10"
+    },
+    {
+      "file_id": "F106",
+      "task": "T10",
+      "component": "C08",
+      "path": "libs/validation/oracle.cpp",
+      "kind": "source",
+      "responsibility": "typed_exact/numeric_tolerance/artifact_properties参考检查；按同名头文件实现，不增加公共入口",
+      "verification": "G10"
+    },
+    {
+      "file_id": "F107",
+      "task": "T10",
+      "component": "C08",
+      "path": "libs/validation/evidence.hpp",
+      "kind": "header",
+      "responsibility": "公开/私有证据隔离、持久化及完整性；仅公开/私有类型声明，禁止实现跨层业务",
+      "verification": "G10"
+    },
+    {
+      "file_id": "F108",
+      "task": "T10",
+      "component": "C08",
+      "path": "libs/validation/evidence.cpp",
+      "kind": "source",
+      "responsibility": "公开/私有证据隔离、持久化及完整性；按同名头文件实现，不增加公共入口",
+      "verification": "G10"
+    },
+    {
+      "file_id": "F109",
+      "task": "T10",
+      "component": "C08",
+      "path": "tests/validation_tests.cpp",
+      "kind": "source",
+      "responsibility": "伪PASS/失败退出/缺suite/旧二进制/私密泄露均拒绝",
+      "verification": "G10"
+    },
+    {
+      "file_id": "F110",
+      "task": "T10",
+      "component": "C08",
+      "path": "tests/fixtures/dishonest_worker.cpp",
+      "kind": "source",
+      "responsibility": "仅测试协议谎称通过/返回坏内容，受控运行",
+      "verification": "G10"
+    },
+    {
+      "file_id": "F111",
+      "task": "T11",
+      "component": "C09",
+      "path": "libs/library/package.hpp",
+      "kind": "header",
+      "responsibility": "manifest与源/static/worker/product文件验证；仅公开/私有类型声明，禁止实现跨层业务",
+      "verification": "G11"
+    },
+    {
+      "file_id": "F112",
+      "task": "T11",
+      "component": "C09",
+      "path": "libs/library/package.cpp",
+      "kind": "source",
+      "responsibility": "manifest与源/static/worker/product文件验证；按同名头文件实现，不增加公共入口",
+      "verification": "G11"
+    },
+    {
+      "file_id": "F113",
+      "task": "T11",
+      "component": "C09",
+      "path": "libs/library/library_service.hpp",
+      "kind": "header",
+      "responsibility": "发布journal/一次批准/撤销/不可变版本；仅公开/私有类型声明，禁止实现跨层业务",
+      "verification": "G11"
+    },
+    {
+      "file_id": "F114",
+      "task": "T11",
+      "component": "C09",
+      "path": "libs/library/library_service.cpp",
+      "kind": "source",
+      "responsibility": "发布journal/一次批准/撤销/不可变版本；按同名头文件实现，不增加公共入口",
+      "verification": "G11"
+    },
+    {
+      "file_id": "F115",
+      "task": "T11",
+      "component": "C09",
+      "path": "libs/library/binding.hpp",
+      "kind": "header",
+      "responsibility": "workspace精确包绑定/能力交集/依赖闭包；仅公开/私有类型声明，禁止实现跨层业务",
+      "verification": "G11"
+    },
+    {
+      "file_id": "F116",
+      "task": "T11",
+      "component": "C09",
+      "path": "libs/library/binding.cpp",
+      "kind": "source",
+      "responsibility": "workspace精确包绑定/能力交集/依赖闭包；按同名头文件实现，不增加公共入口",
+      "verification": "G11"
+    },
+    {
+      "file_id": "F117",
+      "task": "T11",
+      "component": "C09",
+      "path": "tests/library_tests.cpp",
+      "kind": "source",
+      "responsibility": "W1→库→W2、同版本冲突、旧批准不能换包、撤销与恢复",
+      "verification": "G11"
+    },
+    {
+      "file_id": "F118",
+      "task": "T12",
+      "component": "C11",
+      "path": "libs/workflow/goal_plan.hpp",
+      "kind": "header",
+      "responsibility": "目标/计划审批与预算绑定；仅公开/私有类型声明，禁止实现跨层业务",
+      "verification": "G12"
+    },
+    {
+      "file_id": "F119",
+      "task": "T12",
+      "component": "C11",
+      "path": "libs/workflow/goal_plan.cpp",
+      "kind": "source",
+      "responsibility": "目标/计划审批与预算绑定；按同名头文件实现，不增加公共入口",
+      "verification": "G12"
+    },
+    {
+      "file_id": "F120",
+      "task": "T12",
+      "component": "C11",
+      "path": "libs/workflow/graph.hpp",
+      "kind": "header",
+      "responsibility": "节点/端口/边/精确类型校验与语义hash；仅公开/私有类型声明，禁止实现跨层业务",
+      "verification": "G12"
+    },
+    {
+      "file_id": "F121",
+      "task": "T12",
+      "component": "C11",
+      "path": "libs/workflow/graph.cpp",
+      "kind": "source",
+      "responsibility": "节点/端口/边/精确类型校验与语义hash；按同名头文件实现，不增加公共入口",
+      "verification": "G12"
+    },
+    {
+      "file_id": "F122",
+      "task": "T12",
+      "component": "C11",
+      "path": "libs/workflow/scheduler.hpp",
+      "kind": "header",
+      "responsibility": "确定拓扑串行、冻结run、独立分支与取消；仅公开/私有类型声明，禁止实现跨层业务",
+      "verification": "G12"
+    },
+    {
+      "file_id": "F123",
+      "task": "T12",
+      "component": "C11",
+      "path": "libs/workflow/scheduler.cpp",
+      "kind": "source",
+      "responsibility": "确定拓扑串行、冻结run、独立分支与取消；按同名头文件实现，不增加公共入口",
+      "verification": "G12"
+    },
+    {
+      "file_id": "F124",
+      "task": "T12",
+      "component": "C11",
+      "path": "libs/workflow/composite.hpp",
+      "kind": "header",
+      "responsibility": "一层组合映射、展开trace、精确依赖与权限并集；仅公开/私有类型声明，禁止实现跨层业务",
+      "verification": "G12"
+    },
+    {
+      "file_id": "F125",
+      "task": "T12",
+      "component": "C11",
+      "path": "libs/workflow/composite.cpp",
+      "kind": "source",
+      "responsibility": "一层组合映射、展开trace、精确依赖与权限并集；按同名头文件实现，不增加公共入口",
+      "verification": "G12"
+    },
+    {
+      "file_id": "F126",
+      "task": "T12",
+      "component": "C11",
+      "path": "tests/workflow_tests.cpp",
+      "kind": "source",
+      "responsibility": "分叉汇合/环/单位错/运行中草稿/组合深度/新workspace复用",
+      "verification": "G12"
+    },
+    {
+      "file_id": "F127",
+      "task": "T13",
+      "component": "C04",
+      "path": "apps/review/main_window.hpp",
+      "kind": "header",
+      "responsibility": "四区域导航与连接/活动任务状态；仅公开/私有类型声明，禁止实现跨层业务",
+      "verification": "G13"
+    },
+    {
+      "file_id": "F128",
+      "task": "T13",
+      "component": "C04",
+      "path": "apps/review/main_window.cpp",
+      "kind": "source",
+      "responsibility": "四区域导航与连接/活动任务状态；按同名头文件实现，不增加公共入口",
+      "verification": "G13"
+    },
+    {
+      "file_id": "F129",
+      "task": "T13",
+      "component": "C04",
+      "path": "apps/review/workspace_panel.hpp",
+      "kind": "header",
+      "responsibility": "目标计划/对象/封存和context操作；仅公开/私有类型声明，禁止实现跨层业务",
+      "verification": "G13"
+    },
+    {
+      "file_id": "F130",
+      "task": "T13",
+      "component": "C04",
+      "path": "apps/review/workspace_panel.cpp",
+      "kind": "source",
+      "responsibility": "目标计划/对象/封存和context操作；按同名头文件实现，不增加公共入口",
+      "verification": "G13"
+    },
+    {
+      "file_id": "F131",
+      "task": "T13",
+      "component": "C04",
+      "path": "apps/review/library_panel.hpp",
+      "kind": "header",
+      "responsibility": "精确包、绑定、撤销与依赖详情；仅公开/私有类型声明，禁止实现跨层业务",
+      "verification": "G13"
+    },
+    {
+      "file_id": "F132",
+      "task": "T13",
+      "component": "C04",
+      "path": "apps/review/library_panel.cpp",
+      "kind": "source",
+      "responsibility": "精确包、绑定、撤销与依赖详情；按同名头文件实现，不增加公共入口",
+      "verification": "G13"
+    },
+    {
+      "file_id": "F133",
+      "task": "T13",
+      "component": "C04",
+      "path": "apps/review/project_panel.hpp",
+      "kind": "header",
+      "responsibility": "文件差异、区域限制、冲突与VS入口；仅公开/私有类型声明，禁止实现跨层业务",
+      "verification": "G13"
+    },
+    {
+      "file_id": "F134",
+      "task": "T13",
+      "component": "C04",
+      "path": "apps/review/project_panel.cpp",
+      "kind": "source",
+      "responsibility": "文件差异、区域限制、冲突与VS入口；按同名头文件实现，不增加公共入口",
+      "verification": "G13"
+    },
+    {
+      "file_id": "F135",
+      "task": "T13",
+      "component": "C04",
+      "path": "apps/review/review_panel.hpp",
+      "kind": "header",
+      "responsibility": "用户精确批准/拒绝、私有suite设置、证据详情；仅公开/私有类型声明，禁止实现跨层业务",
+      "verification": "G13"
+    },
+    {
+      "file_id": "F136",
+      "task": "T13",
+      "component": "C04",
+      "path": "apps/review/review_panel.cpp",
+      "kind": "source",
+      "responsibility": "用户精确批准/拒绝、私有suite设置、证据详情；按同名头文件实现，不增加公共入口",
+      "verification": "G13"
+    },
+    {
+      "file_id": "F137",
+      "task": "T13",
+      "component": "C04",
+      "path": "apps/review/graph_canvas.hpp",
+      "kind": "header",
+      "responsibility": "Qt Graphics View节点边布局与交互；仅公开/私有类型声明，禁止实现跨层业务",
+      "verification": "G13"
+    },
+    {
+      "file_id": "F138",
+      "task": "T13",
+      "component": "C04",
+      "path": "apps/review/graph_canvas.cpp",
+      "kind": "source",
+      "responsibility": "Qt Graphics View节点边布局与交互；按同名头文件实现，不增加公共入口",
+      "verification": "G13"
+    },
+    {
+      "file_id": "F139",
+      "task": "T13",
+      "component": "C04",
+      "path": "apps/review/parameter_panel.hpp",
+      "kind": "header",
+      "responsibility": "单位范围/参数来源/dirty状态和结果版本；仅公开/私有类型声明，禁止实现跨层业务",
+      "verification": "G13"
+    },
+    {
+      "file_id": "F140",
+      "task": "T13",
+      "component": "C04",
+      "path": "apps/review/parameter_panel.cpp",
+      "kind": "source",
+      "responsibility": "单位范围/参数来源/dirty状态和结果版本；按同名头文件实现，不增加公共入口",
+      "verification": "G13"
+    },
+    {
+      "file_id": "F141",
+      "task": "T13",
+      "component": "C04",
+      "path": "apps/review/job_panel.hpp",
+      "kind": "header",
+      "responsibility": "真实异步进度、cancel、受限公开日志；仅公开/私有类型声明，禁止实现跨层业务",
+      "verification": "G13"
+    },
+    {
+      "file_id": "F142",
+      "task": "T13",
+      "component": "C04",
+      "path": "apps/review/job_panel.cpp",
+      "kind": "source",
+      "responsibility": "真实异步进度、cancel、受限公开日志；按同名头文件实现，不增加公共入口",
+      "verification": "G13"
+    },
+    {
+      "file_id": "F143",
+      "task": "T13",
+      "component": "C04",
+      "path": "apps/review/main.cpp",
+      "kind": "source",
+      "responsibility": "独立启动转host激活/私有通道接入/Qt app生命周期",
+      "verification": "G13"
+    },
+    {
+      "file_id": "F144",
+      "task": "T13",
+      "component": "C04",
+      "path": "tests/ui_model_tests.cpp",
+      "kind": "source",
+      "responsibility": "无Widgets业务旁路、参数数据模型与命令授权检查",
+      "verification": "G13"
+    },
+    {
+      "file_id": "F145",
+      "task": "T14",
+      "component": "C10",
+      "path": "libs/store/recovery.hpp",
+      "kind": "header",
+      "responsibility": "发布/应用/对象/作业interrupted恢复，不自动重放；仅公开/私有类型声明，禁止实现跨层业务",
+      "verification": "G14"
+    },
+    {
+      "file_id": "F146",
+      "task": "T14",
+      "component": "C10",
+      "path": "libs/store/recovery.cpp",
+      "kind": "source",
+      "responsibility": "发布/应用/对象/作业interrupted恢复，不自动重放；按同名头文件实现，不增加公共入口",
+      "verification": "G14"
+    },
+    {
+      "file_id": "F147",
+      "task": "T14",
+      "component": "C12",
+      "path": "libs/store/backup.hpp",
+      "kind": "header",
+      "responsibility": "SQLite backup API与引用对象清单、空根恢复；仅公开/私有类型声明，禁止实现跨层业务",
+      "verification": "G14"
+    },
+    {
+      "file_id": "F148",
+      "task": "T14",
+      "component": "C12",
+      "path": "libs/store/backup.cpp",
+      "kind": "source",
+      "responsibility": "SQLite backup API与引用对象清单、空根恢复；按同名头文件实现，不增加公共入口",
+      "verification": "G14"
+    },
+    {
+      "file_id": "F149",
+      "task": "T14",
+      "component": "C10",
+      "path": "tests/recovery_tests.cpp",
+      "kind": "source",
+      "responsibility": "各提交点故障注入、备份换目录与损坏字节发现",
+      "verification": "G14"
+    },
+    {
+      "file_id": "F150",
+      "task": "T14",
+      "component": "C12",
+      "path": "apps/diagnostics/main.cpp",
+      "kind": "source",
+      "responsibility": "doctor/verify-backup只读诊断，不自动提权修环境",
+      "verification": "G14"
+    },
+    {
+      "file_id": "F151",
+      "task": "T15",
+      "component": "PRODUCT",
+      "path": "examples/physical-string/dsp/string_parameters.hpp",
+      "kind": "header",
+      "responsibility": "纯物理参数域校验/派生频率/有效模态数；仅公开/私有类型声明，禁止实现跨层业务",
+      "verification": "G15"
+    },
+    {
+      "file_id": "F152",
+      "task": "T15",
+      "component": "PRODUCT",
+      "path": "examples/physical-string/dsp/string_parameters.cpp",
+      "kind": "source",
+      "responsibility": "纯物理参数域校验/派生频率/有效模态数；按同名头文件实现，不增加公共入口",
+      "verification": "G15"
+    },
+    {
+      "file_id": "F153",
+      "task": "T15",
+      "component": "PRODUCT",
+      "path": "examples/physical-string/dsp/modal_string.hpp",
+      "kind": "header",
+      "responsibility": "固定数组解析模态推进、能量/速度输出；仅公开/私有类型声明，禁止实现跨层业务",
+      "verification": "G15"
+    },
+    {
+      "file_id": "F154",
+      "task": "T15",
+      "component": "PRODUCT",
+      "path": "examples/physical-string/dsp/modal_string.cpp",
+      "kind": "source",
+      "responsibility": "固定数组解析模态推进、能量/速度输出；按同名头文件实现，不增加公共入口",
+      "verification": "G15"
+    },
+    {
+      "file_id": "F155",
+      "task": "T15",
+      "component": "PRODUCT",
+      "path": "examples/physical-string/tests/dsp_tests.cpp",
+      "kind": "source",
+      "responsibility": "独立闭式oracle/能量/零激励/投影/块一致性",
+      "verification": "G15"
+    },
+    {
+      "file_id": "F156",
+      "task": "T15",
+      "component": "PRODUCT",
+      "path": "examples/physical-string/docs/MODEL.md",
+      "kind": "doc",
+      "responsibility": "方程推导、域、近似、单位、失败与验证证据",
+      "verification": "G15"
+    },
+    {
+      "file_id": "F157",
+      "task": "T16",
+      "component": "PRODUCT",
+      "path": "examples/physical-string/tools/string_render_tool.hpp",
+      "kind": "header",
+      "responsibility": "共享DSP原速度序列+试听WAV+metadata；仅公开/私有类型声明，禁止实现跨层业务",
+      "verification": "G16"
+    },
+    {
+      "file_id": "F158",
+      "task": "T16",
+      "component": "PRODUCT",
+      "path": "examples/physical-string/tools/string_render_tool.cpp",
+      "kind": "source",
+      "responsibility": "共享DSP原速度序列+试听WAV+metadata；按同名头文件实现，不增加公共入口",
+      "verification": "G16"
+    },
+    {
+      "file_id": "F159",
+      "task": "T16",
+      "component": "PRODUCT",
+      "path": "examples/physical-string/tools/spectrum_tool.hpp",
+      "kind": "header",
+      "responsibility": "有界Hann FFT单边幅度/peak_frequency；仅公开/私有类型声明，禁止实现跨层业务",
+      "verification": "G16"
+    },
+    {
+      "file_id": "F160",
+      "task": "T16",
+      "component": "PRODUCT",
+      "path": "examples/physical-string/tools/spectrum_tool.cpp",
+      "kind": "source",
+      "responsibility": "有界Hann FFT单边幅度/peak_frequency；按同名头文件实现，不增加公共入口",
+      "verification": "G16"
+    },
+    {
+      "file_id": "F161",
+      "task": "T16",
+      "component": "PRODUCT",
+      "path": "examples/physical-string/tools/decay_tool.hpp",
+      "kind": "header",
+      "responsibility": "窗口RMS对数OLS、not_estimable/growing；仅公开/私有类型声明，禁止实现跨层业务",
+      "verification": "G16"
+    },
+    {
+      "file_id": "F162",
+      "task": "T16",
+      "component": "PRODUCT",
+      "path": "examples/physical-string/tools/decay_tool.cpp",
+      "kind": "source",
+      "responsibility": "窗口RMS对数OLS、not_estimable/growing；按同名头文件实现，不增加公共入口",
+      "verification": "G16"
+    },
+    {
+      "file_id": "F163",
+      "task": "T16",
+      "component": "PRODUCT",
+      "path": "examples/physical-string/tools/report_tool.hpp",
+      "kind": "header",
+      "responsibility": "同源输入核对与JSON/Markdown证据报告；仅公开/私有类型声明，禁止实现跨层业务",
+      "verification": "G16"
+    },
+    {
+      "file_id": "F164",
+      "task": "T16",
+      "component": "PRODUCT",
+      "path": "examples/physical-string/tools/report_tool.cpp",
+      "kind": "source",
+      "responsibility": "同源输入核对与JSON/Markdown证据报告；按同名头文件实现，不增加公共入口",
+      "verification": "G16"
+    },
+    {
+      "file_id": "F165",
+      "task": "T16",
+      "component": "PRODUCT",
+      "path": "examples/physical-string/tools/audio_artifacts.hpp",
+      "kind": "header",
+      "responsibility": "固定little-endian f64原数据/float32 WAV编码与元数据；仅公开/私有类型声明，禁止实现跨层业务",
+      "verification": "G16"
+    },
+    {
+      "file_id": "F166",
+      "task": "T16",
+      "component": "PRODUCT",
+      "path": "examples/physical-string/tools/audio_artifacts.cpp",
+      "kind": "source",
+      "responsibility": "固定little-endian f64原数据/float32 WAV编码与元数据；按同名头文件实现，不增加公共入口",
+      "verification": "G16"
+    },
+    {
+      "file_id": "F167",
+      "task": "T16",
+      "component": "PRODUCT",
+      "path": "examples/physical-string/tools/worker_main.cpp",
+      "kind": "source",
+      "responsibility": "注册四公开工具与service、使用同一SDK worker协议",
+      "verification": "G16"
+    },
+    {
+      "file_id": "F168",
+      "task": "T16",
+      "component": "PRODUCT",
+      "path": "examples/physical-string/tools/descriptors.json",
+      "kind": "config",
+      "responsibility": "四tool精确端口、schema、参数、权限、模型假设",
+      "verification": "G16"
+    },
+    {
+      "file_id": "F169",
+      "task": "T16",
+      "component": "PRODUCT",
+      "path": "examples/physical-string/workflows/string_experiment.json",
+      "kind": "config",
+      "responsibility": "真实工具版本在发布后解析冻结的组合模板",
+      "verification": "G16"
+    },
+    {
+      "file_id": "F170",
+      "task": "T16",
+      "component": "PRODUCT",
+      "path": "examples/physical-string/tests/analysis_tests.cpp",
+      "kind": "source",
+      "responsibility": "FFT独立DFT/包络参考/原数据与报告来源检查",
+      "verification": "G16"
+    },
+    {
+      "file_id": "F171",
+      "task": "T17",
+      "component": "PRODUCT",
+      "path": "examples/physical-string/plugin/PluginProcessor.hpp",
+      "kind": "header",
+      "responsibility": "JUCE bus/MIDI offsets/纯DSP回调/prepare与release；仅公开/私有类型声明，禁止实现跨层业务",
+      "verification": "G17"
+    },
+    {
+      "file_id": "F172",
+      "task": "T17",
+      "component": "PRODUCT",
+      "path": "examples/physical-string/plugin/PluginProcessor.cpp",
+      "kind": "source",
+      "responsibility": "JUCE bus/MIDI offsets/纯DSP回调/prepare与release；按同名头文件实现，不增加公共入口",
+      "verification": "G17"
+    },
+    {
+      "file_id": "F173",
+      "task": "T17",
+      "component": "PRODUCT",
+      "path": "examples/physical-string/plugin/PluginEditor.hpp",
+      "kind": "header",
+      "responsibility": "物理参数GUI/Pluck Stop/有效T/波形计数；仅公开/私有类型声明，禁止实现跨层业务",
+      "verification": "G17"
+    },
+    {
+      "file_id": "F174",
+      "task": "T17",
+      "component": "PRODUCT",
+      "path": "examples/physical-string/plugin/PluginEditor.cpp",
+      "kind": "source",
+      "responsibility": "物理参数GUI/Pluck Stop/有效T/波形计数；按同名头文件实现，不增加公共入口",
+      "verification": "G17"
+    },
+    {
+      "file_id": "F175",
+      "task": "T17",
+      "component": "PRODUCT",
+      "path": "examples/physical-string/plugin/ParameterState.hpp",
+      "kind": "header",
+      "responsibility": "固定APVTS IDs/状态schema/有界参数和命令通道；仅公开/私有类型声明，禁止实现跨层业务",
+      "verification": "G17"
+    },
+    {
+      "file_id": "F176",
+      "task": "T17",
+      "component": "PRODUCT",
+      "path": "examples/physical-string/plugin/ParameterState.cpp",
+      "kind": "source",
+      "responsibility": "固定APVTS IDs/状态schema/有界参数和命令通道；按同名头文件实现，不增加公共入口",
+      "verification": "G17"
+    },
+    {
+      "file_id": "F177",
+      "task": "T15",
+      "component": "PRODUCT",
+      "path": "examples/physical-string/CMakeLists.txt",
+      "kind": "config",
+      "responsibility": "先登记DSP同源target，T16/T17追加tools/Standalone/VST3",
+      "verification": "G15"
+    },
+    {
+      "file_id": "F178",
+      "task": "T17",
+      "component": "PRODUCT",
+      "path": "examples/physical-string/tests/audio_adapter_tests.cpp",
+      "kind": "source",
+      "responsibility": "sample offset/float映射/状态恢复/回调无分配测试",
+      "verification": "G17"
+    },
+    {
+      "file_id": "F179",
+      "task": "T17",
+      "component": "PRODUCT",
+      "path": "examples/physical-string/docs/DAW-CHECKLIST.md",
+      "kind": "doc",
+      "responsibility": "Live/FL真实版本与人工操作证据入口",
+      "verification": "G17"
+    },
+    {
+      "file_id": "F180",
+      "task": "T18",
+      "component": "C12",
+      "path": "tests/end_to_end_tests.cpp",
+      "kind": "source",
+      "responsibility": "真实host/MCP/worker/图/W2/备份完整路径，不用mock替代",
+      "verification": "G18"
+    },
+    {
+      "file_id": "F181",
+      "task": "T18",
+      "component": "C12",
+      "path": "docs/USER-GUIDE.md",
+      "kind": "doc",
+      "responsibility": "双向协作、画布、库、证据与音频安装使用",
+      "verification": "G18"
+    },
+    {
+      "file_id": "F182",
+      "task": "T18",
+      "component": "C12",
+      "path": "docs/RELEASE-CHECKLIST.md",
+      "kind": "doc",
+      "responsibility": "每项实际证据、许可、host/DAW未测状态",
+      "verification": "G18"
+    },
+    {
+      "file_id": "F183",
+      "task": "T18",
+      "component": "C12",
+      "path": "docs/TROUBLESHOOTING.md",
+      "kind": "doc",
+      "responsibility": "具体失败原因/复现步骤，不指示关闭安全机制",
+      "verification": "G18"
+    },
+    {
+      "file_id": "F184",
+      "task": "T18",
+      "component": "C12",
+      "path": "implementation/release-evidence.json",
+      "kind": "config",
+      "responsibility": "实际release文件hash/环境/验收矩阵汇总，不能提前伪造",
+      "verification": "G18"
+    }
+  ],
+  "allowed_generated_paths": [
+    "build/**",
+    "dist/**",
+    "deps/sources/**",
+    "implementation/specification/** (byte-identical copy of this pack excluding DOCX/ZIP)",
+    "implementation/records/T00.md through T18.md",
+    "implementation/change-requests/DCR-*.md",
+    "implementation/evidence/**"
+  ],
+  "generated_path_rules": "No business source disguised as evidence/generated file. Third-party source retains upstream hashes. CMakeUserPresets.json is local untracked only. Runtime library/workspaces live outside source repo."
+}

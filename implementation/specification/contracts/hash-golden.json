@@ -1,0 +1,91 @@
+{
+  "schema_version": 1,
+  "scope": "AXH1 test fixtures independently prepared with Python struct and hashlib, not C++ implementation output; not runtime dependency",
+  "cases": [
+    {
+      "name": "null",
+      "input": null,
+      "encoded_with_prefix_hex": "4158483100",
+      "sha256": "ee2e79c1fbcc330bdcfae5859823666fc5953a5a46b08e32a6775fe550492a99"
+    },
+    {
+      "name": "false",
+      "input": false,
+      "encoded_with_prefix_hex": "4158483101",
+      "sha256": "5c313a3d766ab3ae18ffa767bdca8ad7feb73a53acb9315026716e70c8b1b36b"
+    },
+    {
+      "name": "true",
+      "input": true,
+      "encoded_with_prefix_hex": "4158483102",
+      "sha256": "3d4c39047e418ef1245a3ad02c79dec3357e455e91081b4d7ff2c3713e9653e3"
+    },
+    {
+      "name": "zero",
+      "input": 0,
+      "encoded_with_prefix_hex": "41584831030000000000000000",
+      "sha256": "a237bb21ec4e91c255d87992bbddb84126162e74780e890c6512230671ada921"
+    },
+    {
+      "name": "negative_zero",
+      "input": -0.0,
+      "encoded_with_prefix_hex": "41584831030000000000000000",
+      "sha256": "a237bb21ec4e91c255d87992bbddb84126162e74780e890c6512230671ada921"
+    },
+    {
+      "name": "one",
+      "input": 1,
+      "encoded_with_prefix_hex": "41584831033ff0000000000000",
+      "sha256": "a0f9d66a212177c5eb1615e5d11ae57f6b64f3a7dded319ef2a95d6039d4b816"
+    },
+    {
+      "name": "utf8",
+      "input": "长度",
+      "encoded_with_prefix_hex": "41584831040000000000000006e995bfe5baa6",
+      "sha256": "a8bce3a8f16040a674f93b1be145fd3a2f7eda823242cd6aebb5ab5e355286f6"
+    },
+    {
+      "name": "empty_array",
+      "input": [],
+      "encoded_with_prefix_hex": "41584831050000000000000000",
+      "sha256": "bd80e6c0c126d12ee3fd3949117cc23a89c57c6417f06ae5b07d47e5c788f110"
+    },
+    {
+      "name": "array",
+      "input": [
+        1,
+        "m",
+        null
+      ],
+      "encoded_with_prefix_hex": "41584831050000000000000003033ff00000000000000400000000000000016d00",
+      "sha256": "8226d6c1768e34c9c8525359263d532b0a4bd227891402c5785a8c7da8d78183"
+    },
+    {
+      "name": "object",
+      "input": {
+        "b": 2,
+        "a": 1
+      },
+      "encoded_with_prefix_hex": "4158483106000000000000000204000000000000000161033ff000000000000004000000000000000162034000000000000000",
+      "sha256": "d7756c3ba29cc2bd3238702c17161f561a05b52bd9ac0411d46150029d44bbec"
+    },
+    {
+      "name": "object_reordered",
+      "input": {
+        "a": 1,
+        "b": 2
+      },
+      "encoded_with_prefix_hex": "4158483106000000000000000204000000000000000161033ff000000000000004000000000000000162034000000000000000",
+      "sha256": "d7756c3ba29cc2bd3238702c17161f561a05b52bd9ac0411d46150029d44bbec"
+    },
+    {
+      "name": "u64",
+      "input": {
+        "kind": "u64",
+        "value": "18446744073709551615"
+      },
+      "encoded_with_prefix_hex": "415848310600000000000000020400000000000000046b696e6404000000000000000375363404000000000000000576616c75650400000000000000143138343436373434303733373039353531363135",
+      "sha256": "19a8d41a235a58d8f5066c3805cfdd801bf6229de9df15f55767acf266e926e0"
+    }
+  ]
+}

@@ -1,0 +1,557 @@
+{
+  "schema_version": 1,
+  "tasks": [
+    {
+      "id": "T00",
+      "name": "检查目录并保全旧项目",
+      "milestone": "M0",
+      "requires": [],
+      "owned_files": [
+        "AGENTS.md",
+        "implementation/progress.json",
+        "implementation/inventory.json",
+        "implementation/migration-plan.md",
+        "README.md",
+        ".gitignore"
+      ],
+      "allowed_shared_edits": []
+    },
+    {
+      "id": "T01",
+      "name": "冻结依赖和普通CMake工程",
+      "milestone": "M0",
+      "requires": [
+        "T00"
+      ],
+      "owned_files": [
+        "CMakeLists.txt",
+        "CMakePresets.json",
+        "cmake/Dependencies.cmake",
+        "cmake/Warnings.cmake",
+        "cmake/Packaging.cmake",
+        "deps/lock.json",
+        "implementation/toolchain.json",
+        "docs/BUILD.md",
+        "docs/LICENSE-DECISION.md",
+        "cmake/BootstrapDependencies.cmake"
+      ],
+      "allowed_shared_edits": []
+    },
+    {
+      "id": "T02",
+      "name": "先验证Windows隔离与音频入口",
+      "milestone": "M0",
+      "requires": [
+        "T01"
+      ],
+      "owned_files": [
+        "libs/runner/windows_sandbox.hpp",
+        "libs/runner/windows_sandbox.cpp",
+        "tests/fixtures/sandbox_probe.cpp",
+        "tests/platform_probe.cpp",
+        "examples/audio-smoke/CMakeLists.txt",
+        "examples/audio-smoke/PluginProcessor.cpp"
+      ],
+      "allowed_shared_edits": [
+        {
+          "path": "CMakeLists.txt",
+          "scope": "只登记本任务已实现源/target/tests和批准的依赖边，不改变全局编译安全选项"
+        }
+      ]
+    },
+    {
+      "id": "T03",
+      "name": "实现领域数据与固定契约",
+      "milestone": "M1",
+      "requires": [
+        "T01"
+      ],
+      "owned_files": [
+        "libs/domain/ids.hpp",
+        "libs/domain/ids.cpp",
+        "libs/domain/error.hpp",
+        "libs/domain/error.cpp",
+        "libs/domain/records.hpp",
+        "libs/domain/records.cpp",
+        "libs/domain/schema.hpp",
+        "libs/domain/schema.cpp",
+        "libs/domain/science.hpp",
+        "libs/domain/science.cpp",
+        "libs/domain/hash.hpp",
+        "libs/domain/hash.cpp",
+        "libs/domain/state.hpp",
+        "libs/domain/state.cpp",
+        "libs/domain/ports.hpp",
+        "tests/domain_tests.cpp"
+      ],
+      "allowed_shared_edits": [
+        {
+          "path": "CMakeLists.txt",
+          "scope": "只登记本任务已实现源/target/tests和批准的依赖边，不改变全局编译安全选项"
+        }
+      ]
+    },
+    {
+      "id": "T04",
+      "name": "实现对象库和SQLite权威存储",
+      "milestone": "M1",
+      "requires": [
+        "T03"
+      ],
+      "owned_files": [
+        "libs/store/sqlite.hpp",
+        "libs/store/sqlite.cpp",
+        "libs/store/object_store.hpp",
+        "libs/store/object_store.cpp",
+        "libs/store/workspace_repository.hpp",
+        "libs/store/workspace_repository.cpp",
+        "libs/store/path_guard.hpp",
+        "libs/store/path_guard.cpp",
+        "libs/store/migrations/workspace_v1.sql",
+        "libs/store/migrations/library_v1.sql",
+        "tests/store_tests.cpp"
+      ],
+      "allowed_shared_edits": [
+        {
+          "path": "CMakeLists.txt",
+          "scope": "只登记本任务已实现源/target/tests和批准的依赖边，不改变全局编译安全选项"
+        }
+      ]
+    },
+    {
+      "id": "T05",
+      "name": "实现Host身份和本地通信",
+      "milestone": "M1",
+      "requires": [
+        "T04"
+      ],
+      "owned_files": [
+        "libs/ipc/framing.hpp",
+        "libs/ipc/framing.cpp",
+        "libs/ipc/host_client.hpp",
+        "libs/ipc/host_client.cpp",
+        "libs/host/session.hpp",
+        "libs/host/session.cpp",
+        "libs/host/host_service.hpp",
+        "libs/host/host_service.cpp",
+        "libs/host/job_queue.hpp",
+        "libs/host/job_queue.cpp",
+        "apps/host/main.cpp",
+        "tests/authority_tests.cpp"
+      ],
+      "allowed_shared_edits": [
+        {
+          "path": "CMakeLists.txt",
+          "scope": "只登记本任务已实现源/target/tests和批准的依赖边，不改变全局编译安全选项"
+        }
+      ]
+    },
+    {
+      "id": "T06",
+      "name": "实现Tool SDK和两个基础工具",
+      "milestone": "M1",
+      "requires": [
+        "T03"
+      ],
+      "owned_files": [
+        "libs/sdk/tool.hpp",
+        "libs/sdk/tool.cpp",
+        "libs/sdk/registry.hpp",
+        "libs/sdk/registry.cpp",
+        "libs/sdk/worker_protocol.hpp",
+        "libs/sdk/worker_protocol.cpp",
+        "apps/worker/main.cpp",
+        "examples/probe-tools/probe_tools.hpp",
+        "examples/probe-tools/probe_tools.cpp",
+        "examples/probe-tools/tool-descriptors.json",
+        "tests/sdk_tests.cpp"
+      ],
+      "allowed_shared_edits": [
+        {
+          "path": "CMakeLists.txt",
+          "scope": "只登记本任务已实现源/target/tests和批准的依赖边，不改变全局编译安全选项"
+        }
+      ]
+    },
+    {
+      "id": "T07",
+      "name": "实现生产Runner和受限数据通道",
+      "milestone": "M2",
+      "requires": [
+        "T02",
+        "T04",
+        "T05",
+        "T06"
+      ],
+      "owned_files": [
+        "libs/runner/process_runner.hpp",
+        "libs/runner/process_runner.cpp",
+        "libs/runner/job_staging.hpp",
+        "libs/runner/job_staging.cpp",
+        "libs/runner/resource_budget.hpp",
+        "libs/runner/resource_budget.cpp",
+        "tests/runner_tests.cpp"
+      ],
+      "allowed_shared_edits": [
+        {
+          "path": "CMakeLists.txt",
+          "scope": "只登记本任务已实现源/target/tests和批准的依赖边，不改变全局编译安全选项"
+        },
+        {
+          "path": "libs/host/host_service.cpp",
+          "scope": "仅装配本任务服务并实现catalog中已有对应命令，不改角色/批准规则"
+        },
+        {
+          "path": "libs/runner/windows_sandbox.cpp",
+          "scope": "仅复用并修复已通过原语；必须重跑G02/G07，禁止放宽profile"
+        }
+      ]
+    },
+    {
+      "id": "T08",
+      "name": "实现标准MCP与插件目录",
+      "milestone": "M2",
+      "requires": [
+        "T05",
+        "T06",
+        "T07"
+      ],
+      "owned_files": [
+        "libs/mcp/json_rpc.hpp",
+        "libs/mcp/json_rpc.cpp",
+        "libs/mcp/gateway.hpp",
+        "libs/mcp/gateway.cpp",
+        "apps/mcp/main.cpp",
+        "tests/mcp_tests.cpp",
+        "plugins/axiom-colab/.codex-plugin/plugin.json",
+        "plugins/axiom-colab/.mcp.json.in",
+        "plugins/axiom-colab/skills/axiom-workflow/SKILL.md",
+        "docs/MCP-CLIENT.md"
+      ],
+      "allowed_shared_edits": [
+        {
+          "path": "CMakeLists.txt",
+          "scope": "只登记本任务已实现源/target/tests和批准的依赖边，不改变全局编译安全选项"
+        },
+        {
+          "path": "libs/host/host_service.cpp",
+          "scope": "仅装配本任务服务并实现catalog中已有对应命令，不改角色/批准规则"
+        }
+      ]
+    },
+    {
+      "id": "T09",
+      "name": "实现双向源码协作",
+      "milestone": "M2",
+      "requires": [
+        "T04",
+        "T05",
+        "T07"
+      ],
+      "owned_files": [
+        "libs/project/snapshot.hpp",
+        "libs/project/snapshot.cpp",
+        "libs/project/context.hpp",
+        "libs/project/context.cpp",
+        "libs/project/revision.hpp",
+        "libs/project/revision.cpp",
+        "libs/project/vs_launcher.hpp",
+        "libs/project/vs_launcher.cpp",
+        "tests/project_tests.cpp",
+        "templates/tool-project/CMakeLists.txt.in",
+        "templates/tool-project/tool.hpp.in"
+      ],
+      "allowed_shared_edits": [
+        {
+          "path": "CMakeLists.txt",
+          "scope": "只登记本任务已实现源/target/tests和批准的依赖边，不改变全局编译安全选项"
+        },
+        {
+          "path": "libs/host/host_service.cpp",
+          "scope": "仅装配本任务服务并实现catalog中已有对应命令，不改角色/批准规则"
+        }
+      ]
+    },
+    {
+      "id": "T10",
+      "name": "实现候选验证与独立证据",
+      "milestone": "M2",
+      "requires": [
+        "T07",
+        "T09"
+      ],
+      "owned_files": [
+        "libs/validation/candidate.hpp",
+        "libs/validation/candidate.cpp",
+        "libs/validation/coordinator.hpp",
+        "libs/validation/coordinator.cpp",
+        "libs/validation/oracle.hpp",
+        "libs/validation/oracle.cpp",
+        "libs/validation/evidence.hpp",
+        "libs/validation/evidence.cpp",
+        "tests/validation_tests.cpp",
+        "tests/fixtures/dishonest_worker.cpp"
+      ],
+      "allowed_shared_edits": [
+        {
+          "path": "CMakeLists.txt",
+          "scope": "只登记本任务已实现源/target/tests和批准的依赖边，不改变全局编译安全选项"
+        },
+        {
+          "path": "libs/host/host_service.cpp",
+          "scope": "仅装配本任务服务并实现catalog中已有对应命令，不改角色/批准规则"
+        }
+      ]
+    },
+    {
+      "id": "T11",
+      "name": "实现精确发布和长期工具库",
+      "milestone": "M2",
+      "requires": [
+        "T04",
+        "T05",
+        "T10"
+      ],
+      "owned_files": [
+        "libs/library/package.hpp",
+        "libs/library/package.cpp",
+        "libs/library/library_service.hpp",
+        "libs/library/library_service.cpp",
+        "libs/library/binding.hpp",
+        "libs/library/binding.cpp",
+        "tests/library_tests.cpp"
+      ],
+      "allowed_shared_edits": [
+        {
+          "path": "CMakeLists.txt",
+          "scope": "只登记本任务已实现源/target/tests和批准的依赖边，不改变全局编译安全选项"
+        },
+        {
+          "path": "libs/host/host_service.cpp",
+          "scope": "仅装配本任务服务并实现catalog中已有对应命令，不改角色/批准规则"
+        }
+      ]
+    },
+    {
+      "id": "T12",
+      "name": "实现目标计划和节点执行",
+      "milestone": "M3",
+      "requires": [
+        "T07",
+        "T11"
+      ],
+      "owned_files": [
+        "libs/workflow/goal_plan.hpp",
+        "libs/workflow/goal_plan.cpp",
+        "libs/workflow/graph.hpp",
+        "libs/workflow/graph.cpp",
+        "libs/workflow/scheduler.hpp",
+        "libs/workflow/scheduler.cpp",
+        "libs/workflow/composite.hpp",
+        "libs/workflow/composite.cpp",
+        "tests/workflow_tests.cpp"
+      ],
+      "allowed_shared_edits": [
+        {
+          "path": "CMakeLists.txt",
+          "scope": "只登记本任务已实现源/target/tests和批准的依赖边，不改变全局编译安全选项"
+        },
+        {
+          "path": "libs/host/host_service.cpp",
+          "scope": "仅装配本任务服务并实现catalog中已有对应命令，不改角色/批准规则"
+        }
+      ]
+    },
+    {
+      "id": "T13",
+      "name": "实现Qt审核界面和节点画布",
+      "milestone": "M3",
+      "requires": [
+        "T08",
+        "T09",
+        "T11",
+        "T12"
+      ],
+      "owned_files": [
+        "apps/review/main_window.hpp",
+        "apps/review/main_window.cpp",
+        "apps/review/workspace_panel.hpp",
+        "apps/review/workspace_panel.cpp",
+        "apps/review/library_panel.hpp",
+        "apps/review/library_panel.cpp",
+        "apps/review/project_panel.hpp",
+        "apps/review/project_panel.cpp",
+        "apps/review/review_panel.hpp",
+        "apps/review/review_panel.cpp",
+        "apps/review/graph_canvas.hpp",
+        "apps/review/graph_canvas.cpp",
+        "apps/review/parameter_panel.hpp",
+        "apps/review/parameter_panel.cpp",
+        "apps/review/job_panel.hpp",
+        "apps/review/job_panel.cpp",
+        "apps/review/main.cpp",
+        "tests/ui_model_tests.cpp"
+      ],
+      "allowed_shared_edits": [
+        {
+          "path": "CMakeLists.txt",
+          "scope": "只登记本任务已实现源/target/tests和批准的依赖边，不改变全局编译安全选项"
+        }
+      ]
+    },
+    {
+      "id": "T14",
+      "name": "补齐恢复备份和诊断",
+      "milestone": "M3",
+      "requires": [
+        "T09",
+        "T11",
+        "T12"
+      ],
+      "owned_files": [
+        "libs/store/recovery.hpp",
+        "libs/store/recovery.cpp",
+        "libs/store/backup.hpp",
+        "libs/store/backup.cpp",
+        "tests/recovery_tests.cpp",
+        "apps/diagnostics/main.cpp"
+      ],
+      "allowed_shared_edits": [
+        {
+          "path": "CMakeLists.txt",
+          "scope": "只登记本任务已实现源/target/tests和批准的依赖边，不改变全局编译安全选项"
+        },
+        {
+          "path": "libs/host/host_service.cpp",
+          "scope": "仅装配本任务服务并实现catalog中已有对应命令，不改角色/批准规则"
+        }
+      ]
+    },
+    {
+      "id": "T15",
+      "name": "通过Axiom流程开发物理DSP",
+      "milestone": "M4",
+      "requires": [
+        "T10",
+        "T11",
+        "T12",
+        "T13"
+      ],
+      "owned_files": [
+        "examples/physical-string/dsp/string_parameters.hpp",
+        "examples/physical-string/dsp/string_parameters.cpp",
+        "examples/physical-string/dsp/modal_string.hpp",
+        "examples/physical-string/dsp/modal_string.cpp",
+        "examples/physical-string/tests/dsp_tests.cpp",
+        "examples/physical-string/docs/MODEL.md",
+        "examples/physical-string/CMakeLists.txt"
+      ],
+      "allowed_shared_edits": [
+        {
+          "path": "CMakeLists.txt",
+          "scope": "只登记本任务已实现源/target/tests和批准的依赖边，不改变全局编译安全选项"
+        }
+      ]
+    },
+    {
+      "id": "T16",
+      "name": "开发离线音频工具与实验组合",
+      "milestone": "M4",
+      "requires": [
+        "T15"
+      ],
+      "owned_files": [
+        "examples/physical-string/tools/string_render_tool.hpp",
+        "examples/physical-string/tools/string_render_tool.cpp",
+        "examples/physical-string/tools/spectrum_tool.hpp",
+        "examples/physical-string/tools/spectrum_tool.cpp",
+        "examples/physical-string/tools/decay_tool.hpp",
+        "examples/physical-string/tools/decay_tool.cpp",
+        "examples/physical-string/tools/report_tool.hpp",
+        "examples/physical-string/tools/report_tool.cpp",
+        "examples/physical-string/tools/audio_artifacts.hpp",
+        "examples/physical-string/tools/audio_artifacts.cpp",
+        "examples/physical-string/tools/worker_main.cpp",
+        "examples/physical-string/tools/descriptors.json",
+        "examples/physical-string/workflows/string_experiment.json",
+        "examples/physical-string/tests/analysis_tests.cpp"
+      ],
+      "allowed_shared_edits": [
+        {
+          "path": "CMakeLists.txt",
+          "scope": "只登记本任务已实现源/target/tests和批准的依赖边，不改变全局编译安全选项"
+        },
+        {
+          "path": "examples/physical-string/CMakeLists.txt",
+          "scope": "仅追加四工具/worker/analysis测试，复用已登记DSP target"
+        }
+      ]
+    },
+    {
+      "id": "T17",
+      "name": "实现Standalone和通用VST3",
+      "milestone": "M4",
+      "requires": [
+        "T15",
+        "T16"
+      ],
+      "owned_files": [
+        "examples/physical-string/plugin/PluginProcessor.hpp",
+        "examples/physical-string/plugin/PluginProcessor.cpp",
+        "examples/physical-string/plugin/PluginEditor.hpp",
+        "examples/physical-string/plugin/PluginEditor.cpp",
+        "examples/physical-string/plugin/ParameterState.hpp",
+        "examples/physical-string/plugin/ParameterState.cpp",
+        "examples/physical-string/tests/audio_adapter_tests.cpp",
+        "examples/physical-string/docs/DAW-CHECKLIST.md"
+      ],
+      "allowed_shared_edits": [
+        {
+          "path": "CMakeLists.txt",
+          "scope": "只登记本任务已实现源/target/tests和批准的依赖边，不改变全局编译安全选项"
+        },
+        {
+          "path": "CMakePresets.json",
+          "scope": "将最终音频target开启，保留Debug/Release和固定ABI"
+        },
+        {
+          "path": "examples/physical-string/CMakeLists.txt",
+          "scope": "仅追加JUCE Standalone/VST3与adapter测试，复用已登记DSP/tools targets"
+        }
+      ]
+    },
+    {
+      "id": "T18",
+      "name": "执行完整验收并打包交付",
+      "milestone": "RELEASE",
+      "requires": [
+        "T08",
+        "T13",
+        "T14",
+        "T16",
+        "T17"
+      ],
+      "owned_files": [
+        "tests/end_to_end_tests.cpp",
+        "docs/USER-GUIDE.md",
+        "docs/RELEASE-CHECKLIST.md",
+        "docs/TROUBLESHOOTING.md",
+        "implementation/release-evidence.json"
+      ],
+      "allowed_shared_edits": [
+        {
+          "path": "CMakeLists.txt",
+          "scope": "只登记本任务已实现源/target/tests和批准的依赖边，不改变全局编译安全选项"
+        },
+        {
+          "path": "cmake/Packaging.cmake",
+          "scope": "补齐真实最终exe/DLL/VST3/许可证install清单"
+        },
+        {
+          "path": "README.md",
+          "scope": "用真实证据更新完成状态和使用入口"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,185 @@
+﻿file_id,task,component,path,kind,responsibility,verification
+F001,T00,C12,AGENTS.md,config,复制固定生产实现约束，保留适用本地规则并记录冲突,G00
+F002,T00,C12,implementation/progress.json,config,真实任务与门禁状态；初始not_started,G00
+F003,T00,C12,implementation/inventory.json,config,实际路径、远端、分支、脏文件、Windows与工具能力清单,G00
+F004,T00,C12,implementation/migration-plan.md,config,legacy SHA/远端证据/正常提交迁移计划,G00
+F005,T00,C12,README.md,config,项目目标、构建、实际完成状态与规范入口,G00
+F006,T00,C12,.gitignore,config,排除build/dist/deps缓存、运行数据、密钥、用户预设，保留规范与锁,G00
+F007,T01,C12,CMakeLists.txt,config,显式targets、源码清单、依赖方向与最小分阶段开启,G01
+F008,T01,C12,CMakePresets.json,config,win-debug/win-release configure build test三组,G01
+F009,T01,C12,cmake/Dependencies.cmake,config,精确离线依赖位置与hash/版本门禁,G01
+F010,T01,C12,cmake/Warnings.cmake,config,MSVC/CRT/precise/UTF-8一致选项,G01
+F011,T01,C12,cmake/Packaging.cmake,config,带许可证的install规则，T18仅补最终产物清单,G01
+F012,T01,C12,deps/lock.json,config,真实完整依赖hash、许可、来源与构建选项,G01
+F013,T01,C12,implementation/toolchain.json,config,真实cl/SDK/cmake/ninja/Qt路径与fingerprint,G01
+F014,T01,C12,docs/BUILD.md,config,普通VS打开/F5与命令行同源构建,G01
+F015,T01,C12,docs/LICENSE-DECISION.md,config,实际许可证据与所有者待决定事项，不代签,G01
+F016,T01,C12,cmake/BootstrapDependencies.cmake,config,只从锁定官方版本预取并核对字节；不执行模型命令字符串,G01
+F017,T02,C07,libs/runner/windows_sandbox.hpp,header,AppContainer token/ACL/security attributes与Job启动原语；仅公开/私有类型声明，禁止实现跨层业务,G02
+F018,T02,C07,libs/runner/windows_sandbox.cpp,source,AppContainer token/ACL/security attributes与Job启动原语；按同名头文件实现，不增加公共入口,G02
+F019,T02,C07,tests/fixtures/sandbox_probe.cpp,source,受控probe尝试文件/网络/子进程/资源行为，绝无真实破坏,G02
+F020,T02,C07,tests/platform_probe.cpp,source,真实受限CMake编译调用与取消，oracle在父进程,G02
+F021,T02,C12,examples/audio-smoke/CMakeLists.txt,config,JUCE空壳M0构建入口，不包含正式DSP,G02
+F022,T02,C12,examples/audio-smoke/PluginProcessor.cpp,source,临时静音processor检查VST3/Standalone入口，明确非最终产品,G02
+F023,T03,C01,libs/domain/ids.hpp,header,强类型ID/revision/hash与无损解析；仅公开/私有类型声明，禁止实现跨层业务,G03
+F024,T03,C01,libs/domain/ids.cpp,source,强类型ID/revision/hash与无损解析；按同名头文件实现，不增加公共入口,G03
+F025,T03,C01,libs/domain/error.hpp,header,错误枚举与Result类型；仅公开/私有类型声明，禁止实现跨层业务,G03
+F026,T03,C01,libs/domain/error.cpp,source,错误枚举与Result类型；按同名头文件实现，不增加公共入口,G03
+F027,T03,C01,libs/domain/records.hpp,header,data-model记录和序列化，闭合字段校验；仅公开/私有类型声明，禁止实现跨层业务,G03
+F028,T03,C01,libs/domain/records.cpp,source,data-model记录和序列化，闭合字段校验；按同名头文件实现，不增加公共入口,G03
+F029,T03,C01,libs/domain/schema.hpp,header,固定JSON Schema子集与typed value校验；仅公开/私有类型声明，禁止实现跨层业务,G03
+F030,T03,C01,libs/domain/schema.cpp,source,固定JSON Schema子集与typed value校验；按同名头文件实现，不增加公共入口,G03
+F031,T03,C01,libs/domain/science.hpp,header,V1单位/量种/策略/未知不确定度元数据；仅公开/私有类型声明，禁止实现跨层业务,G03
+F032,T03,C01,libs/domain/science.cpp,source,V1单位/量种/策略/未知不确定度元数据；按同名头文件实现，不增加公共入口,G03
+F033,T03,C01,libs/domain/hash.hpp,header,AXH1规范编码与BCrypt SHA-256；仅公开/私有类型声明，禁止实现跨层业务,G03
+F034,T03,C01,libs/domain/hash.cpp,source,AXH1规范编码与BCrypt SHA-256；按同名头文件实现，不增加公共入口,G03
+F035,T03,C01,libs/domain/state.hpp,header,合法状态转移与结果判定；仅公开/私有类型声明，禁止实现跨层业务,G03
+F036,T03,C01,libs/domain/state.cpp,source,合法状态转移与结果判定；按同名头文件实现，不增加公共入口,G03
+F037,T03,C01,libs/domain/ports.hpp,header,IToolInvoker/IProcessRunner/IWorkspaceRepository隔离端口定义,G03
+F038,T03,C01,tests/domain_tests.cpp,source,独立AXH1 golden、无损整数、单位/状态非法路径,G03
+F039,T04,C10,libs/store/sqlite.hpp,header,SQLite handle/statement/transaction RAII与schema版本检查；仅公开/私有类型声明，禁止实现跨层业务,G04
+F040,T04,C10,libs/store/sqlite.cpp,source,SQLite handle/statement/transaction RAII与schema版本检查；按同名头文件实现，不增加公共入口,G04
+F041,T04,C10,libs/store/object_store.hpp,header,staging、内容寻址、chunk读取与配额；仅公开/私有类型声明，禁止实现跨层业务,G04
+F042,T04,C10,libs/store/object_store.cpp,source,staging、内容寻址、chunk读取与配额；按同名头文件实现，不增加公共入口,G04
+F043,T04,C10,libs/store/workspace_repository.hpp,header,对象revision/working/artifact/audit typed查询；仅公开/私有类型声明，禁止实现跨层业务,G04
+F044,T04,C10,libs/store/workspace_repository.cpp,source,对象revision/working/artifact/audit typed查询；按同名头文件实现，不增加公共入口,G04
+F045,T04,C10,libs/store/path_guard.hpp,header,Windows最终handle路径、重解析点与大小写冲突检查；仅公开/私有类型声明，禁止实现跨层业务,G04
+F046,T04,C10,libs/store/path_guard.cpp,source,Windows最终handle路径、重解析点与大小写冲突检查；按同名头文件实现，不增加公共入口,G04
+F047,T04,C10,libs/store/migrations/workspace_v1.sql,sql,workspace schema1规范建表,G04
+F048,T04,C10,libs/store/migrations/library_v1.sql,sql,独立library schema1规范建表,G04
+F049,T04,C10,tests/store_tests.cpp,source,revision冲突、原子可见性、非法路径、配额、schema拒绝,G04
+F050,T05,C02,libs/ipc/framing.hpp,header,QLocalSocket长度帧/有界解析/事件序列；仅公开/私有类型声明，禁止实现跨层业务,G05
+F051,T05,C02,libs/ipc/framing.cpp,source,QLocalSocket长度帧/有界解析/事件序列；按同名头文件实现，不增加公共入口,G05
+F052,T05,C02,libs/ipc/host_client.hpp,header,UI/MCP异步传输客户端，无业务授权判断；仅公开/私有类型声明，禁止实现跨层业务,G05
+F053,T05,C02,libs/ipc/host_client.cpp,source,UI/MCP异步传输客户端，无业务授权判断；按同名头文件实现，不增加公共入口,G05
+F054,T05,C02,libs/host/session.hpp,header,host授予model/reviewer身份与workspace能力；仅公开/私有类型声明，禁止实现跨层业务,G05
+F055,T05,C02,libs/host/session.cpp,source,host授予model/reviewer身份与workspace能力；按同名头文件实现，不增加公共入口,G05
+F056,T05,C02,libs/host/host_service.hpp,header,typed命令分发、service composition root、权威串行通道；仅公开/私有类型声明，禁止实现跨层业务,G05
+F057,T05,C02,libs/host/host_service.cpp,source,typed命令分发、service composition root、权威串行通道；按同名头文件实现，不增加公共入口,G05
+F058,T05,C02,libs/host/job_queue.hpp,header,每workspace并发1、幂等提交、cancel/poll与真实状态；仅公开/私有类型声明，禁止实现跨层业务,G05
+F059,T05,C02,libs/host/job_queue.cpp,source,每workspace并发1、幂等提交、cancel/poll与真实状态；按同名头文件实现，不增加公共入口,G05
+F060,T05,C02,apps/host/main.cpp,source,单host实例、启动review的私有能力管道、参数与退出,G05
+F061,T05,C02,tests/authority_tests.cpp,source,actor伪造/跨workspace/重放/错误批准主体拒绝,G05
+F062,T06,C06,libs/sdk/tool.hpp,header,ITool/CallContext/输入输出和SDK版本；仅公开/私有类型声明，禁止实现跨层业务,G06
+F063,T06,C06,libs/sdk/tool.cpp,source,ITool/CallContext/输入输出和SDK版本；按同名头文件实现，不增加公共入口,G06
+F064,T06,C06,libs/sdk/registry.hpp,header,显式factory/服务依赖拓扑/unique_ptr装配；仅公开/私有类型声明，禁止实现跨层业务,G06
+F065,T06,C06,libs/sdk/registry.cpp,source,显式factory/服务依赖拓扑/unique_ptr装配；按同名头文件实现，不增加公共入口,G06
+F066,T06,C06,libs/sdk/worker_protocol.hpp,header,单次worker请求、staging访问、结构化结果；仅公开/私有类型声明，禁止实现跨层业务,G06
+F067,T06,C06,libs/sdk/worker_protocol.cpp,source,单次worker请求、staging访问、结构化结果；按同名头文件实现，不增加公共入口,G06
+F068,T06,C06,apps/worker/main.cpp,source,SDK demo worker入口，启动后一次请求退出,G06
+F069,T06,C06,examples/probe-tools/probe_tools.hpp,header,ScaleTool与OffsetTool两个公开类，仅系统样例；仅公开/私有类型声明，禁止实现跨层业务,G06
+F070,T06,C06,examples/probe-tools/probe_tools.cpp,source,ScaleTool与OffsetTool两个公开类，仅系统样例；按同名头文件实现，不增加公共入口,G06
+F071,T06,C06,examples/probe-tools/tool-descriptors.json,config,两probe的精确类型/权限/界限,G06
+F072,T06,C06,tests/sdk_tests.cpp,source,缺依赖/循环/非法输入/独立worker无共享状态,G06
+F073,T07,C07,libs/runner/process_runner.hpp,header,IProcessRunner实现、受控argv、取消和观察；仅公开/私有类型声明，禁止实现跨层业务,G07
+F074,T07,C07,libs/runner/process_runner.cpp,source,IProcessRunner实现、受控argv、取消和观察；按同名头文件实现，不增加公共入口,G07
+F075,T07,C07,libs/runner/job_staging.hpp,header,精确输入/依赖复制与输出检查导入；仅公开/私有类型声明，禁止实现跨层业务,G07
+F076,T07,C07,libs/runner/job_staging.cpp,source,精确输入/依赖复制与输出检查导入；按同名头文件实现，不增加公共入口,G07
+F077,T07,C07,libs/runner/resource_budget.hpp,header,墙钟/内存/日志/进程配额统一执行；仅公开/私有类型声明，禁止实现跨层业务,G07
+F078,T07,C07,libs/runner/resource_budget.cpp,source,墙钟/内存/日志/进程配额统一执行；按同名头文件实现，不增加公共入口,G07
+F079,T07,C07,tests/runner_tests.cpp,source,真实工具树超时/输出洪泛/不受信输出hash/网络越界拒绝,G07
+F080,T08,C03,libs/mcp/json_rpc.hpp,header,stdio换行JSONRPC、ID无损、固定错误码和取消；仅公开/私有类型声明，禁止实现跨层业务,G08
+F081,T08,C03,libs/mcp/json_rpc.cpp,source,stdio换行JSONRPC、ID无损、固定错误码和取消；按同名头文件实现，不增加公共入口,G08
+F082,T08,C03,libs/mcp/gateway.hpp,header,initialize/tools/list/tools/call、动态绑定与schema投影；仅公开/私有类型声明，禁止实现跨层业务,G08
+F083,T08,C03,libs/mcp/gateway.cpp,source,initialize/tools/list/tools/call、动态绑定与schema投影；按同名头文件实现，不增加公共入口,G08
+F084,T08,C03,apps/mcp/main.cpp,source,仅stdio MCP到host的model连接，workspace启动参数,G08
+F085,T08,C03,tests/mcp_tests.cpp,source,真实子进程协议一致性、分页、非法JSON和越权方法,G08
+F086,T08,C03,plugins/axiom-colab/.codex-plugin/plugin.json,config,固定元数据/skills/MCP companion引用,G08
+F087,T08,C03,plugins/axiom-colab/.mcp.json.in,config,安装时生成真实路径和workspace，不含能力secret,G08
+F088,T08,C03,plugins/axiom-colab/skills/axiom-workflow/SKILL.md,config,工具调用流程与用户批准边界，外部客户端无需本包历史,G08
+F089,T08,C03,docs/MCP-CLIENT.md,config,真实客户端安装与配置检查，不冒称模型均兼容,G08
+F090,T09,C05,libs/project/snapshot.hpp,header,已保存字节捕获/设计依赖绑定；仅公开/私有类型声明，禁止实现跨层业务,G09
+F091,T09,C05,libs/project/snapshot.cpp,source,已保存字节捕获/设计依赖绑定；按同名头文件实现，不增加公共入口,G09
+F092,T09,C05,libs/project/context.hpp,header,脱敏有界context导出和分块读取；仅公开/私有类型声明，禁止实现跨层业务,G09
+F093,T09,C05,libs/project/context.cpp,source,脱敏有界context导出和分块读取；按同名头文件实现，不增加公共入口,G09
+F094,T09,C05,libs/project/revision.hpp,header,worktree/白名单/marker/diff/apply journal及冲突；仅公开/私有类型声明，禁止实现跨层业务,G09
+F095,T09,C05,libs/project/revision.cpp,source,worktree/白名单/marker/diff/apply journal及冲突；按同名头文件实现，不增加公共入口,G09
+F096,T09,C05,libs/project/vs_launcher.hpp,header,固定本机VS入口和项目路径打开，不读IDE缓冲；仅公开/私有类型声明，禁止实现跨层业务,G09
+F097,T09,C05,libs/project/vs_launcher.cpp,source,固定本机VS入口和项目路径打开，不读IDE缓冲；按同名头文件实现，不增加公共入口,G09
+F098,T09,C05,tests/project_tests.cpp,source,模式A/B、文件级冲突与多文件恢复不覆盖新改动,G09
+F099,T09,C05,templates/tool-project/CMakeLists.txt.in,config,普通用户项目依赖exact SDK的CMake模板,G09
+F100,T09,C05,templates/tool-project/tool.hpp.in,config,公开Tool壳的契约声明，不填领域实现,G09
+F101,T10,C08,libs/validation/candidate.hpp,header,immutable候选和精确build recipe绑定；仅公开/私有类型声明，禁止实现跨层业务,G10
+F102,T10,C08,libs/validation/candidate.cpp,source,immutable候选和精确build recipe绑定；按同名头文件实现，不增加公共入口,G10
+F103,T10,C08,libs/validation/coordinator.hpp,header,受信runner观察、suite执行、二进制hash结论；仅公开/私有类型声明，禁止实现跨层业务,G10
+F104,T10,C08,libs/validation/coordinator.cpp,source,受信runner观察、suite执行、二进制hash结论；按同名头文件实现，不增加公共入口,G10
+F105,T10,C08,libs/validation/oracle.hpp,header,typed_exact/numeric_tolerance/artifact_properties参考检查；仅公开/私有类型声明，禁止实现跨层业务,G10
+F106,T10,C08,libs/validation/oracle.cpp,source,typed_exact/numeric_tolerance/artifact_properties参考检查；按同名头文件实现，不增加公共入口,G10
+F107,T10,C08,libs/validation/evidence.hpp,header,公开/私有证据隔离、持久化及完整性；仅公开/私有类型声明，禁止实现跨层业务,G10
+F108,T10,C08,libs/validation/evidence.cpp,source,公开/私有证据隔离、持久化及完整性；按同名头文件实现，不增加公共入口,G10
+F109,T10,C08,tests/validation_tests.cpp,source,伪PASS/失败退出/缺suite/旧二进制/私密泄露均拒绝,G10
+F110,T10,C08,tests/fixtures/dishonest_worker.cpp,source,仅测试协议谎称通过/返回坏内容，受控运行,G10
+F111,T11,C09,libs/library/package.hpp,header,manifest与源/static/worker/product文件验证；仅公开/私有类型声明，禁止实现跨层业务,G11
+F112,T11,C09,libs/library/package.cpp,source,manifest与源/static/worker/product文件验证；按同名头文件实现，不增加公共入口,G11
+F113,T11,C09,libs/library/library_service.hpp,header,发布journal/一次批准/撤销/不可变版本；仅公开/私有类型声明，禁止实现跨层业务,G11
+F114,T11,C09,libs/library/library_service.cpp,source,发布journal/一次批准/撤销/不可变版本；按同名头文件实现，不增加公共入口,G11
+F115,T11,C09,libs/library/binding.hpp,header,workspace精确包绑定/能力交集/依赖闭包；仅公开/私有类型声明，禁止实现跨层业务,G11
+F116,T11,C09,libs/library/binding.cpp,source,workspace精确包绑定/能力交集/依赖闭包；按同名头文件实现，不增加公共入口,G11
+F117,T11,C09,tests/library_tests.cpp,source,W1→库→W2、同版本冲突、旧批准不能换包、撤销与恢复,G11
+F118,T12,C11,libs/workflow/goal_plan.hpp,header,目标/计划审批与预算绑定；仅公开/私有类型声明，禁止实现跨层业务,G12
+F119,T12,C11,libs/workflow/goal_plan.cpp,source,目标/计划审批与预算绑定；按同名头文件实现，不增加公共入口,G12
+F120,T12,C11,libs/workflow/graph.hpp,header,节点/端口/边/精确类型校验与语义hash；仅公开/私有类型声明，禁止实现跨层业务,G12
+F121,T12,C11,libs/workflow/graph.cpp,source,节点/端口/边/精确类型校验与语义hash；按同名头文件实现，不增加公共入口,G12
+F122,T12,C11,libs/workflow/scheduler.hpp,header,确定拓扑串行、冻结run、独立分支与取消；仅公开/私有类型声明，禁止实现跨层业务,G12
+F123,T12,C11,libs/workflow/scheduler.cpp,source,确定拓扑串行、冻结run、独立分支与取消；按同名头文件实现，不增加公共入口,G12
+F124,T12,C11,libs/workflow/composite.hpp,header,一层组合映射、展开trace、精确依赖与权限并集；仅公开/私有类型声明，禁止实现跨层业务,G12
+F125,T12,C11,libs/workflow/composite.cpp,source,一层组合映射、展开trace、精确依赖与权限并集；按同名头文件实现，不增加公共入口,G12
+F126,T12,C11,tests/workflow_tests.cpp,source,分叉汇合/环/单位错/运行中草稿/组合深度/新workspace复用,G12
+F127,T13,C04,apps/review/main_window.hpp,header,四区域导航与连接/活动任务状态；仅公开/私有类型声明，禁止实现跨层业务,G13
+F128,T13,C04,apps/review/main_window.cpp,source,四区域导航与连接/活动任务状态；按同名头文件实现，不增加公共入口,G13
+F129,T13,C04,apps/review/workspace_panel.hpp,header,目标计划/对象/封存和context操作；仅公开/私有类型声明，禁止实现跨层业务,G13
+F130,T13,C04,apps/review/workspace_panel.cpp,source,目标计划/对象/封存和context操作；按同名头文件实现，不增加公共入口,G13
+F131,T13,C04,apps/review/library_panel.hpp,header,精确包、绑定、撤销与依赖详情；仅公开/私有类型声明，禁止实现跨层业务,G13
+F132,T13,C04,apps/review/library_panel.cpp,source,精确包、绑定、撤销与依赖详情；按同名头文件实现，不增加公共入口,G13
+F133,T13,C04,apps/review/project_panel.hpp,header,文件差异、区域限制、冲突与VS入口；仅公开/私有类型声明，禁止实现跨层业务,G13
+F134,T13,C04,apps/review/project_panel.cpp,source,文件差异、区域限制、冲突与VS入口；按同名头文件实现，不增加公共入口,G13
+F135,T13,C04,apps/review/review_panel.hpp,header,用户精确批准/拒绝、私有suite设置、证据详情；仅公开/私有类型声明，禁止实现跨层业务,G13
+F136,T13,C04,apps/review/review_panel.cpp,source,用户精确批准/拒绝、私有suite设置、证据详情；按同名头文件实现，不增加公共入口,G13
+F137,T13,C04,apps/review/graph_canvas.hpp,header,Qt Graphics View节点边布局与交互；仅公开/私有类型声明，禁止实现跨层业务,G13
+F138,T13,C04,apps/review/graph_canvas.cpp,source,Qt Graphics View节点边布局与交互；按同名头文件实现，不增加公共入口,G13
+F139,T13,C04,apps/review/parameter_panel.hpp,header,单位范围/参数来源/dirty状态和结果版本；仅公开/私有类型声明，禁止实现跨层业务,G13
+F140,T13,C04,apps/review/parameter_panel.cpp,source,单位范围/参数来源/dirty状态和结果版本；按同名头文件实现，不增加公共入口,G13
+F141,T13,C04,apps/review/job_panel.hpp,header,真实异步进度、cancel、受限公开日志；仅公开/私有类型声明，禁止实现跨层业务,G13
+F142,T13,C04,apps/review/job_panel.cpp,source,真实异步进度、cancel、受限公开日志；按同名头文件实现，不增加公共入口,G13
+F143,T13,C04,apps/review/main.cpp,source,独立启动转host激活/私有通道接入/Qt app生命周期,G13
+F144,T13,C04,tests/ui_model_tests.cpp,source,无Widgets业务旁路、参数数据模型与命令授权检查,G13
+F145,T14,C10,libs/store/recovery.hpp,header,发布/应用/对象/作业interrupted恢复，不自动重放；仅公开/私有类型声明，禁止实现跨层业务,G14
+F146,T14,C10,libs/store/recovery.cpp,source,发布/应用/对象/作业interrupted恢复，不自动重放；按同名头文件实现，不增加公共入口,G14
+F147,T14,C12,libs/store/backup.hpp,header,SQLite backup API与引用对象清单、空根恢复；仅公开/私有类型声明，禁止实现跨层业务,G14
+F148,T14,C12,libs/store/backup.cpp,source,SQLite backup API与引用对象清单、空根恢复；按同名头文件实现，不增加公共入口,G14
+F149,T14,C10,tests/recovery_tests.cpp,source,各提交点故障注入、备份换目录与损坏字节发现,G14
+F150,T14,C12,apps/diagnostics/main.cpp,source,doctor/verify-backup只读诊断，不自动提权修环境,G14
+F151,T15,PRODUCT,examples/physical-string/dsp/string_parameters.hpp,header,纯物理参数域校验/派生频率/有效模态数；仅公开/私有类型声明，禁止实现跨层业务,G15
+F152,T15,PRODUCT,examples/physical-string/dsp/string_parameters.cpp,source,纯物理参数域校验/派生频率/有效模态数；按同名头文件实现，不增加公共入口,G15
+F153,T15,PRODUCT,examples/physical-string/dsp/modal_string.hpp,header,固定数组解析模态推进、能量/速度输出；仅公开/私有类型声明，禁止实现跨层业务,G15
+F154,T15,PRODUCT,examples/physical-string/dsp/modal_string.cpp,source,固定数组解析模态推进、能量/速度输出；按同名头文件实现，不增加公共入口,G15
+F155,T15,PRODUCT,examples/physical-string/tests/dsp_tests.cpp,source,独立闭式oracle/能量/零激励/投影/块一致性,G15
+F156,T15,PRODUCT,examples/physical-string/docs/MODEL.md,doc,方程推导、域、近似、单位、失败与验证证据,G15
+F157,T16,PRODUCT,examples/physical-string/tools/string_render_tool.hpp,header,共享DSP原速度序列+试听WAV+metadata；仅公开/私有类型声明，禁止实现跨层业务,G16
+F158,T16,PRODUCT,examples/physical-string/tools/string_render_tool.cpp,source,共享DSP原速度序列+试听WAV+metadata；按同名头文件实现，不增加公共入口,G16
+F159,T16,PRODUCT,examples/physical-string/tools/spectrum_tool.hpp,header,有界Hann FFT单边幅度/peak_frequency；仅公开/私有类型声明，禁止实现跨层业务,G16
+F160,T16,PRODUCT,examples/physical-string/tools/spectrum_tool.cpp,source,有界Hann FFT单边幅度/peak_frequency；按同名头文件实现，不增加公共入口,G16
+F161,T16,PRODUCT,examples/physical-string/tools/decay_tool.hpp,header,窗口RMS对数OLS、not_estimable/growing；仅公开/私有类型声明，禁止实现跨层业务,G16
+F162,T16,PRODUCT,examples/physical-string/tools/decay_tool.cpp,source,窗口RMS对数OLS、not_estimable/growing；按同名头文件实现，不增加公共入口,G16
+F163,T16,PRODUCT,examples/physical-string/tools/report_tool.hpp,header,同源输入核对与JSON/Markdown证据报告；仅公开/私有类型声明，禁止实现跨层业务,G16
+F164,T16,PRODUCT,examples/physical-string/tools/report_tool.cpp,source,同源输入核对与JSON/Markdown证据报告；按同名头文件实现，不增加公共入口,G16
+F165,T16,PRODUCT,examples/physical-string/tools/audio_artifacts.hpp,header,固定little-endian f64原数据/float32 WAV编码与元数据；仅公开/私有类型声明，禁止实现跨层业务,G16
+F166,T16,PRODUCT,examples/physical-string/tools/audio_artifacts.cpp,source,固定little-endian f64原数据/float32 WAV编码与元数据；按同名头文件实现，不增加公共入口,G16
+F167,T16,PRODUCT,examples/physical-string/tools/worker_main.cpp,source,注册四公开工具与service、使用同一SDK worker协议,G16
+F168,T16,PRODUCT,examples/physical-string/tools/descriptors.json,config,四tool精确端口、schema、参数、权限、模型假设,G16
+F169,T16,PRODUCT,examples/physical-string/workflows/string_experiment.json,config,真实工具版本在发布后解析冻结的组合模板,G16
+F170,T16,PRODUCT,examples/physical-string/tests/analysis_tests.cpp,source,FFT独立DFT/包络参考/原数据与报告来源检查,G16
+F171,T17,PRODUCT,examples/physical-string/plugin/PluginProcessor.hpp,header,JUCE bus/MIDI offsets/纯DSP回调/prepare与release；仅公开/私有类型声明，禁止实现跨层业务,G17
+F172,T17,PRODUCT,examples/physical-string/plugin/PluginProcessor.cpp,source,JUCE bus/MIDI offsets/纯DSP回调/prepare与release；按同名头文件实现，不增加公共入口,G17
+F173,T17,PRODUCT,examples/physical-string/plugin/PluginEditor.hpp,header,物理参数GUI/Pluck Stop/有效T/波形计数；仅公开/私有类型声明，禁止实现跨层业务,G17
+F174,T17,PRODUCT,examples/physical-string/plugin/PluginEditor.cpp,source,物理参数GUI/Pluck Stop/有效T/波形计数；按同名头文件实现，不增加公共入口,G17
+F175,T17,PRODUCT,examples/physical-string/plugin/ParameterState.hpp,header,固定APVTS IDs/状态schema/有界参数和命令通道；仅公开/私有类型声明，禁止实现跨层业务,G17
+F176,T17,PRODUCT,examples/physical-string/plugin/ParameterState.cpp,source,固定APVTS IDs/状态schema/有界参数和命令通道；按同名头文件实现，不增加公共入口,G17
+F177,T15,PRODUCT,examples/physical-string/CMakeLists.txt,config,先登记DSP同源target，T16/T17追加tools/Standalone/VST3,G15
+F178,T17,PRODUCT,examples/physical-string/tests/audio_adapter_tests.cpp,source,sample offset/float映射/状态恢复/回调无分配测试,G17
+F179,T17,PRODUCT,examples/physical-string/docs/DAW-CHECKLIST.md,doc,Live/FL真实版本与人工操作证据入口,G17
+F180,T18,C12,tests/end_to_end_tests.cpp,source,真实host/MCP/worker/图/W2/备份完整路径，不用mock替代,G18
+F181,T18,C12,docs/USER-GUIDE.md,doc,双向协作、画布、库、证据与音频安装使用,G18
+F182,T18,C12,docs/RELEASE-CHECKLIST.md,doc,每项实际证据、许可、host/DAW未测状态,G18
+F183,T18,C12,docs/TROUBLESHOOTING.md,doc,具体失败原因/复现步骤，不指示关闭安全机制,G18
+F184,T18,C12,implementation/release-evidence.json,config,实际release文件hash/环境/验收矩阵汇总，不能提前伪造,G18

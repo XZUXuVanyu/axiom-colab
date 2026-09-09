@@ -1,0 +1,90 @@
+{
+  "schema_version": 1,
+  "tools": [
+    {
+      "id": "axiom.probe.scale",
+      "class": "ScaleTool",
+      "inputs": {
+        "value": "scalar_f64 dimensionless"
+      },
+      "params": {
+        "factor": "finite [-1000,1000]"
+      },
+      "outputs": {
+        "value": "scalar_f64"
+      },
+      "limit": "input abs<=1e6; finite result required"
+    },
+    {
+      "id": "axiom.probe.offset",
+      "class": "OffsetTool",
+      "inputs": {
+        "value": "scalar_f64 dimensionless"
+      },
+      "params": {
+        "offset": "finite [-1e6,1e6]"
+      },
+      "outputs": {
+        "value": "scalar_f64"
+      },
+      "limit": "input abs<=1e9; finite result required"
+    },
+    {
+      "id": "axiom.audio.string_render",
+      "class": "StringRenderTool",
+      "inputs": {},
+      "params": "specs/12 physical parameters + sample_rate + duration_s",
+      "outputs": {
+        "signal": "audio.signal.v1",
+        "preview": "audio.preview.v1",
+        "metadata": "render.meta.v1"
+      }
+    },
+    {
+      "id": "axiom.audio.spectrum",
+      "class": "SpectrumAnalysisTool",
+      "inputs": {
+        "signal": "audio.signal.v1"
+      },
+      "params": {},
+      "outputs": {
+        "spectrum": "audio.spectrum.v1",
+        "summary": "spectrum.summary.v1"
+      }
+    },
+    {
+      "id": "axiom.audio.decay",
+      "class": "DecayAnalysisTool",
+      "inputs": {
+        "signal": "audio.signal.v1"
+      },
+      "params": {
+        "start_s": "finite >=0",
+        "end_s": "finite >start_s, <=actual_duration"
+      },
+      "outputs": {
+        "decay": "audio.decay.v1"
+      }
+    },
+    {
+      "id": "axiom.audio.report",
+      "class": "ExperimentReportTool",
+      "inputs": {
+        "render": "render.meta.v1",
+        "spectrum": "spectrum.summary.v1",
+        "decay": "audio.decay.v1"
+      },
+      "params": {},
+      "outputs": {
+        "report": "experiment.report.v1",
+        "markdown": "text.markdown.v1"
+      }
+    }
+  ],
+  "default_capabilities": [
+    "pure_compute",
+    "artifact_read_selected",
+    "artifact_stage_write"
+  ],
+  "only_probe_outputs_small_values": true
+}

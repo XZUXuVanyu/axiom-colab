@@ -1,0 +1,360 @@
+{
+  "schema_version": 1,
+  "spec_version": "1.0.0",
+  "active_task": "T00",
+  "overall_status": "not_started",
+  "tasks": [
+    {
+      "task": "T00",
+      "status": "not_started",
+      "completed_file_ids": [],
+      "evidence": []
+    },
+    {
+      "task": "T01",
+      "status": "not_started",
+      "completed_file_ids": [],
+      "evidence": []
+    },
+    {
+      "task": "T02",
+      "status": "not_started",
+      "completed_file_ids": [],
+      "evidence": []
+    },
+    {
+      "task": "T03",
+      "status": "not_started",
+      "completed_file_ids": [],
+      "evidence": []
+    },
+    {
+      "task": "T04",
+      "status": "not_started",
+      "completed_file_ids": [],
+      "evidence": []
+    },
+    {
+      "task": "T05",
+      "status": "not_started",
+      "completed_file_ids": [],
+      "evidence": []
+    },
+    {
+      "task": "T06",
+      "status": "not_started",
+      "completed_file_ids": [],
+      "evidence": []
+    },
+    {
+      "task": "T07",
+      "status": "not_started",
+      "completed_file_ids": [],
+      "evidence": []
+    },
+    {
+      "task": "T08",
+      "status": "not_started",
+      "completed_file_ids": [],
+      "evidence": []
+    },
+    {
+      "task": "T09",
+      "status": "not_started",
+      "completed_file_ids": [],
+      "evidence": []
+    },
+    {
+      "task": "T10",
+      "status": "not_started",
+      "completed_file_ids": [],
+      "evidence": []
+    },
+    {
+      "task": "T11",
+      "status": "not_started",
+      "completed_file_ids": [],
+      "evidence": []
+    },
+    {
+      "task": "T12",
+      "status": "not_started",
+      "completed_file_ids": [],
+      "evidence": []
+    },
+    {
+      "task": "T13",
+      "status": "not_started",
+      "completed_file_ids": [],
+      "evidence": []
+    },
+    {
+      "task": "T14",
+      "status": "not_started",
+      "completed_file_ids": [],
+      "evidence": []
+    },
+    {
+      "task": "T15",
+      "status": "not_started",
+      "completed_file_ids": [],
+      "evidence": []
+    },
+    {
+      "task": "T16",
+      "status": "not_started",
+      "completed_file_ids": [],
+      "evidence": []
+    },
+    {
+      "task": "T17",
+      "status": "not_started",
+      "completed_file_ids": [],
+      "evidence": []
+    },
+    {
+      "task": "T18",
+      "status": "not_started",
+      "completed_file_ids": [],
+      "evidence": []
+    }
+  ],
+  "gates": [
+    {
+      "id": "G00",
+      "status": "not_run",
+      "evidence": []
+    },
+    {
+      "id": "G01",
+      "status": "not_run",
+      "evidence": []
+    },
+    {
+      "id": "G02",
+      "status": "not_run",
+      "evidence": []
+    },
+    {
+      "id": "G03",
+      "status": "not_run",
+      "evidence": []
+    },
+    {
+      "id": "G04",
+      "status": "not_run",
+      "evidence": []
+    },
+    {
+      "id": "G05",
+      "status": "not_run",
+      "evidence": []
+    },
+    {
+      "id": "G06",
+      "status": "not_run",
+      "evidence": []
+    },
+    {
+      "id": "G07",
+      "status": "not_run",
+      "evidence": []
+    },
+    {
+      "id": "G08",
+      "status": "not_run",
+      "evidence": []
+    },
+    {
+      "id": "G09",
+      "status": "not_run",
+      "evidence": []
+    },
+    {
+      "id": "G10",
+      "status": "not_run",
+      "evidence": []
+    },
+    {
+      "id": "G11",
+      "status": "not_run",
+      "evidence": []
+    },
+    {
+      "id": "G12",
+      "status": "not_run",
+      "evidence": []
+    },
+    {
+      "id": "G13",
+      "status": "not_run",
+      "evidence": []
+    },
+    {
+      "id": "G14",
+      "status": "not_run",
+      "evidence": []
+    },
+    {
+      "id": "G15",
+      "status": "not_run",
+      "evidence": []
+    },
+    {
+      "id": "G16",
+      "status": "not_run",
+      "evidence": []
+    },
+    {
+      "id": "G17",
+      "status": "not_run",
+      "evidence": []
+    },
+    {
+      "id": "G18",
+      "status": "not_run",
+      "evidence": []
+    },
+    {
+      "id": "A01",
+      "status": "not_run",
+      "evidence": []
+    },
+    {
+      "id": "A02",
+      "status": "not_run",
+      "evidence": []
+    },
+    {
+      "id": "A03",
+      "status": "not_run",
+      "evidence": []
+    },
+    {
+      "id": "A04",
+      "status": "not_run",
+      "evidence": []
+    },
+    {
+      "id": "A05",
+      "status": "not_run",
+      "evidence": []
+    },
+    {
+      "id": "A06",
+      "status": "not_run",
+      "evidence": []
+    },
+    {
+      "id": "A07",
+      "status": "not_run",
+      "evidence": []
+    },
+    {
+      "id": "A08",
+      "status": "not_run",
+      "evidence": []
+    },
+    {
+      "id": "A09",
+      "status": "not_run",
+      "evidence": []
+    },
+    {
+      "id": "A10",
+      "status": "not_run",
+      "evidence": []
+    },
+    {
+      "id": "A11",
+      "status": "not_run",
+      "evidence": []
+    },
+    {
+      "id": "A12",
+      "status": "not_run",
+      "evidence": []
+    },
+    {
+      "id": "A13",
+      "status": "not_run",
+      "evidence": []
+    },
+    {
+      "id": "A14",
+      "status": "not_run",
+      "evidence": []
+    },
+    {
+      "id": "A15",
+      "status": "not_run",
+      "evidence": []
+    },
+    {
+      "id": "A16",
+      "status": "not_run",
+      "evidence": []
+    },
+    {
+      "id": "A17",
+      "status": "not_run",
+      "evidence": []
+    },
+    {
+      "id": "A18",
+      "status": "not_run",
+      "evidence": []
+    },
+    {
+      "id": "P01",
+      "status": "not_run",
+      "evidence": []
+    },
+    {
+      "id": "P02",
+      "status": "not_run",
+      "evidence": []
+    },
+    {
+      "id": "P03",
+      "status": "not_run",
+      "evidence": []
+    },
+    {
+      "id": "P04",
+      "status": "not_run",
+      "evidence": []
+    },
+    {
+      "id": "P05",
+      "status": "not_run",
+      "evidence": []
+    },
+    {
+      "id": "P06",
+      "status": "not_run",
+      "evidence": []
+    },
+    {
+      "id": "P07",
+      "status": "not_run",
+      "evidence": []
+    },
+    {
+      "id": "P08",
+      "status": "not_run",
+      "evidence": []
+    },
+    {
+      "id": "P09",
+      "status": "not_run",
+      "evidence": []
+    },
+    {
+      "id": "P10",
+      "status": "not_run",
+      "evidence": []
+    }
+  ],
+  "approved_changes": []
+}

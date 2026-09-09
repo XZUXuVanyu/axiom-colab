@@ -1,0 +1,84 @@
+// Frozen public contract declarations. This text is a specification, not a compilable implementation.
+// T03 owns domain records/ports; T06 owns ITool and IArtifactAccess SDK interfaces; T15 owns audio declarations. Constructors and private helpers are internal.
+// Include standard cstdint/string/vector/map/variant/memory/span/chrono and nlohmann/json at the designated boundaries.
+namespace axiom {
+using Json = nlohmann::json;
+struct Error { ErrorCode code; std::string message; std::string correlation_id; Json details; };
+template<class T> using Result = std::variant<T, Error>;
+struct Unit {};
+// IDs are strong wrapper structs, not aliases interchangeable by accident.
+struct WorkspaceId { std::string value; }; struct ProjectId { std::string value; };
+struct ObjectId { std::string value; }; struct JobId { std::string value; };
+struct CandidateId { std::string value; }; struct PackageHash { std::string value; };
+using Revision = std::uint64_t;
+
+// Full field sets of records are contracts/data-model.json; serializers reject unknown fields.
+// Nullable wire field is std::optional<T>; ArtifactRef includes workspace, revision and content digest.
+class IArtifactAccess {
+public:
+ virtual ~IArtifactAccess() = default;
+ virtual Result<std::vector<std::byte>> read_chunk(const ArtifactRef&, std::uint64_t offset,
+                                                 std::uint32_t length) = 0;
+ virtual Result<StagedArtifact> stage(const ArtifactSpec&, std::span<const std::byte>) = 0;
+};
+// stage is job-local, does not publish, seal or mutate DB. Large tools stream through bounded chunks.
+class ITool {
+public:
+ virtual ~ITool() = default;
+ virtual const ToolDescriptor& descriptor() const noexcept = 0;
+ virtual Result<ToolOutput> execute(const ToolRequest&, CallContext&) = 0;
+};
+// CallContext: workspace_id, run/job/call IDs, immutable policy, cancellation view,
+// job-scoped IArtifactAccess; no host token, DB, arbitrary filesystem or mutable global context.
+class IProcessRunner {
+public:
+ virtual ~IProcessRunner() = default;
+ virtual Result<JobId> start(const ProcessSpec&) = 0;
+ virtual Result<Unit> cancel(const JobId&) = 0;
+ virtual Result<ProcessObservation> poll(const JobId&) = 0;
+};
+// ProcessSpec is host-created only: frozen executable hash/path, argv, input/output staging IDs,
+// explicit allowed read roots, budget, security profile; never deserialized directly from model input.
+class IToolInvoker {
+public:
+ virtual ~IToolInvoker() = default;
+ virtual Result<JobId> start_tool(const WorkspaceId&, const ResolvedToolCall&) = 0;
+ virtual Result<ToolCallObservation> poll_tool(const JobId&) = 0;
+ virtual Result<Unit> cancel_tool(const JobId&) = 0;
+};
+class IWorkspaceRepository {
+public:
+ virtual ~IWorkspaceRepository() = default;
+ virtual Result<ObjectRecord> get(const WorkspaceId&, const ObjectId&, Revision) = 0;
+ virtual Result<ObjectRecord> put_compute(const PutComputeRequest&) = 0;
+ virtual Result<Unit> append_audit(const AuditEvent&) = 0;
+};
+// Approval and publication are concrete HostService operations on a reviewer connection,
+// not public SDK calls. Service methods consume typed requests from command-catalog.json.
+
+Result<Unit> validate_value(const Json& schema, const Json& value);
+Result<std::vector<std::byte>> encode_axh1(const Json& value);
+Result<std::string> sha256_bytes(std::span<const std::byte> bytes);
+Result<ValidatedGraph> validate_graph(const Graph&, const ResolvedBindingSet&);
+Result<RunSnapshot> freeze_run(const ValidatedGraph&, const ApprovedPlan&, const RunEnvironment&);
+}
+
+namespace axiom::audio {
+// Exact field names match specs/12. Do not expose GUI types in this header.
+struct StringParameters {
+ double length_m, tension_n, density_kg_m, damping_per_s;
+ double pluck_position, pluck_height_m, pickup_position;
+};
+enum class DspStatus { ok, invalid_argument, not_prepared, numerical_failure };
+class ModalString final {
+public:
+ DspStatus prepare(double sample_rate) noexcept;
+ DspStatus pluck(const StringParameters&) noexcept;
+ double next_velocity() noexcept;
+ void reset() noexcept;
+ double energy() const noexcept;
+ unsigned active_modes() const noexcept;
+ DspStatus status() const noexcept;
+ // Fixed arrays and transition coefficients are private. No heap in methods above.
+};
+}

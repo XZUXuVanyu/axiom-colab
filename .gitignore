@@ -1,7 +1,76 @@
+# Axiom V1 ignore rules (F006, T00).
+# Rule: exclude build/dist/dependency caches, runtime data, secrets and user
+# presets; keep specification, contracts, lock files and evidence.
+
+# --- build outputs ---
 /build/
 /build-*/
-/node_modules/
-/ide-test/
-/proj/config/adapter.local.json
-/proj/patches/generated/
+/out/
+/out-*/
+/cmake-build-*/
+/CMakeFiles/
+CMakeCache.txt
+CMakeUserPresets.json
+*.obj
+*.pdb
+*.ilk
+*.exp
+*.lib
+*.dll
+*.exe
+*.vst3
+*.vcxproj*
+*.sln
+.vs/
+
+# --- dist / packaged release output ---
+/dist/
+/dist-*/
+!dist/.gitkeep
+
+# --- dependency sources and caches (frozen, not committed) ---
+/deps/sources/
+/deps/cache/
+/deps/download/
+/deps/artifacts/
+/vcpkg/
+/conan/
+node_modules/
+
+# --- runtime data: workspaces, databases, artifacts, logs, jobs ---
+/run/
+/workspaces/
+/data/
+/dataroot/
+*.db
+*.db-journal
+*.db-wal
+*.sqlite
+*.sqlite3
+*.axh
+logs/
 *.log
+
+# --- secrets, credentials, tokens, local machine config ---
+*.key
+*.pem
+*.pfx
+*.p12
+secrets/
+.env
+.env.*
+/proj/config/adapter.local.json
+*.local.json
+*.local.toml
+
+# --- user presets and personal settings ---
+presets/
+/user-presets/
+/ide-test/
+
+# --- generated patches ---
+/proj/patches/generated/
+
+# NOTE: specification, contracts, FILE-MANIFEST.csv, dependency lock files
+# (deps/lock.json), implementation/records and acceptance evidence are NOT
+# ignored; they are deliverables and must stay tracked.

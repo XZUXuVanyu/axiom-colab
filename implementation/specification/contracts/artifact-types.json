@@ -1,0 +1,122 @@
+{
+  "schema_version": 1,
+  "rules": [
+    "Each type has a closed metadata schema; fields listed here are required unless explicitly nullable. Unknown fields are rejected.",
+    "ArtifactRecord manifest binds content_hash, metadata_hash=AXH1(metadata), type_id, source/run/package/policy; changing units or metadata creates a new immutable record even if raw bytes are same.",
+    "Worker knows raw output byte hashes and host-injected run_id; host verifies raw bytes and provenance before assigning ArtifactRefs. Worker does not mint authoritative object IDs.",
+    "All floating values finite; non-estimable metrics use null plus explicit status, never NaN/Inf.",
+    "JSON artifacts use the registered payload below. Large raw files are external content-addressed bytes; metadata remains small."
+  ],
+  "types": {
+    "audio.signal.v1": {
+      "payload": "mono contiguous IEEE754 f64 little-endian velocity samples, byte length=8*sample_count",
+      "metadata": {
+        "sample_rate": "44100|48000|96000",
+        "channels": 1,
+        "sample_count": "uint64 decimal",
+        "sample_type": "f64le",
+        "quantity_kind": "velocity",
+        "unit_id": "m/s",
+        "t0_s": 0,
+        "signal_content_hash": "same raw file SHA256",
+        "parameters_hash": "Hash",
+        "model_id": "uniform_fixed_string_modal_v1",
+        "run_id": "host-injected ID"
+      }
+    },
+    "audio.preview.v1": {
+      "payload": "RIFF WAVE mono IEEE_FLOAT32 little endian, fmt tag3, no RF64; <=10s",
+      "metadata": {
+        "sample_rate": "three supported rates",
+        "sample_count": "uint64 decimal",
+        "source_signal_hash": "Hash",
+        "mapping_scale_s_m": 0.1,
+        "output_gain": "[0,1]",
+        "clip_threshold": 0.95,
+        "clip_count": "uint64 decimal",
+        "run_id": "Id"
+      }
+    },
+    "render.meta.v1": {
+      "payload": {
+        "model_id": "uniform_fixed_string_modal_v1",
+        "model_version": "1.0.0",
+        "parameters": "exact seven StringParameters fields",
+        "output_gain": "[0,1]",
+        "sample_rate": "int",
+        "sample_count": "uint64 decimal",
+        "requested_duration_s": "finite",
+        "actual_duration_s": "sample_count/sample_rate",
+        "effective_modes": "1..32",
+        "signal_content_hash": "Hash",
+        "preview_content_hash": "Hash",
+        "parameters_hash": "Hash",
+        "run_id": "Id",
+        "numerical_status": "ok",
+        "uncertainty_status": "not_evaluated",
+        "limitations": "fixed MODEL.md version/hash"
+      }
+    },
+    "audio.spectrum.v1": {
+      "payload": "JSON {frequencies_hz:[f64], amplitudes_m_s:[f64]} length32769",
+      "metadata": {
+        "source_signal_hash": "Hash",
+        "run_id": "Id",
+        "fft_size": 65536,
+        "actual_window_samples": "2..65536",
+        "window": "hann_symmetric",
+        "mean_removed": true,
+        "normalization": "single_sided_sum_window"
+      }
+    },
+    "spectrum.summary.v1": {
+      "payload": {
+        "source_signal_hash": "Hash",
+        "run_id": "Id",
+        "spectrum_content_hash": "Hash",
+        "peak_frequency_hz": "finite >=0",
+        "max_amplitude_m_s": "finite >=0",
+        "status": "ok|silent",
+        "fft_size": 65536,
+        "window_samples": "2..65536"
+      }
+    },
+    "audio.decay.v1": {
+      "payload": {
+        "source_signal_hash": "Hash",
+        "run_id": "Id",
+        "start_s": "finite >=0",
+        "end_s": "finite >start_s",
+        "window_samples": "int>=2",
+        "hop_samples": "int>=1",
+        "valid_windows": "int>=0",
+        "slope_per_s": "nullable finite",
+        "observed_decay_rate_per_s": "nullable finite",
+        "r_squared": "nullable finite <=1",
+        "status": "ok|not_estimable|growing",
+        "rms_floor_m_s": 1e-12
+      }
+    },
+    "experiment.report.v1": {
+      "payload": {
+        "schema_version": 1,
+        "run_id": "Id",
+        "source_signal_hash": "Hash",
+        "render_meta": "validated render.meta.v1 payload",
+        "spectrum_summary": "validated spectrum.summary.v1 payload",
+        "decay_summary": "validated audio.decay.v1 payload",
+        "input_content_hashes": "three input hashes",
+        "assumptions_version": "model version/hash",
+        "scientific_conclusion": "not_assessed"
+      }
+    },
+    "text.markdown.v1": {
+      "payload": "UTF-8 no BOM, <=256KiB human readable report",
+      "metadata": {
+        "source_report_hash": "Hash",
+        "run_id": "Id",
+        "media_type": "text/markdown"
+      }
+    }
+  }
+}

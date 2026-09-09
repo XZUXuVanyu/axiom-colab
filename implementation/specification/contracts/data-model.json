@@ -1,0 +1,299 @@
+{
+  "schema_version": 1,
+  "encoding_rules": "specs/04-contracts-and-science.md",
+  "types": {
+    "Id": {
+      "encoding": "string",
+      "format": "<type-prefix>_<32 lower hex>",
+      "generated_by": "host BCrypt RNG"
+    },
+    "Hash": {
+      "encoding": "string",
+      "format": "64 lower hex",
+      "algorithm": "SHA-256"
+    },
+    "Revision": {
+      "encoding": "string",
+      "format": "canonical uint64 decimal",
+      "initial": "1",
+      "create_expected": "0"
+    },
+    "Error": {
+      "code": "ErrorCode",
+      "message": "public UTF-8 <=4096",
+      "correlation_id": "Id",
+      "details": "closed optional fields reason, current_revision, log_ref"
+    },
+    "ArtifactRef": {
+      "workspace_id": "Id",
+      "object_id": "Id",
+      "revision": "Revision",
+      "content_hash": "Hash",
+      "type_id": "registered type",
+      "bytes": "uint64 decimal"
+    },
+    "Snapshot": {
+      "schema_version": 1,
+      "snapshot_id": "Id",
+      "project_id": "Id",
+      "design_hash": "Hash",
+      "files": "sorted [{relative_path,hash,bytes,role}]",
+      "dependency_lock_hash": "Hash",
+      "snapshot_hash": "Hash excluding itself"
+    },
+    "Candidate": {
+      "candidate_id": "Id",
+      "workspace_id": "Id",
+      "project_id": "Id",
+      "design_hash": "Hash",
+      "snapshot_hash": "Hash",
+      "descriptor_hash": "Hash",
+      "dependency_lock_hash": "Hash",
+      "build_recipe_hash": "Hash",
+      "target": "windows-x64-msvc143",
+      "permissions": "sorted capability set",
+      "state": "captured/building/built/validating/passed/failed/incomplete"
+    },
+    "ValidationRecord": {
+      "validation_id": "Id",
+      "candidate_id": "Id",
+      "candidate_hash": "Hash",
+      "binary_hashes": "ordered array",
+      "suite_hashes": "array",
+      "validator_version": "semver",
+      "policy_hash": "Hash",
+      "environment_hash": "Hash",
+      "case_results": "private/public split",
+      "conclusion": "passed/failed/incomplete",
+      "evidence_refs": "array",
+      "created_at": "UTC"
+    },
+    "ReleaseManifest": {
+      "tool_id": "stable dotted name",
+      "version": "semver",
+      "kind": "atomic/composite/source/product",
+      "target": "windows-x64-msvc143",
+      "sdk_version": "1.0.0",
+      "toolchain_fingerprint": "Hash",
+      "descriptor_hash": "Hash",
+      "files": "sorted relative files/hash/size/role",
+      "dependencies": "exact package/service IDs",
+      "permissions": "sorted capability set",
+      "license_refs": "array",
+      "validation_summary_ref": "sanitized public reference"
+    },
+    "Binding": {
+      "binding_id": "Id",
+      "workspace_id": "Id",
+      "tool_id": "stable dotted name",
+      "package_hash": "Hash",
+      "grant": "capabilities",
+      "revision": "Revision",
+      "revoked": "bool"
+    },
+    "PortSpec": {
+      "port_id": "stable ASCII identifier",
+      "type_id": "registered ID",
+      "schema_id": "versioned schema hash",
+      "quantity_kind": "registered ID",
+      "unit_id": "registered ID",
+      "required": "bool",
+      "default": "optional valid typed value",
+      "bounds": "optional min/max/maxItems"
+    },
+    "ExecutionPolicy": {
+      "algorithm_id": "string",
+      "algorithm_version": "semver",
+      "backend": "cpu",
+      "dtype": "float64",
+      "math_mode": "precise",
+      "seed": "optional uint64 decimal",
+      "tolerance": "optional positive float64",
+      "max_steps": "optional uint64 decimal"
+    },
+    "ToolDescriptor": {
+      "schema_version": 1,
+      "tool_id": "stable dotted name",
+      "version": "semver",
+      "inputs": "PortSpec[]",
+      "outputs": "PortSpec[]",
+      "params": "closed registered schema",
+      "permissions": "Capability[]",
+      "services": "exact service dependencies",
+      "resources": "timeout/memory/output limits",
+      "model_assumptions": "UTF-8 bounded text",
+      "execution_domain": "batch"
+    },
+    "Graph": {
+      "schema_version": 1,
+      "graph_id": "Id",
+      "revision": "Revision",
+      "nodes": "Node[]",
+      "edges": "Edge[]",
+      "exposed_ports": "Mapping[]"
+    },
+    "Node": {
+      "node_id": "Id",
+      "package_hash": "Hash",
+      "input_literals": "port_id->registered typed value",
+      "params": "descriptor schema",
+      "execution_policy": "ExecutionPolicy"
+    },
+    "Edge": {
+      "source_node": "Id",
+      "output_port": "string",
+      "target_node": "Id",
+      "input_port": "string"
+    },
+    "RunSnapshot": {
+      "run_id": "Id",
+      "workspace_id": "Id",
+      "goal_id": "Id",
+      "plan_hash": "Hash",
+      "graph_hash": "Hash",
+      "resolved_graph": "Graph with defaults expanded",
+      "inputs": "exact object revisions/hashes",
+      "package_lock": "exact recursive package array",
+      "policy_hash": "Hash",
+      "environment_hash": "Hash"
+    },
+    "Job": {
+      "job_id": "Id",
+      "kind": "build/validate/call/workflow/backup",
+      "state": "queued/running/cancelling/succeeded/failed/cancelled/timed_out/interrupted",
+      "created_at": "UTC",
+      "started_at": "nullable UTC",
+      "finished_at": "nullable UTC",
+      "progress": "optional completed/total or indeterminate",
+      "result_ref": "optional ArtifactRef",
+      "public_error": "optional Error"
+    },
+    "ArtifactRecord": {
+      "reference": "ArtifactRef",
+      "metadata": "registered type-specific schema bound to manifest hash",
+      "provenance": "source/run/algorithm/environment references",
+      "science": "quantity_kind/unit/uncertainty status"
+    },
+    "ToolRequest": {
+      "inputs": "map<port_id,registered ValueEnvelope>",
+      "params": "closed descriptor parameters"
+    },
+    "ToolOutput": {
+      "outputs": "map<port_id,ValueEnvelope or StagedArtifact>",
+      "diagnostics": "closed public status/warning/counter record"
+    },
+    "CallContext": {
+      "workspace_id": "WorkspaceId",
+      "job_id": "JobId",
+      "run_id": "optional Id",
+      "call_id": "Id",
+      "policy": "immutable ExecutionPolicy",
+      "cancel": "read-only cancellation token",
+      "artifacts": "job-scoped IArtifactAccess reference"
+    },
+    "StagedArtifact": {
+      "logical_name": "safe job-local name",
+      "type_id": "registered ID",
+      "relative_path": "within output staging",
+      "declared_hash": "Hash verified by host",
+      "bytes": "uint64",
+      "metadata": "type-specific record"
+    },
+    "ArtifactSpec": {
+      "logical_name": "safe job-local name",
+      "type_id": "registered ID",
+      "metadata": "type-specific schema"
+    },
+    "ProcessSpec": {
+      "executable": "host-only frozen path/hash",
+      "argv": "vector<string>",
+      "staging_id": "Id",
+      "allowed_read_roots": "trusted resolved roots",
+      "budget": "ResourceBudget",
+      "profile_hash": "Hash"
+    },
+    "ResourceBudget": {
+      "wall_time_ms": "uint64",
+      "memory_bytes": "uint64",
+      "max_processes": "uint32",
+      "stdout_limit": "uint64",
+      "stderr_limit": "uint64"
+    },
+    "ProcessObservation": {
+      "job_id": "Id",
+      "state": "Job state",
+      "exit_code": "nullable int32",
+      "elapsed_ms": "uint64",
+      "stdout_ref": "optional host log ref",
+      "stderr_ref": "optional host log ref",
+      "outputs": "staged artifact observations",
+      "isolation_result": "passed/failed/not_run"
+    },
+    "ResolvedToolCall": {
+      "package_hash": "Hash",
+      "tool_id": "string",
+      "request": "ToolRequest",
+      "policy": "ExecutionPolicy",
+      "resolved_inputs": "authorized exact artifact files",
+      "budget": "ResourceBudget"
+    },
+    "ToolCallObservation": {
+      "job_id": "Id",
+      "state": "Job state",
+      "outputs": "optional committed ToolOutput",
+      "error": "optional Error"
+    },
+    "PutComputeRequest": {
+      "workspace_id": "Id",
+      "object_id": "nullable Id",
+      "expected_revision": "Revision (0 create)",
+      "type_id": "registered ID",
+      "payload": "validated type-specific value",
+      "actor": "host session only"
+    },
+    "ObjectRecord": {
+      "artifact": "ArtifactRef",
+      "kind": "compute/working/artifact",
+      "metadata": "ArtifactRecord metadata",
+      "payload": "inline registered value or content address",
+      "origin": "recorded provenance"
+    },
+    "AuditEvent": {
+      "utc": "timestamp",
+      "actor_kind": "model/reviewer/validator/system",
+      "session_id": "Id",
+      "workspace_id": "optional Id",
+      "operation": "catalog name",
+      "target": "Id/hash",
+      "request_digest": "Hash",
+      "result_digest": "Hash",
+      "public_error": "optional Error"
+    },
+    "ValidatedGraph": {
+      "graph": "Graph",
+      "semantic_hash": "Hash",
+      "order": "stable topological node IDs",
+      "resolved_bindings": "immutable package descriptors",
+      "permission_union": "capability set"
+    },
+    "ResolvedBindingSet": {
+      "bindings": "map package_hash to exact descriptor/permissions/dependency closure"
+    },
+    "ApprovedPlan": {
+      "plan_id": "Id",
+      "plan_hash": "Hash",
+      "goal_id": "Id",
+      "allowed_bindings": "exact binding IDs",
+      "budget_seconds": "bounded uint32",
+      "approval_id": "host verified Id"
+    },
+    "RunEnvironment": {
+      "workspace_id": "Id",
+      "run_id": "Id",
+      "target": "platform",
+      "toolchain_hash": "Hash",
+      "library_lock_hash": "Hash",
+      "policy_hash": "Hash"
+    }
+  }
+}

@@ -1,0 +1,4968 @@
+{
+  "schema_version": 1,
+  "commands": [
+    {
+      "name": "axiom.workspace.get",
+      "role": "model",
+      "mutates": false,
+      "returns_job": false,
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "data": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "workspace_id": {
+                "type": "string",
+                "maxLength": 96
+              },
+              "name": {
+                "type": "string",
+                "maxLength": 4096
+              },
+              "active_plan_hash": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "maxLength": 64
+              }
+            },
+            "required": [
+              "workspace_id",
+              "name",
+              "active_plan_hash"
+            ],
+            "additionalProperties": false
+          },
+          "error": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "maxLength": 4096
+              },
+              "message": {
+                "type": "string",
+                "maxLength": 4096
+              },
+              "correlation_id": {
+                "type": "string",
+                "maxLength": 96
+              },
+              "details": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "maxLength": 4096
+                  },
+                  "current_revision": {
+                    "type": "string",
+                    "maxLength": 20
+                  },
+                  "log_ref": {
+                    "type": "string",
+                    "maxLength": 96
+                  }
+                },
+                "required": [],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "correlation_id",
+              "details"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "ok",
+          "data",
+          "error"
+        ],
+        "additionalProperties": false
+      },
+      "invariant": "ok => data!=null,error=null; !ok => data=null,error!=null",
+      "notes": ""
+    },
+    {
+      "name": "axiom.goal.propose",
+      "role": "model",
+      "mutates": true,
+      "returns_job": false,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "request_key": {
+            "type": "string",
+            "maxLength": 96
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 4096
+          },
+          "objective": {
+            "type": "string",
+            "maxLength": 4096
+          }
+        },
+        "required": [
+          "request_key",
+          "title",
+          "objective"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "data": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "goal_id": {
+                "type": "string",
+                "maxLength": 96
+              },
+              "revision": {
+                "type": "string",
+                "maxLength": 20
+              }
+            },
+            "required": [
+              "goal_id",
+              "revision"
+            ],
+            "additionalProperties": false
+          },
+          "error": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "maxLength": 4096
+              },
+              "message": {
+                "type": "string",
+                "maxLength": 4096
+              },
+              "correlation_id": {
+                "type": "string",
+                "maxLength": 96
+              },
+              "details": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "maxLength": 4096
+                  },
+                  "current_revision": {
+                    "type": "string",
+                    "maxLength": 20
+                  },
+                  "log_ref": {
+                    "type": "string",
+                    "maxLength": 96
+                  }
+                },
+                "required": [],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "correlation_id",
+              "details"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "ok",
+          "data",
+          "error"
+        ],
+        "additionalProperties": false
+      },
+      "invariant": "ok => data!=null,error=null; !ok => data=null,error!=null",
+      "notes": ""
+    },
+    {
+      "name": "axiom.plan.propose",
+      "role": "model",
+      "mutates": true,
+      "returns_job": false,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "request_key": {
+            "type": "string",
+            "maxLength": 96
+          },
+          "goal_id": {
+            "type": "string",
+            "maxLength": 96
+          },
+          "expected_revision": {
+            "type": "string",
+            "maxLength": 20
+          },
+          "design_artifact": {
+            "type": "object",
+            "properties": {
+              "workspace_id": {
+                "type": "string",
+                "maxLength": 96
+              },
+              "object_id": {
+                "type": "string",
+                "maxLength": 96
+              },
+              "revision": {
+                "type": "string",
+                "maxLength": 20
+              },
+              "content_hash": {
+                "type": "string",
+                "maxLength": 64
+              },
+              "type_id": {
+                "type": "string",
+                "maxLength": 4096
+              },
+              "bytes": {
+                "type": "string",
+                "maxLength": 20
+              }
+            },
+            "required": [
+              "workspace_id",
+              "object_id",
+              "revision",
+              "content_hash",
+              "type_id",
+              "bytes"
+            ],
+            "additionalProperties": false
+          },
+          "allowed_bindings": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 96
+            },
+            "maxItems": 1000
+          },
+          "budget_seconds": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 900
+          }
+        },
+        "required": [
+          "request_key",
+          "goal_id",
+          "expected_revision",
+          "design_artifact",
+          "allowed_bindings",
+          "budget_seconds"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "data": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "plan_id": {
+                "type": "string",
+                "maxLength": 96
+              },
+              "plan_hash": {
+                "type": "string",
+                "maxLength": 64
+              }
+            },
+            "required": [
+              "plan_id",
+              "plan_hash"
+            ],
+            "additionalProperties": false
+          },
+          "error": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "maxLength": 4096
+              },
+              "message": {
+                "type": "string",
+                "maxLength": 4096
+              },
+              "correlation_id": {
+                "type": "string",
+                "maxLength": 96
+              },
+              "details": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "maxLength": 4096
+                  },
+                  "current_revision": {
+                    "type": "string",
+                    "maxLength": 20
+                  },
+                  "log_ref": {
+                    "type": "string",
+                    "maxLength": 96
+                  }
+                },
+                "required": [],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "correlation_id",
+              "details"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "ok",
+          "data",
+          "error"
+        ],
+        "additionalProperties": false
+      },
+      "invariant": "ok => data!=null,error=null; !ok => data=null,error!=null",
+      "notes": ""
+    },
+    {
+      "name": "axiom.project.context",
+      "role": "model",
+      "mutates": false,
+      "returns_job": false,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "project_id": {
+            "type": "string",
+            "maxLength": 96
+          }
+        },
+        "required": [
+          "project_id"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "data": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "context_id": {
+                "type": "string",
+                "maxLength": 96
+              },
+              "snapshot_hash": {
+                "type": "string",
+                "maxLength": 64
+              },
+              "file_index": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "relative_path": {
+                      "type": "string",
+                      "maxLength": 4096
+                    },
+                    "bytes": {
+                      "type": "string",
+                      "maxLength": 20
+                    },
+                    "hash": {
+                      "type": "string",
+                      "maxLength": 64
+                    }
+                  },
+                  "required": [
+                    "relative_path",
+                    "bytes",
+                    "hash"
+                  ],
+                  "additionalProperties": false
+                },
+                "maxItems": 1000
+              },
+              "omitted_paths": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "maxLength": 4096
+                },
+                "maxItems": 1000
+              }
+            },
+            "required": [
+              "context_id",
+              "snapshot_hash",
+              "file_index",
+              "omitted_paths"
+            ],
+            "additionalProperties": false
+          },
+          "error": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "maxLength": 4096
+              },
+              "message": {
+                "type": "string",
+                "maxLength": 4096
+              },
+              "correlation_id": {
+                "type": "string",
+                "maxLength": 96
+              },
+              "details": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "maxLength": 4096
+                  },
+                  "current_revision": {
+                    "type": "string",
+                    "maxLength": 20
+                  },
+                  "log_ref": {
+                    "type": "string",
+                    "maxLength": 96
+                  }
+                },
+                "required": [],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "correlation_id",
+              "details"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "ok",
+          "data",
+          "error"
+        ],
+        "additionalProperties": false
+      },
+      "invariant": "ok => data!=null,error=null; !ok => data=null,error!=null",
+      "notes": ""
+    },
+    {
+      "name": "axiom.project.read",
+      "role": "model",
+      "mutates": false,
+      "returns_job": false,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "context_id": {
+            "type": "string",
+            "maxLength": 96
+          },
+          "relative_path": {
+            "type": "string",
+            "maxLength": 4096
+          },
+          "offset": {
+            "type": "string",
+            "maxLength": 20
+          },
+          "length": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 65536
+          }
+        },
+        "required": [
+          "context_id",
+          "relative_path",
+          "offset",
+          "length"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "data": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "content_base64": {
+                "type": "string",
+                "maxLength": 90000
+              },
+              "next_offset": {
+                "type": "string",
+                "maxLength": 20
+              },
+              "eof": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "content_base64",
+              "next_offset",
+              "eof"
+            ],
+            "additionalProperties": false
+          },
+          "error": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "maxLength": 4096
+              },
+              "message": {
+                "type": "string",
+                "maxLength": 4096
+              },
+              "correlation_id": {
+                "type": "string",
+                "maxLength": 96
+              },
+              "details": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "maxLength": 4096
+                  },
+                  "current_revision": {
+                    "type": "string",
+                    "maxLength": 20
+                  },
+                  "log_ref": {
+                    "type": "string",
+                    "maxLength": 96
+                  }
+                },
+                "required": [],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "correlation_id",
+              "details"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "ok",
+          "data",
+          "error"
+        ],
+        "additionalProperties": false
+      },
+      "invariant": "ok => data!=null,error=null; !ok => data=null,error!=null",
+      "notes": "Only frozen context files; content_base64 actual schema maxLength 90000."
+    },
+    {
+      "name": "axiom.revision.prepare",
+      "role": "model",
+      "mutates": true,
+      "returns_job": false,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "request_key": {
+            "type": "string",
+            "maxLength": 96
+          },
+          "project_id": {
+            "type": "string",
+            "maxLength": 96
+          },
+          "context_id": {
+            "type": "string",
+            "maxLength": 96
+          }
+        },
+        "required": [
+          "request_key",
+          "project_id",
+          "context_id"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "data": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "revision_id": {
+                "type": "string",
+                "maxLength": 96
+              },
+              "worktree_path": {
+                "type": "string",
+                "maxLength": 4096
+              },
+              "baseline_hash": {
+                "type": "string",
+                "maxLength": 64
+              }
+            },
+            "required": [
+              "revision_id",
+              "worktree_path",
+              "baseline_hash"
+            ],
+            "additionalProperties": false
+          },
+          "error": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "maxLength": 4096
+              },
+              "message": {
+                "type": "string",
+                "maxLength": 4096
+              },
+              "correlation_id": {
+                "type": "string",
+                "maxLength": 96
+              },
+              "details": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "maxLength": 4096
+                  },
+                  "current_revision": {
+                    "type": "string",
+                    "maxLength": 20
+                  },
+                  "log_ref": {
+                    "type": "string",
+                    "maxLength": 96
+                  }
+                },
+                "required": [],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "correlation_id",
+              "details"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "ok",
+          "data",
+          "error"
+        ],
+        "additionalProperties": false
+      },
+      "invariant": "ok => data!=null,error=null; !ok => data=null,error!=null",
+      "notes": "Host chooses controlled worktree; path does not grant new parent access."
+    },
+    {
+      "name": "axiom.revision.submit",
+      "role": "model",
+      "mutates": true,
+      "returns_job": false,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "request_key": {
+            "type": "string",
+            "maxLength": 96
+          },
+          "revision_id": {
+            "type": "string",
+            "maxLength": 96
+          },
+          "baseline_hash": {
+            "type": "string",
+            "maxLength": 64
+          }
+        },
+        "required": [
+          "request_key",
+          "revision_id",
+          "baseline_hash"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "data": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "revision_id": {
+                "type": "string",
+                "maxLength": 96
+              },
+              "proposal_hash": {
+                "type": "string",
+                "maxLength": 64
+              },
+              "changed_paths": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "maxLength": 4096
+                },
+                "maxItems": 1000
+              }
+            },
+            "required": [
+              "revision_id",
+              "proposal_hash",
+              "changed_paths"
+            ],
+            "additionalProperties": false
+          },
+          "error": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "maxLength": 4096
+              },
+              "message": {
+                "type": "string",
+                "maxLength": 4096
+              },
+              "correlation_id": {
+                "type": "string",
+                "maxLength": 96
+              },
+              "details": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "maxLength": 4096
+                  },
+                  "current_revision": {
+                    "type": "string",
+                    "maxLength": 20
+                  },
+                  "log_ref": {
+                    "type": "string",
+                    "maxLength": 96
+                  }
+                },
+                "required": [],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "correlation_id",
+              "details"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "ok",
+          "data",
+          "error"
+        ],
+        "additionalProperties": false
+      },
+      "invariant": "ok => data!=null,error=null; !ok => data=null,error!=null",
+      "notes": ""
+    },
+    {
+      "name": "axiom.candidate.capture",
+      "role": "model",
+      "mutates": true,
+      "returns_job": false,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "request_key": {
+            "type": "string",
+            "maxLength": 96
+          },
+          "project_id": {
+            "type": "string",
+            "maxLength": 96
+          },
+          "approved_revision_id": {
+            "type": "string",
+            "maxLength": 96
+          }
+        },
+        "required": [
+          "request_key",
+          "project_id",
+          "approved_revision_id"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "data": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "candidate_id": {
+                "type": "string",
+                "maxLength": 96
+              },
+              "candidate_hash": {
+                "type": "string",
+                "maxLength": 64
+              }
+            },
+            "required": [
+              "candidate_id",
+              "candidate_hash"
+            ],
+            "additionalProperties": false
+          },
+          "error": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "maxLength": 4096
+              },
+              "message": {
+                "type": "string",
+                "maxLength": 4096
+              },
+              "correlation_id": {
+                "type": "string",
+                "maxLength": 96
+              },
+              "details": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "maxLength": 4096
+                  },
+                  "current_revision": {
+                    "type": "string",
+                    "maxLength": 20
+                  },
+                  "log_ref": {
+                    "type": "string",
+                    "maxLength": 96
+                  }
+                },
+                "required": [],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "correlation_id",
+              "details"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "ok",
+          "data",
+          "error"
+        ],
+        "additionalProperties": false
+      },
+      "invariant": "ok => data!=null,error=null; !ok => data=null,error!=null",
+      "notes": ""
+    },
+    {
+      "name": "axiom.candidate.validate",
+      "role": "model",
+      "mutates": true,
+      "returns_job": true,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "request_key": {
+            "type": "string",
+            "maxLength": 96
+          },
+          "candidate_id": {
+            "type": "string",
+            "maxLength": 96
+          }
+        },
+        "required": [
+          "request_key",
+          "candidate_id"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "data": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "job_id": {
+                "type": "string",
+                "maxLength": 96
+              }
+            },
+            "required": [
+              "job_id"
+            ],
+            "additionalProperties": false
+          },
+          "error": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "maxLength": 4096
+              },
+              "message": {
+                "type": "string",
+                "maxLength": 4096
+              },
+              "correlation_id": {
+                "type": "string",
+                "maxLength": 96
+              },
+              "details": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "maxLength": 4096
+                  },
+                  "current_revision": {
+                    "type": "string",
+                    "maxLength": 20
+                  },
+                  "log_ref": {
+                    "type": "string",
+                    "maxLength": 96
+                  }
+                },
+                "required": [],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "correlation_id",
+              "details"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "ok",
+          "data",
+          "error"
+        ],
+        "additionalProperties": false
+      },
+      "invariant": "ok => data!=null,error=null; !ok => data=null,error!=null",
+      "notes": ""
+    },
+    {
+      "name": "axiom.validation.get",
+      "role": "model",
+      "mutates": false,
+      "returns_job": false,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "candidate_id": {
+            "type": "string",
+            "maxLength": 96
+          }
+        },
+        "required": [
+          "candidate_id"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "data": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "conclusion": {
+                "type": "string",
+                "maxLength": 4096
+              },
+              "public_summary": {
+                "type": "string",
+                "maxLength": 4096
+              },
+              "evidence_refs": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "workspace_id": {
+                      "type": "string",
+                      "maxLength": 96
+                    },
+                    "object_id": {
+                      "type": "string",
+                      "maxLength": 96
+                    },
+                    "revision": {
+                      "type": "string",
+                      "maxLength": 20
+                    },
+                    "content_hash": {
+                      "type": "string",
+                      "maxLength": 64
+                    },
+                    "type_id": {
+                      "type": "string",
+                      "maxLength": 4096
+                    },
+                    "bytes": {
+                      "type": "string",
+                      "maxLength": 20
+                    }
+                  },
+                  "required": [
+                    "workspace_id",
+                    "object_id",
+                    "revision",
+                    "content_hash",
+                    "type_id",
+                    "bytes"
+                  ],
+                  "additionalProperties": false
+                },
+                "maxItems": 1000
+              }
+            },
+            "required": [
+              "conclusion",
+              "public_summary",
+              "evidence_refs"
+            ],
+            "additionalProperties": false
+          },
+          "error": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "maxLength": 4096
+              },
+              "message": {
+                "type": "string",
+                "maxLength": 4096
+              },
+              "correlation_id": {
+                "type": "string",
+                "maxLength": 96
+              },
+              "details": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "maxLength": 4096
+                  },
+                  "current_revision": {
+                    "type": "string",
+                    "maxLength": 20
+                  },
+                  "log_ref": {
+                    "type": "string",
+                    "maxLength": 96
+                  }
+                },
+                "required": [],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "correlation_id",
+              "details"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "ok",
+          "data",
+          "error"
+        ],
+        "additionalProperties": false
+      },
+      "invariant": "ok => data!=null,error=null; !ok => data=null,error!=null",
+      "notes": "Never private inputs, answers or raw private logs."
+    },
+    {
+      "name": "axiom.library.list",
+      "role": "model",
+      "mutates": false,
+      "returns_job": false,
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "data": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "packages": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "tool_id": {
+                      "type": "string",
+                      "maxLength": 4096
+                    },
+                    "version": {
+                      "type": "string",
+                      "maxLength": 4096
+                    },
+                    "package_hash": {
+                      "type": "string",
+                      "maxLength": 64
+                    },
+                    "kind": {
+                      "type": "string",
+                      "maxLength": 4096
+                    },
+                    "state": {
+                      "type": "string",
+                      "maxLength": 4096
+                    }
+                  },
+                  "required": [
+                    "tool_id",
+                    "version",
+                    "package_hash",
+                    "kind",
+                    "state"
+                  ],
+                  "additionalProperties": false
+                },
+                "maxItems": 1000
+              }
+            },
+            "required": [
+              "packages"
+            ],
+            "additionalProperties": false
+          },
+          "error": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "maxLength": 4096
+              },
+              "message": {
+                "type": "string",
+                "maxLength": 4096
+              },
+              "correlation_id": {
+                "type": "string",
+                "maxLength": 96
+              },
+              "details": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "maxLength": 4096
+                  },
+                  "current_revision": {
+                    "type": "string",
+                    "maxLength": 20
+                  },
+                  "log_ref": {
+                    "type": "string",
+                    "maxLength": 96
+                  }
+                },
+                "required": [],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "correlation_id",
+              "details"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "ok",
+          "data",
+          "error"
+        ],
+        "additionalProperties": false
+      },
+      "invariant": "ok => data!=null,error=null; !ok => data=null,error!=null",
+      "notes": ""
+    },
+    {
+      "name": "axiom.binding.list",
+      "role": "model",
+      "mutates": false,
+      "returns_job": false,
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "data": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "bindings": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "binding_id": {
+                      "type": "string",
+                      "maxLength": 96
+                    },
+                    "package_hash": {
+                      "type": "string",
+                      "maxLength": 64
+                    },
+                    "grant": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "maxLength": 4096
+                      },
+                      "maxItems": 1000
+                    },
+                    "revision": {
+                      "type": "string",
+                      "maxLength": 20
+                    }
+                  },
+                  "required": [
+                    "binding_id",
+                    "package_hash",
+                    "grant",
+                    "revision"
+                  ],
+                  "additionalProperties": false
+                },
+                "maxItems": 1000
+              }
+            },
+            "required": [
+              "bindings"
+            ],
+            "additionalProperties": false
+          },
+          "error": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "maxLength": 4096
+              },
+              "message": {
+                "type": "string",
+                "maxLength": 4096
+              },
+              "correlation_id": {
+                "type": "string",
+                "maxLength": 96
+              },
+              "details": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "maxLength": 4096
+                  },
+                  "current_revision": {
+                    "type": "string",
+                    "maxLength": 20
+                  },
+                  "log_ref": {
+                    "type": "string",
+                    "maxLength": 96
+                  }
+                },
+                "required": [],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "correlation_id",
+              "details"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "ok",
+          "data",
+          "error"
+        ],
+        "additionalProperties": false
+      },
+      "invariant": "ok => data!=null,error=null; !ok => data=null,error!=null",
+      "notes": ""
+    },
+    {
+      "name": "axiom.object.put",
+      "role": "model",
+      "mutates": true,
+      "returns_job": false,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "request_key": {
+            "type": "string",
+            "maxLength": 96
+          },
+          "object_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 96
+          },
+          "expected_revision": {
+            "type": "string",
+            "maxLength": 20
+          },
+          "type_id": {
+            "type": "string",
+            "maxLength": 4096
+          },
+          "payload_json": {
+            "type": "string",
+            "maxLength": 262144
+          }
+        },
+        "required": [
+          "request_key",
+          "object_id",
+          "expected_revision",
+          "type_id",
+          "payload_json"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "data": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "artifact": {
+                "type": "object",
+                "properties": {
+                  "workspace_id": {
+                    "type": "string",
+                    "maxLength": 96
+                  },
+                  "object_id": {
+                    "type": "string",
+                    "maxLength": 96
+                  },
+                  "revision": {
+                    "type": "string",
+                    "maxLength": 20
+                  },
+                  "content_hash": {
+                    "type": "string",
+                    "maxLength": 64
+                  },
+                  "type_id": {
+                    "type": "string",
+                    "maxLength": 4096
+                  },
+                  "bytes": {
+                    "type": "string",
+                    "maxLength": 20
+                  }
+                },
+                "required": [
+                  "workspace_id",
+                  "object_id",
+                  "revision",
+                  "content_hash",
+                  "type_id",
+                  "bytes"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "artifact"
+            ],
+            "additionalProperties": false
+          },
+          "error": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "maxLength": 4096
+              },
+              "message": {
+                "type": "string",
+                "maxLength": 4096
+              },
+              "correlation_id": {
+                "type": "string",
+                "maxLength": 96
+              },
+              "details": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "maxLength": 4096
+                  },
+                  "current_revision": {
+                    "type": "string",
+                    "maxLength": 20
+                  },
+                  "log_ref": {
+                    "type": "string",
+                    "maxLength": 96
+                  }
+                },
+                "required": [],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "correlation_id",
+              "details"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "ok",
+          "data",
+          "error"
+        ],
+        "additionalProperties": false
+      },
+      "invariant": "ok => data!=null,error=null; !ok => data=null,error!=null",
+      "notes": "null object_id plus expected_revision=0 creates host ID. Only compute; payload string parsed once, checked against registered type; cannot carry arbitrary object type."
+    },
+    {
+      "name": "axiom.object.get",
+      "role": "model",
+      "mutates": false,
+      "returns_job": false,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "object_id": {
+            "type": "string",
+            "maxLength": 96
+          },
+          "revision": {
+            "type": "string",
+            "maxLength": 20
+          }
+        },
+        "required": [
+          "object_id",
+          "revision"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "data": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "artifact": {
+                "type": "object",
+                "properties": {
+                  "workspace_id": {
+                    "type": "string",
+                    "maxLength": 96
+                  },
+                  "object_id": {
+                    "type": "string",
+                    "maxLength": 96
+                  },
+                  "revision": {
+                    "type": "string",
+                    "maxLength": 20
+                  },
+                  "content_hash": {
+                    "type": "string",
+                    "maxLength": 64
+                  },
+                  "type_id": {
+                    "type": "string",
+                    "maxLength": 4096
+                  },
+                  "bytes": {
+                    "type": "string",
+                    "maxLength": 20
+                  }
+                },
+                "required": [
+                  "workspace_id",
+                  "object_id",
+                  "revision",
+                  "content_hash",
+                  "type_id",
+                  "bytes"
+                ],
+                "additionalProperties": false
+              },
+              "payload_json": {
+                "type": "string",
+                "maxLength": 262144
+              }
+            },
+            "required": [
+              "artifact",
+              "payload_json"
+            ],
+            "additionalProperties": false
+          },
+          "error": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "maxLength": 4096
+              },
+              "message": {
+                "type": "string",
+                "maxLength": 4096
+              },
+              "correlation_id": {
+                "type": "string",
+                "maxLength": 96
+              },
+              "details": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "maxLength": 4096
+                  },
+                  "current_revision": {
+                    "type": "string",
+                    "maxLength": 20
+                  },
+                  "log_ref": {
+                    "type": "string",
+                    "maxLength": 96
+                  }
+                },
+                "required": [],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "correlation_id",
+              "details"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "ok",
+          "data",
+          "error"
+        ],
+        "additionalProperties": false
+      },
+      "invariant": "ok => data!=null,error=null; !ok => data=null,error!=null",
+      "notes": "Large payload use artifact.read, same workspace only."
+    },
+    {
+      "name": "axiom.artifact.read",
+      "role": "model",
+      "mutates": false,
+      "returns_job": false,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "artifact": {
+            "type": "object",
+            "properties": {
+              "workspace_id": {
+                "type": "string",
+                "maxLength": 96
+              },
+              "object_id": {
+                "type": "string",
+                "maxLength": 96
+              },
+              "revision": {
+                "type": "string",
+                "maxLength": 20
+              },
+              "content_hash": {
+                "type": "string",
+                "maxLength": 64
+              },
+              "type_id": {
+                "type": "string",
+                "maxLength": 4096
+              },
+              "bytes": {
+                "type": "string",
+                "maxLength": 20
+              }
+            },
+            "required": [
+              "workspace_id",
+              "object_id",
+              "revision",
+              "content_hash",
+              "type_id",
+              "bytes"
+            ],
+            "additionalProperties": false
+          },
+          "offset": {
+            "type": "string",
+            "maxLength": 20
+          },
+          "length": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 65536
+          }
+        },
+        "required": [
+          "artifact",
+          "offset",
+          "length"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "data": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "content_base64": {
+                "type": "string",
+                "maxLength": 90000
+              },
+              "next_offset": {
+                "type": "string",
+                "maxLength": 20
+              },
+              "eof": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "content_base64",
+              "next_offset",
+              "eof"
+            ],
+            "additionalProperties": false
+          },
+          "error": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "maxLength": 4096
+              },
+              "message": {
+                "type": "string",
+                "maxLength": 4096
+              },
+              "correlation_id": {
+                "type": "string",
+                "maxLength": 96
+              },
+              "details": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "maxLength": 4096
+                  },
+                  "current_revision": {
+                    "type": "string",
+                    "maxLength": 20
+                  },
+                  "log_ref": {
+                    "type": "string",
+                    "maxLength": 96
+                  }
+                },
+                "required": [],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "correlation_id",
+              "details"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "ok",
+          "data",
+          "error"
+        ],
+        "additionalProperties": false
+      },
+      "invariant": "ok => data!=null,error=null; !ok => data=null,error!=null",
+      "notes": ""
+    },
+    {
+      "name": "axiom.graph.save",
+      "role": "model",
+      "mutates": true,
+      "returns_job": false,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "request_key": {
+            "type": "string",
+            "maxLength": 96
+          },
+          "graph_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 96
+          },
+          "expected_revision": {
+            "type": "string",
+            "maxLength": 20
+          },
+          "graph_json": {
+            "type": "string",
+            "maxLength": 262144
+          }
+        },
+        "required": [
+          "request_key",
+          "graph_id",
+          "expected_revision",
+          "graph_json"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "data": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "graph_id": {
+                "type": "string",
+                "maxLength": 96
+              },
+              "revision": {
+                "type": "string",
+                "maxLength": 20
+              },
+              "semantic_hash": {
+                "type": "string",
+                "maxLength": 64
+              }
+            },
+            "required": [
+              "graph_id",
+              "revision",
+              "semantic_hash"
+            ],
+            "additionalProperties": false
+          },
+          "error": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "maxLength": 4096
+              },
+              "message": {
+                "type": "string",
+                "maxLength": 4096
+              },
+              "correlation_id": {
+                "type": "string",
+                "maxLength": 96
+              },
+              "details": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "maxLength": 4096
+                  },
+                  "current_revision": {
+                    "type": "string",
+                    "maxLength": 20
+                  },
+                  "log_ref": {
+                    "type": "string",
+                    "maxLength": 96
+                  }
+                },
+                "required": [],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "correlation_id",
+              "details"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "ok",
+          "data",
+          "error"
+        ],
+        "additionalProperties": false
+      },
+      "invariant": "ok => data!=null,error=null; !ok => data=null,error!=null",
+      "notes": "null graph_id with expected_revision=0 creates host ID; incoming new graph graph_id=null,revision=0 and validated caller-generated node IDs. Parse then validate registered Graph; string is encoding convenience, not arbitrary schema escape."
+    },
+    {
+      "name": "axiom.graph.get",
+      "role": "model",
+      "mutates": false,
+      "returns_job": false,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "graph_id": {
+            "type": "string",
+            "maxLength": 96
+          },
+          "revision": {
+            "type": "string",
+            "maxLength": 20
+          }
+        },
+        "required": [
+          "graph_id",
+          "revision"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "data": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "graph_json": {
+                "type": "string",
+                "maxLength": 262144
+              },
+              "semantic_hash": {
+                "type": "string",
+                "maxLength": 64
+              }
+            },
+            "required": [
+              "graph_json",
+              "semantic_hash"
+            ],
+            "additionalProperties": false
+          },
+          "error": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "maxLength": 4096
+              },
+              "message": {
+                "type": "string",
+                "maxLength": 4096
+              },
+              "correlation_id": {
+                "type": "string",
+                "maxLength": 96
+              },
+              "details": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "maxLength": 4096
+                  },
+                  "current_revision": {
+                    "type": "string",
+                    "maxLength": 20
+                  },
+                  "log_ref": {
+                    "type": "string",
+                    "maxLength": 96
+                  }
+                },
+                "required": [],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "correlation_id",
+              "details"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "ok",
+          "data",
+          "error"
+        ],
+        "additionalProperties": false
+      },
+      "invariant": "ok => data!=null,error=null; !ok => data=null,error!=null",
+      "notes": ""
+    },
+    {
+      "name": "axiom.graph.validate",
+      "role": "model",
+      "mutates": false,
+      "returns_job": false,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "graph_id": {
+            "type": "string",
+            "maxLength": 96
+          },
+          "revision": {
+            "type": "string",
+            "maxLength": 20
+          }
+        },
+        "required": [
+          "graph_id",
+          "revision"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "data": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "valid": {
+                "type": "boolean"
+              },
+              "public_errors": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "maxLength": 4096
+                },
+                "maxItems": 1000
+              }
+            },
+            "required": [
+              "valid",
+              "public_errors"
+            ],
+            "additionalProperties": false
+          },
+          "error": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "maxLength": 4096
+              },
+              "message": {
+                "type": "string",
+                "maxLength": 4096
+              },
+              "correlation_id": {
+                "type": "string",
+                "maxLength": 96
+              },
+              "details": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "maxLength": 4096
+                  },
+                  "current_revision": {
+                    "type": "string",
+                    "maxLength": 20
+                  },
+                  "log_ref": {
+                    "type": "string",
+                    "maxLength": 96
+                  }
+                },
+                "required": [],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "correlation_id",
+              "details"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "ok",
+          "data",
+          "error"
+        ],
+        "additionalProperties": false
+      },
+      "invariant": "ok => data!=null,error=null; !ok => data=null,error!=null",
+      "notes": ""
+    },
+    {
+      "name": "axiom.workflow.run",
+      "role": "model",
+      "mutates": true,
+      "returns_job": true,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "request_key": {
+            "type": "string",
+            "maxLength": 96
+          },
+          "goal_id": {
+            "type": "string",
+            "maxLength": 96
+          },
+          "plan_hash": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "graph_id": {
+            "type": "string",
+            "maxLength": 96
+          },
+          "revision": {
+            "type": "string",
+            "maxLength": 20
+          }
+        },
+        "required": [
+          "request_key",
+          "goal_id",
+          "plan_hash",
+          "graph_id",
+          "revision"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "data": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "job_id": {
+                "type": "string",
+                "maxLength": 96
+              },
+              "run_id": {
+                "type": "string",
+                "maxLength": 96
+              }
+            },
+            "required": [
+              "job_id",
+              "run_id"
+            ],
+            "additionalProperties": false
+          },
+          "error": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "maxLength": 4096
+              },
+              "message": {
+                "type": "string",
+                "maxLength": 4096
+              },
+              "correlation_id": {
+                "type": "string",
+                "maxLength": 96
+              },
+              "details": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "maxLength": 4096
+                  },
+                  "current_revision": {
+                    "type": "string",
+                    "maxLength": 20
+                  },
+                  "log_ref": {
+                    "type": "string",
+                    "maxLength": 96
+                  }
+                },
+                "required": [],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "correlation_id",
+              "details"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "ok",
+          "data",
+          "error"
+        ],
+        "additionalProperties": false
+      },
+      "invariant": "ok => data!=null,error=null; !ok => data=null,error!=null",
+      "notes": ""
+    },
+    {
+      "name": "axiom.run.get",
+      "role": "model",
+      "mutates": false,
+      "returns_job": false,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "maxLength": 96
+          }
+        },
+        "required": [
+          "run_id"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "data": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "state": {
+                "type": "string",
+                "maxLength": 4096
+              },
+              "node_results": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "node_path": {
+                      "type": "string",
+                      "maxLength": 4096
+                    },
+                    "state": {
+                      "type": "string",
+                      "maxLength": 4096
+                    },
+                    "outputs": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "workspace_id": {
+                            "type": "string",
+                            "maxLength": 96
+                          },
+                          "object_id": {
+                            "type": "string",
+                            "maxLength": 96
+                          },
+                          "revision": {
+                            "type": "string",
+                            "maxLength": 20
+                          },
+                          "content_hash": {
+                            "type": "string",
+                            "maxLength": 64
+                          },
+                          "type_id": {
+                            "type": "string",
+                            "maxLength": 4096
+                          },
+                          "bytes": {
+                            "type": "string",
+                            "maxLength": 20
+                          }
+                        },
+                        "required": [
+                          "workspace_id",
+                          "object_id",
+                          "revision",
+                          "content_hash",
+                          "type_id",
+                          "bytes"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "maxItems": 1000
+                    },
+                    "public_error": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "maxLength": 4096
+                        },
+                        "message": {
+                          "type": "string",
+                          "maxLength": 4096
+                        },
+                        "correlation_id": {
+                          "type": "string",
+                          "maxLength": 96
+                        },
+                        "details": {
+                          "type": "object",
+                          "properties": {
+                            "reason": {
+                              "type": "string",
+                              "maxLength": 4096
+                            },
+                            "current_revision": {
+                              "type": "string",
+                              "maxLength": 20
+                            },
+                            "log_ref": {
+                              "type": "string",
+                              "maxLength": 96
+                            }
+                          },
+                          "required": [],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message",
+                        "correlation_id",
+                        "details"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "node_path",
+                    "state",
+                    "outputs",
+                    "public_error"
+                  ],
+                  "additionalProperties": false
+                },
+                "maxItems": 1000
+              }
+            },
+            "required": [
+              "state",
+              "node_results"
+            ],
+            "additionalProperties": false
+          },
+          "error": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "maxLength": 4096
+              },
+              "message": {
+                "type": "string",
+                "maxLength": 4096
+              },
+              "correlation_id": {
+                "type": "string",
+                "maxLength": 96
+              },
+              "details": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "maxLength": 4096
+                  },
+                  "current_revision": {
+                    "type": "string",
+                    "maxLength": 20
+                  },
+                  "log_ref": {
+                    "type": "string",
+                    "maxLength": 96
+                  }
+                },
+                "required": [],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "correlation_id",
+              "details"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "ok",
+          "data",
+          "error"
+        ],
+        "additionalProperties": false
+      },
+      "invariant": "ok => data!=null,error=null; !ok => data=null,error!=null",
+      "notes": ""
+    },
+    {
+      "name": "axiom.composite.propose",
+      "role": "model",
+      "mutates": true,
+      "returns_job": false,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "request_key": {
+            "type": "string",
+            "maxLength": 96
+          },
+          "graph_id": {
+            "type": "string",
+            "maxLength": 96
+          },
+          "revision": {
+            "type": "string",
+            "maxLength": 20
+          },
+          "tool_id": {
+            "type": "string",
+            "maxLength": 4096
+          },
+          "version": {
+            "type": "string",
+            "maxLength": 4096
+          },
+          "mapping_json": {
+            "type": "string",
+            "maxLength": 65536
+          }
+        },
+        "required": [
+          "request_key",
+          "graph_id",
+          "revision",
+          "tool_id",
+          "version",
+          "mapping_json"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "data": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "candidate_id": {
+                "type": "string",
+                "maxLength": 96
+              }
+            },
+            "required": [
+              "candidate_id"
+            ],
+            "additionalProperties": false
+          },
+          "error": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "maxLength": 4096
+              },
+              "message": {
+                "type": "string",
+                "maxLength": 4096
+              },
+              "correlation_id": {
+                "type": "string",
+                "maxLength": 96
+              },
+              "details": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "maxLength": 4096
+                  },
+                  "current_revision": {
+                    "type": "string",
+                    "maxLength": 20
+                  },
+                  "log_ref": {
+                    "type": "string",
+                    "maxLength": 96
+                  }
+                },
+                "required": [],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "correlation_id",
+              "details"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "ok",
+          "data",
+          "error"
+        ],
+        "additionalProperties": false
+      },
+      "invariant": "ok => data!=null,error=null; !ok => data=null,error!=null",
+      "notes": ""
+    },
+    {
+      "name": "axiom.job.get",
+      "role": "model",
+      "mutates": false,
+      "returns_job": false,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "job_id": {
+            "type": "string",
+            "maxLength": 96
+          }
+        },
+        "required": [
+          "job_id"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "data": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "state": {
+                "type": "string",
+                "maxLength": 4096
+              },
+              "public_message": {
+                "type": "string",
+                "maxLength": 4096
+              },
+              "result_refs": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "workspace_id": {
+                      "type": "string",
+                      "maxLength": 96
+                    },
+                    "object_id": {
+                      "type": "string",
+                      "maxLength": 96
+                    },
+                    "revision": {
+                      "type": "string",
+                      "maxLength": 20
+                    },
+                    "content_hash": {
+                      "type": "string",
+                      "maxLength": 64
+                    },
+                    "type_id": {
+                      "type": "string",
+                      "maxLength": 4096
+                    },
+                    "bytes": {
+                      "type": "string",
+                      "maxLength": 20
+                    }
+                  },
+                  "required": [
+                    "workspace_id",
+                    "object_id",
+                    "revision",
+                    "content_hash",
+                    "type_id",
+                    "bytes"
+                  ],
+                  "additionalProperties": false
+                },
+                "maxItems": 1000
+              }
+            },
+            "required": [
+              "state",
+              "public_message",
+              "result_refs"
+            ],
+            "additionalProperties": false
+          },
+          "error": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "maxLength": 4096
+              },
+              "message": {
+                "type": "string",
+                "maxLength": 4096
+              },
+              "correlation_id": {
+                "type": "string",
+                "maxLength": 96
+              },
+              "details": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "maxLength": 4096
+                  },
+                  "current_revision": {
+                    "type": "string",
+                    "maxLength": 20
+                  },
+                  "log_ref": {
+                    "type": "string",
+                    "maxLength": 96
+                  }
+                },
+                "required": [],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "correlation_id",
+              "details"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "ok",
+          "data",
+          "error"
+        ],
+        "additionalProperties": false
+      },
+      "invariant": "ok => data!=null,error=null; !ok => data=null,error!=null",
+      "notes": ""
+    },
+    {
+      "name": "axiom.job.cancel",
+      "role": "model",
+      "mutates": true,
+      "returns_job": false,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "request_key": {
+            "type": "string",
+            "maxLength": 96
+          },
+          "job_id": {
+            "type": "string",
+            "maxLength": 96
+          }
+        },
+        "required": [
+          "request_key",
+          "job_id"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "data": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "job_id": {
+                "type": "string",
+                "maxLength": 96
+              },
+              "state": {
+                "type": "string",
+                "maxLength": 4096
+              }
+            },
+            "required": [
+              "job_id",
+              "state"
+            ],
+            "additionalProperties": false
+          },
+          "error": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "maxLength": 4096
+              },
+              "message": {
+                "type": "string",
+                "maxLength": 4096
+              },
+              "correlation_id": {
+                "type": "string",
+                "maxLength": 96
+              },
+              "details": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "maxLength": 4096
+                  },
+                  "current_revision": {
+                    "type": "string",
+                    "maxLength": 20
+                  },
+                  "log_ref": {
+                    "type": "string",
+                    "maxLength": 96
+                  }
+                },
+                "required": [],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "correlation_id",
+              "details"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "ok",
+          "data",
+          "error"
+        ],
+        "additionalProperties": false
+      },
+      "invariant": "ok => data!=null,error=null; !ok => data=null,error!=null",
+      "notes": ""
+    },
+    {
+      "name": "review.workspace.create",
+      "role": "reviewer",
+      "mutates": true,
+      "returns_job": false,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "request_key": {
+            "type": "string",
+            "maxLength": 96
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 4096
+          }
+        },
+        "required": [
+          "request_key",
+          "name"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "data": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "workspace_id": {
+                "type": "string",
+                "maxLength": 96
+              }
+            },
+            "required": [
+              "workspace_id"
+            ],
+            "additionalProperties": false
+          },
+          "error": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "maxLength": 4096
+              },
+              "message": {
+                "type": "string",
+                "maxLength": 4096
+              },
+              "correlation_id": {
+                "type": "string",
+                "maxLength": 96
+              },
+              "details": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "maxLength": 4096
+                  },
+                  "current_revision": {
+                    "type": "string",
+                    "maxLength": 20
+                  },
+                  "log_ref": {
+                    "type": "string",
+                    "maxLength": 96
+                  }
+                },
+                "required": [],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "correlation_id",
+              "details"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "ok",
+          "data",
+          "error"
+        ],
+        "additionalProperties": false
+      },
+      "invariant": "ok => data!=null,error=null; !ok => data=null,error!=null",
+      "notes": ""
+    },
+    {
+      "name": "review.workspace.grant",
+      "role": "reviewer",
+      "mutates": true,
+      "returns_job": false,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "request_key": {
+            "type": "string",
+            "maxLength": 96
+          },
+          "workspace_id": {
+            "type": "string",
+            "maxLength": 96
+          },
+          "operations": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 4096
+            },
+            "maxItems": 1000
+          }
+        },
+        "required": [
+          "request_key",
+          "workspace_id",
+          "operations"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "data": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "grant_revision": {
+                "type": "string",
+                "maxLength": 20
+              }
+            },
+            "required": [
+              "grant_revision"
+            ],
+            "additionalProperties": false
+          },
+          "error": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "maxLength": 4096
+              },
+              "message": {
+                "type": "string",
+                "maxLength": 4096
+              },
+              "correlation_id": {
+                "type": "string",
+                "maxLength": 96
+              },
+              "details": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "maxLength": 4096
+                  },
+                  "current_revision": {
+                    "type": "string",
+                    "maxLength": 20
+                  },
+                  "log_ref": {
+                    "type": "string",
+                    "maxLength": 96
+                  }
+                },
+                "required": [],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "correlation_id",
+              "details"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "ok",
+          "data",
+          "error"
+        ],
+        "additionalProperties": false
+      },
+      "invariant": "ok => data!=null,error=null; !ok => data=null,error!=null",
+      "notes": ""
+    },
+    {
+      "name": "review.project.bind",
+      "role": "reviewer",
+      "mutates": true,
+      "returns_job": false,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "request_key": {
+            "type": "string",
+            "maxLength": 96
+          },
+          "workspace_id": {
+            "type": "string",
+            "maxLength": 96
+          },
+          "selected_directory": {
+            "type": "string",
+            "maxLength": 4096
+          },
+          "allowed_paths": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 4096
+            },
+            "maxItems": 1000
+          }
+        },
+        "required": [
+          "request_key",
+          "workspace_id",
+          "selected_directory",
+          "allowed_paths"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "data": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "project_id": {
+                "type": "string",
+                "maxLength": 96
+              }
+            },
+            "required": [
+              "project_id"
+            ],
+            "additionalProperties": false
+          },
+          "error": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "maxLength": 4096
+              },
+              "message": {
+                "type": "string",
+                "maxLength": 4096
+              },
+              "correlation_id": {
+                "type": "string",
+                "maxLength": 96
+              },
+              "details": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "maxLength": 4096
+                  },
+                  "current_revision": {
+                    "type": "string",
+                    "maxLength": 20
+                  },
+                  "log_ref": {
+                    "type": "string",
+                    "maxLength": 96
+                  }
+                },
+                "required": [],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "correlation_id",
+              "details"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "ok",
+          "data",
+          "error"
+        ],
+        "additionalProperties": false
+      },
+      "invariant": "ok => data!=null,error=null; !ok => data=null,error!=null",
+      "notes": ""
+    },
+    {
+      "name": "review.plan.decide",
+      "role": "reviewer",
+      "mutates": true,
+      "returns_job": false,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "request_key": {
+            "type": "string",
+            "maxLength": 96
+          },
+          "plan_id": {
+            "type": "string",
+            "maxLength": 96
+          },
+          "plan_hash": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "decision": {
+            "type": "string",
+            "enum": [
+              "approve",
+              "reject"
+            ]
+          }
+        },
+        "required": [
+          "request_key",
+          "plan_id",
+          "plan_hash",
+          "decision"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "data": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "state": {
+                "type": "string",
+                "maxLength": 4096
+              }
+            },
+            "required": [
+              "state"
+            ],
+            "additionalProperties": false
+          },
+          "error": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "maxLength": 4096
+              },
+              "message": {
+                "type": "string",
+                "maxLength": 4096
+              },
+              "correlation_id": {
+                "type": "string",
+                "maxLength": 96
+              },
+              "details": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "maxLength": 4096
+                  },
+                  "current_revision": {
+                    "type": "string",
+                    "maxLength": 20
+                  },
+                  "log_ref": {
+                    "type": "string",
+                    "maxLength": 96
+                  }
+                },
+                "required": [],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "correlation_id",
+              "details"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "ok",
+          "data",
+          "error"
+        ],
+        "additionalProperties": false
+      },
+      "invariant": "ok => data!=null,error=null; !ok => data=null,error!=null",
+      "notes": ""
+    },
+    {
+      "name": "review.revision.apply",
+      "role": "reviewer",
+      "mutates": true,
+      "returns_job": true,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "request_key": {
+            "type": "string",
+            "maxLength": 96
+          },
+          "revision_id": {
+            "type": "string",
+            "maxLength": 96
+          },
+          "proposal_hash": {
+            "type": "string",
+            "maxLength": 64
+          }
+        },
+        "required": [
+          "request_key",
+          "revision_id",
+          "proposal_hash"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "data": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "job_id": {
+                "type": "string",
+                "maxLength": 96
+              }
+            },
+            "required": [
+              "job_id"
+            ],
+            "additionalProperties": false
+          },
+          "error": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "maxLength": 4096
+              },
+              "message": {
+                "type": "string",
+                "maxLength": 4096
+              },
+              "correlation_id": {
+                "type": "string",
+                "maxLength": 96
+              },
+              "details": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "maxLength": 4096
+                  },
+                  "current_revision": {
+                    "type": "string",
+                    "maxLength": 20
+                  },
+                  "log_ref": {
+                    "type": "string",
+                    "maxLength": 96
+                  }
+                },
+                "required": [],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "correlation_id",
+              "details"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "ok",
+          "data",
+          "error"
+        ],
+        "additionalProperties": false
+      },
+      "invariant": "ok => data!=null,error=null; !ok => data=null,error!=null",
+      "notes": ""
+    },
+    {
+      "name": "review.release.approve",
+      "role": "reviewer",
+      "mutates": true,
+      "returns_job": false,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "request_key": {
+            "type": "string",
+            "maxLength": 96
+          },
+          "candidate_id": {
+            "type": "string",
+            "maxLength": 96
+          },
+          "release_manifest_hash": {
+            "type": "string",
+            "maxLength": 64
+          }
+        },
+        "required": [
+          "request_key",
+          "candidate_id",
+          "release_manifest_hash"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "data": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "approval_id": {
+                "type": "string",
+                "maxLength": 96
+              }
+            },
+            "required": [
+              "approval_id"
+            ],
+            "additionalProperties": false
+          },
+          "error": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "maxLength": 4096
+              },
+              "message": {
+                "type": "string",
+                "maxLength": 4096
+              },
+              "correlation_id": {
+                "type": "string",
+                "maxLength": 96
+              },
+              "details": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "maxLength": 4096
+                  },
+                  "current_revision": {
+                    "type": "string",
+                    "maxLength": 20
+                  },
+                  "log_ref": {
+                    "type": "string",
+                    "maxLength": 96
+                  }
+                },
+                "required": [],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "correlation_id",
+              "details"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "ok",
+          "data",
+          "error"
+        ],
+        "additionalProperties": false
+      },
+      "invariant": "ok => data!=null,error=null; !ok => data=null,error!=null",
+      "notes": ""
+    },
+    {
+      "name": "review.release.publish",
+      "role": "reviewer",
+      "mutates": true,
+      "returns_job": true,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "request_key": {
+            "type": "string",
+            "maxLength": 96
+          },
+          "approval_id": {
+            "type": "string",
+            "maxLength": 96
+          },
+          "release_manifest_hash": {
+            "type": "string",
+            "maxLength": 64
+          }
+        },
+        "required": [
+          "request_key",
+          "approval_id",
+          "release_manifest_hash"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "data": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "job_id": {
+                "type": "string",
+                "maxLength": 96
+              },
+              "publication_id": {
+                "type": "string",
+                "maxLength": 96
+              }
+            },
+            "required": [
+              "job_id",
+              "publication_id"
+            ],
+            "additionalProperties": false
+          },
+          "error": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "maxLength": 4096
+              },
+              "message": {
+                "type": "string",
+                "maxLength": 4096
+              },
+              "correlation_id": {
+                "type": "string",
+                "maxLength": 96
+              },
+              "details": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "maxLength": 4096
+                  },
+                  "current_revision": {
+                    "type": "string",
+                    "maxLength": 20
+                  },
+                  "log_ref": {
+                    "type": "string",
+                    "maxLength": 96
+                  }
+                },
+                "required": [],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "correlation_id",
+              "details"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "ok",
+          "data",
+          "error"
+        ],
+        "additionalProperties": false
+      },
+      "invariant": "ok => data!=null,error=null; !ok => data=null,error!=null",
+      "notes": ""
+    },
+    {
+      "name": "review.binding.set",
+      "role": "reviewer",
+      "mutates": true,
+      "returns_job": false,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "request_key": {
+            "type": "string",
+            "maxLength": 96
+          },
+          "workspace_id": {
+            "type": "string",
+            "maxLength": 96
+          },
+          "package_hash": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "grant": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 4096
+            },
+            "maxItems": 1000
+          }
+        },
+        "required": [
+          "request_key",
+          "workspace_id",
+          "package_hash",
+          "grant"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "data": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "binding_id": {
+                "type": "string",
+                "maxLength": 96
+              },
+              "revision": {
+                "type": "string",
+                "maxLength": 20
+              }
+            },
+            "required": [
+              "binding_id",
+              "revision"
+            ],
+            "additionalProperties": false
+          },
+          "error": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "maxLength": 4096
+              },
+              "message": {
+                "type": "string",
+                "maxLength": 4096
+              },
+              "correlation_id": {
+                "type": "string",
+                "maxLength": 96
+              },
+              "details": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "maxLength": 4096
+                  },
+                  "current_revision": {
+                    "type": "string",
+                    "maxLength": 20
+                  },
+                  "log_ref": {
+                    "type": "string",
+                    "maxLength": 96
+                  }
+                },
+                "required": [],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "correlation_id",
+              "details"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "ok",
+          "data",
+          "error"
+        ],
+        "additionalProperties": false
+      },
+      "invariant": "ok => data!=null,error=null; !ok => data=null,error!=null",
+      "notes": ""
+    },
+    {
+      "name": "review.package.revoke",
+      "role": "reviewer",
+      "mutates": true,
+      "returns_job": false,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "request_key": {
+            "type": "string",
+            "maxLength": 96
+          },
+          "package_hash": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 4096
+          },
+          "cancel_running": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "request_key",
+          "package_hash",
+          "reason",
+          "cancel_running"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "data": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "state": {
+                "type": "string",
+                "maxLength": 4096
+              }
+            },
+            "required": [
+              "state"
+            ],
+            "additionalProperties": false
+          },
+          "error": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "maxLength": 4096
+              },
+              "message": {
+                "type": "string",
+                "maxLength": 4096
+              },
+              "correlation_id": {
+                "type": "string",
+                "maxLength": 96
+              },
+              "details": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "maxLength": 4096
+                  },
+                  "current_revision": {
+                    "type": "string",
+                    "maxLength": 20
+                  },
+                  "log_ref": {
+                    "type": "string",
+                    "maxLength": 96
+                  }
+                },
+                "required": [],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "correlation_id",
+              "details"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "ok",
+          "data",
+          "error"
+        ],
+        "additionalProperties": false
+      },
+      "invariant": "ok => data!=null,error=null; !ok => data=null,error!=null",
+      "notes": ""
+    },
+    {
+      "name": "review.object.accept",
+      "role": "reviewer",
+      "mutates": true,
+      "returns_job": false,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "request_key": {
+            "type": "string",
+            "maxLength": 96
+          },
+          "artifact": {
+            "type": "object",
+            "properties": {
+              "workspace_id": {
+                "type": "string",
+                "maxLength": 96
+              },
+              "object_id": {
+                "type": "string",
+                "maxLength": 96
+              },
+              "revision": {
+                "type": "string",
+                "maxLength": 20
+              },
+              "content_hash": {
+                "type": "string",
+                "maxLength": 64
+              },
+              "type_id": {
+                "type": "string",
+                "maxLength": 4096
+              },
+              "bytes": {
+                "type": "string",
+                "maxLength": 20
+              }
+            },
+            "required": [
+              "workspace_id",
+              "object_id",
+              "revision",
+              "content_hash",
+              "type_id",
+              "bytes"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "request_key",
+          "artifact"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "data": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "working_ref": {
+                "type": "object",
+                "properties": {
+                  "workspace_id": {
+                    "type": "string",
+                    "maxLength": 96
+                  },
+                  "object_id": {
+                    "type": "string",
+                    "maxLength": 96
+                  },
+                  "revision": {
+                    "type": "string",
+                    "maxLength": 20
+                  },
+                  "content_hash": {
+                    "type": "string",
+                    "maxLength": 64
+                  },
+                  "type_id": {
+                    "type": "string",
+                    "maxLength": 4096
+                  },
+                  "bytes": {
+                    "type": "string",
+                    "maxLength": 20
+                  }
+                },
+                "required": [
+                  "workspace_id",
+                  "object_id",
+                  "revision",
+                  "content_hash",
+                  "type_id",
+                  "bytes"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "working_ref"
+            ],
+            "additionalProperties": false
+          },
+          "error": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "maxLength": 4096
+              },
+              "message": {
+                "type": "string",
+                "maxLength": 4096
+              },
+              "correlation_id": {
+                "type": "string",
+                "maxLength": 96
+              },
+              "details": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "maxLength": 4096
+                  },
+                  "current_revision": {
+                    "type": "string",
+                    "maxLength": 20
+                  },
+                  "log_ref": {
+                    "type": "string",
+                    "maxLength": 96
+                  }
+                },
+                "required": [],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "correlation_id",
+              "details"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "ok",
+          "data",
+          "error"
+        ],
+        "additionalProperties": false
+      },
+      "invariant": "ok => data!=null,error=null; !ok => data=null,error!=null",
+      "notes": ""
+    },
+    {
+      "name": "review.artifact.seal",
+      "role": "reviewer",
+      "mutates": true,
+      "returns_job": false,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "request_key": {
+            "type": "string",
+            "maxLength": 96
+          },
+          "working_ref": {
+            "type": "object",
+            "properties": {
+              "workspace_id": {
+                "type": "string",
+                "maxLength": 96
+              },
+              "object_id": {
+                "type": "string",
+                "maxLength": 96
+              },
+              "revision": {
+                "type": "string",
+                "maxLength": 20
+              },
+              "content_hash": {
+                "type": "string",
+                "maxLength": 64
+              },
+              "type_id": {
+                "type": "string",
+                "maxLength": 4096
+              },
+              "bytes": {
+                "type": "string",
+                "maxLength": 20
+              }
+            },
+            "required": [
+              "workspace_id",
+              "object_id",
+              "revision",
+              "content_hash",
+              "type_id",
+              "bytes"
+            ],
+            "additionalProperties": false
+          },
+          "scientific_status": {
+            "type": "string",
+            "maxLength": 4096
+          }
+        },
+        "required": [
+          "request_key",
+          "working_ref",
+          "scientific_status"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "data": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "artifact": {
+                "type": "object",
+                "properties": {
+                  "workspace_id": {
+                    "type": "string",
+                    "maxLength": 96
+                  },
+                  "object_id": {
+                    "type": "string",
+                    "maxLength": 96
+                  },
+                  "revision": {
+                    "type": "string",
+                    "maxLength": 20
+                  },
+                  "content_hash": {
+                    "type": "string",
+                    "maxLength": 64
+                  },
+                  "type_id": {
+                    "type": "string",
+                    "maxLength": 4096
+                  },
+                  "bytes": {
+                    "type": "string",
+                    "maxLength": 20
+                  }
+                },
+                "required": [
+                  "workspace_id",
+                  "object_id",
+                  "revision",
+                  "content_hash",
+                  "type_id",
+                  "bytes"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "artifact"
+            ],
+            "additionalProperties": false
+          },
+          "error": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "maxLength": 4096
+              },
+              "message": {
+                "type": "string",
+                "maxLength": 4096
+              },
+              "correlation_id": {
+                "type": "string",
+                "maxLength": 96
+              },
+              "details": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "maxLength": 4096
+                  },
+                  "current_revision": {
+                    "type": "string",
+                    "maxLength": 20
+                  },
+                  "log_ref": {
+                    "type": "string",
+                    "maxLength": 96
+                  }
+                },
+                "required": [],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "correlation_id",
+              "details"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "ok",
+          "data",
+          "error"
+        ],
+        "additionalProperties": false
+      },
+      "invariant": "ok => data!=null,error=null; !ok => data=null,error!=null",
+      "notes": ""
+    },
+    {
+      "name": "review.artifact.export",
+      "role": "reviewer",
+      "mutates": true,
+      "returns_job": false,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "request_key": {
+            "type": "string",
+            "maxLength": 96
+          },
+          "artifact": {
+            "type": "object",
+            "properties": {
+              "workspace_id": {
+                "type": "string",
+                "maxLength": 96
+              },
+              "object_id": {
+                "type": "string",
+                "maxLength": 96
+              },
+              "revision": {
+                "type": "string",
+                "maxLength": 20
+              },
+              "content_hash": {
+                "type": "string",
+                "maxLength": 64
+              },
+              "type_id": {
+                "type": "string",
+                "maxLength": 4096
+              },
+              "bytes": {
+                "type": "string",
+                "maxLength": 20
+              }
+            },
+            "required": [
+              "workspace_id",
+              "object_id",
+              "revision",
+              "content_hash",
+              "type_id",
+              "bytes"
+            ],
+            "additionalProperties": false
+          },
+          "selected_destination": {
+            "type": "string",
+            "maxLength": 4096
+          }
+        },
+        "required": [
+          "request_key",
+          "artifact",
+          "selected_destination"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "data": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "export_hash": {
+                "type": "string",
+                "maxLength": 64
+              }
+            },
+            "required": [
+              "export_hash"
+            ],
+            "additionalProperties": false
+          },
+          "error": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "maxLength": 4096
+              },
+              "message": {
+                "type": "string",
+                "maxLength": 4096
+              },
+              "correlation_id": {
+                "type": "string",
+                "maxLength": 96
+              },
+              "details": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "maxLength": 4096
+                  },
+                  "current_revision": {
+                    "type": "string",
+                    "maxLength": 20
+                  },
+                  "log_ref": {
+                    "type": "string",
+                    "maxLength": 96
+                  }
+                },
+                "required": [],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "correlation_id",
+              "details"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "ok",
+          "data",
+          "error"
+        ],
+        "additionalProperties": false
+      },
+      "invariant": "ok => data!=null,error=null; !ok => data=null,error!=null",
+      "notes": ""
+    },
+    {
+      "name": "review.private_suite.configure",
+      "role": "reviewer",
+      "mutates": true,
+      "returns_job": false,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "request_key": {
+            "type": "string",
+            "maxLength": 96
+          },
+          "project_id": {
+            "type": "string",
+            "maxLength": 96
+          },
+          "selected_suite_file": {
+            "type": "string",
+            "maxLength": 4096
+          }
+        },
+        "required": [
+          "request_key",
+          "project_id",
+          "selected_suite_file"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "data": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "suite_id": {
+                "type": "string",
+                "maxLength": 96
+              },
+              "suite_hash": {
+                "type": "string",
+                "maxLength": 64
+              }
+            },
+            "required": [
+              "suite_id",
+              "suite_hash"
+            ],
+            "additionalProperties": false
+          },
+          "error": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "maxLength": 4096
+              },
+              "message": {
+                "type": "string",
+                "maxLength": 4096
+              },
+              "correlation_id": {
+                "type": "string",
+                "maxLength": 96
+              },
+              "details": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "maxLength": 4096
+                  },
+                  "current_revision": {
+                    "type": "string",
+                    "maxLength": 20
+                  },
+                  "log_ref": {
+                    "type": "string",
+                    "maxLength": 96
+                  }
+                },
+                "required": [],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "correlation_id",
+              "details"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "ok",
+          "data",
+          "error"
+        ],
+        "additionalProperties": false
+      },
+      "invariant": "ok => data!=null,error=null; !ok => data=null,error!=null",
+      "notes": ""
+    },
+    {
+      "name": "review.goal.close",
+      "role": "reviewer",
+      "mutates": true,
+      "returns_job": false,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "request_key": {
+            "type": "string",
+            "maxLength": 96
+          },
+          "goal_id": {
+            "type": "string",
+            "maxLength": 96
+          },
+          "expected_revision": {
+            "type": "string",
+            "maxLength": 20
+          },
+          "accepted_artifacts": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "workspace_id": {
+                  "type": "string",
+                  "maxLength": 96
+                },
+                "object_id": {
+                  "type": "string",
+                  "maxLength": 96
+                },
+                "revision": {
+                  "type": "string",
+                  "maxLength": 20
+                },
+                "content_hash": {
+                  "type": "string",
+                  "maxLength": 64
+                },
+                "type_id": {
+                  "type": "string",
+                  "maxLength": 4096
+                },
+                "bytes": {
+                  "type": "string",
+                  "maxLength": 20
+                }
+              },
+              "required": [
+                "workspace_id",
+                "object_id",
+                "revision",
+                "content_hash",
+                "type_id",
+                "bytes"
+              ],
+              "additionalProperties": false
+            },
+            "maxItems": 1000
+          },
+          "unresolved": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 4096
+            },
+            "maxItems": 1000
+          }
+        },
+        "required": [
+          "request_key",
+          "goal_id",
+          "expected_revision",
+          "accepted_artifacts",
+          "unresolved"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "data": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "state": {
+                "type": "string",
+                "maxLength": 4096
+              }
+            },
+            "required": [
+              "state"
+            ],
+            "additionalProperties": false
+          },
+          "error": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "maxLength": 4096
+              },
+              "message": {
+                "type": "string",
+                "maxLength": 4096
+              },
+              "correlation_id": {
+                "type": "string",
+                "maxLength": 96
+              },
+              "details": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "maxLength": 4096
+                  },
+                  "current_revision": {
+                    "type": "string",
+                    "maxLength": 20
+                  },
+                  "log_ref": {
+                    "type": "string",
+                    "maxLength": 96
+                  }
+                },
+                "required": [],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "correlation_id",
+              "details"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "ok",
+          "data",
+          "error"
+        ],
+        "additionalProperties": false
+      },
+      "invariant": "ok => data!=null,error=null; !ok => data=null,error!=null",
+      "notes": ""
+    },
+    {
+      "name": "review.backup.create",
+      "role": "reviewer",
+      "mutates": true,
+      "returns_job": true,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "request_key": {
+            "type": "string",
+            "maxLength": 96
+          },
+          "root_kind": {
+            "type": "string",
+            "enum": [
+              "library",
+              "workspace"
+            ]
+          },
+          "workspace_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 96
+          },
+          "selected_destination": {
+            "type": "string",
+            "maxLength": 4096
+          }
+        },
+        "required": [
+          "request_key",
+          "root_kind",
+          "workspace_id",
+          "selected_destination"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "data": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "job_id": {
+                "type": "string",
+                "maxLength": 96
+              }
+            },
+            "required": [
+              "job_id"
+            ],
+            "additionalProperties": false
+          },
+          "error": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "maxLength": 4096
+              },
+              "message": {
+                "type": "string",
+                "maxLength": 4096
+              },
+              "correlation_id": {
+                "type": "string",
+                "maxLength": 96
+              },
+              "details": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "maxLength": 4096
+                  },
+                  "current_revision": {
+                    "type": "string",
+                    "maxLength": 20
+                  },
+                  "log_ref": {
+                    "type": "string",
+                    "maxLength": 96
+                  }
+                },
+                "required": [],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "correlation_id",
+              "details"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "ok",
+          "data",
+          "error"
+        ],
+        "additionalProperties": false
+      },
+      "invariant": "ok => data!=null,error=null; !ok => data=null,error!=null",
+      "notes": ""
+    },
+    {
+      "name": "review.backup.restore",
+      "role": "reviewer",
+      "mutates": true,
+      "returns_job": true,
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "request_key": {
+            "type": "string",
+            "maxLength": 96
+          },
+          "selected_backup": {
+            "type": "string",
+            "maxLength": 4096
+          },
+          "selected_empty_destination": {
+            "type": "string",
+            "maxLength": 4096
+          }
+        },
+        "required": [
+          "request_key",
+          "selected_backup",
+          "selected_empty_destination"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "data": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "job_id": {
+                "type": "string",
+                "maxLength": 96
+              }
+            },
+            "required": [
+              "job_id"
+            ],
+            "additionalProperties": false
+          },
+          "error": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "maxLength": 4096
+              },
+              "message": {
+                "type": "string",
+                "maxLength": 4096
+              },
+              "correlation_id": {
+                "type": "string",
+                "maxLength": 96
+              },
+              "details": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "maxLength": 4096
+                  },
+                  "current_revision": {
+                    "type": "string",
+                    "maxLength": 20
+                  },
+                  "log_ref": {
+                    "type": "string",
+                    "maxLength": 96
+                  }
+                },
+                "required": [],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "correlation_id",
+              "details"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "ok",
+          "data",
+          "error"
+        ],
+        "additionalProperties": false
+      },
+      "invariant": "ok => data!=null,error=null; !ok => data=null,error!=null",
+      "notes": ""
+    }
+  ],
+  "dynamic_tool_rule": "tool.<binding_id>; descriptor-derived input/output schema, host scoped authority; no mutable admin fields"
+}

@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "freeze_status": "versions_fixed_bytes_resolved_in_T01",
+  "dependencies": [
+    {
+      "name": "Qt",
+      "version": "6.11.2",
+      "source": "https://www.qt.io/blog/qt-6.11.2-released",
+      "delivery": "preinstalled MSVC x64; record modules and hashes"
+    },
+    {
+      "name": "nlohmann_json",
+      "version": "v3.12.0",
+      "source": "https://github.com/nlohmann/json"
+    },
+    {
+      "name": "SQLite",
+      "version": "3.53.4",
+      "source": "https://www.sqlite.org/2026/sqlite-amalgamation-3530400.zip",
+      "official_sqlite3_c_sha3_256": "67f423e9ebbbdc473cbc4772c872ee6b89f31fde4ed0279a5c25d5f65c043a16"
+    },
+    {
+      "name": "Catch2",
+      "version": "v3.8.1",
+      "source": "https://github.com/catchorg/Catch2"
+    },
+    {
+      "name": "JUCE",
+      "version": "8.0.14",
+      "source": "https://github.com/juce-framework/JUCE"
+    },
+    {
+      "name": "CMake",
+      "version": "4.1.3",
+      "source": "https://www.kitware.com/cmake-4-1-3-available-for-download/"
+    }
+  ],
+  "unresolved_byte_hash_rule": "T01 resolves official version bytes and full digest; missing/different bytes blocks normal build; no fabricated hash or silent alternate version"
+}
