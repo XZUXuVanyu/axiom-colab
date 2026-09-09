@@ -57,7 +57,7 @@ Per-task evidence: `implementation/records/<TASK>.md`.
 | DAW verification (Live/FL) | not attempted | T17/T18 |
 | DCR landing path | resolved by DCR-0003 (this folder) | — |
 | VS IDE F5 path | **passed 2026-09-09**: owner ran `win-debug` via F5 in VS Insiders 2026 (18.10.12120.281); target ran to completion, `All tests passed (50 assertions in 10 test cases)`, independently reproduced | — |
-| VS IDE **breakpoint** evidence | **awaiting_user**: owner reported "no breakpoint hit" — no breakpoint, no variable observation | set a breakpoint (e.g. `tests/contract/hash_golden_test.cpp` on the `REQUIRE(to_hex(...))` line), run F5, record the variable values; needed for A03/A04 |
+| VS IDE **breakpoint** evidence | **passed 2026-09-09**: owner hit a breakpoint at `tests/contract/hash_golden_test.cpp:70` under F5/`win-debug` in VS Insiders 2026; observed `encoded{size=1}`, `expected_hex="4158483100"`, `prefixed{size=5}` — consistent with the `null` golden vector (`AXH1` + `0x00`) | — (A03/A04 evidence satisfied; no screenshot file retained, cited as a user-session observation) |
 
 ## Next action
 
