@@ -109,10 +109,18 @@
       "sha256": "4a641b1a404e390cf869b79782fecea9bc6cd9e5d2e0f97163cf4582c93bc843"
     },
     "qt": {
-      "found": false,
-      "searched": ["C:\\Qt", "D:\\Qt", "C:\\Program Files\\Qt", "C:\\Program Files (x86)\\Qt"],
-      "blocks": ["C04 axiom_review", "C07 runner QtCore", "C11 ipc QtNetwork", "C02 axiom-host QtWidgets"],
-      "spec_baseline": "Qt 6.11.2 MSVC x64"
+      "found": true,
+      "path": "C:\\Qt\\6.11.2\\msvc2022_64",
+      "version": "6.11.2",
+      "kit": "msvc2022_64",
+      "verified_by": "read-only probe 2026-09-09 (qmake -v, qtpaths6 --qt-version, Qt6Config.cmake, per-module cmake/headers/lib/dll checks)",
+      "required_modules_present": ["Core", "Network", "Gui", "Widgets"],
+      "forbidden_modules_installed_but_must_not_be_linked": ["Qt6Sql", "Qt6Qml"],
+      "build_compiler": "MSVC 19.44.35227 (from mkspecs/qconfig.pri)",
+      "local_compiler": "MSVC 19.51.36256.0",
+      "licence_info": "C:\\Qt\\licenseInfo.txt = License type [Opensource]; SBOM qtbase-6.11.2.cdx.json ids include LGPL-3.0-only, GPL-3.0-only, Qt-GPL-exception-1.0, BSD-3-Clause; QT_CONFIG += shared",
+      "spec_baseline": "Qt 6.11.2 MSVC x64",
+      "blocks": ["C04 axiom_review", "C07 runner QtCore", "C11 ipc QtNetwork", "C02 axiom-host QtWidgets"]
     },
     "juce": {
       "found": false,
@@ -131,13 +139,15 @@
       "item": "IDE/ABI",
       "spec": "Visual Studio 2022 17.14, MSVC v143 14.44 series",
       "actual": "VS Build Tools 2026 18.9.12120.119, MSVC 14.51.36231 (cl 19.51.36256.0)",
-      "status": "conflict C4, unresolved"
+      "status": "resolved by owner approval 2026-09-09 (C4-a): adopt installed toolchain; specs/03 baseline superseded",
+      "approval_ref": "implementation/records/APPROVALS-2026-09-09.md"
     },
     {
       "item": "CMake",
       "spec": "4.1.3",
       "actual": "4.3.1-msvc1 (VS-bundled)",
-      "status": "conflict C4, unresolved"
+      "status": "resolved by owner approval 2026-09-09 (C4-a): adopt installed CMake; version change approval recorded",
+      "approval_ref": "implementation/records/APPROVALS-2026-09-09.md"
     },
     {
       "item": "Ninja",
@@ -148,10 +158,25 @@
     {
       "item": "Qt",
       "spec": "6.11.2 MSVC x64",
-      "actual": "not installed",
-      "status": "conflict C4, unresolved; blocks T05/T07/T13 paths"
+      "actual": "C:\\Qt\\6.11.2\\msvc2022_64 (installed by owner 2026-09-09; verified read-only: qmake 6.11.2, Qt6Core/Network/Gui/Widgets cmake configs+headers+libs+dlls present)",
+      "status": "resolved by owner approval 2026-09-09 (C4-b): installation verified; ABI note recorded below",
+      "approval_ref": "implementation/records/APPROVALS-2026-09-09.md",
+      "abi_note": "Qt binaries report QT_MSVC 19.44.35227 while local cl.exe is 19.51.36256.0; same 19.x family and shared linkage, but specs/01 forbids silently switching ABI - must be recorded in T01 DCR and proven by real configure+link+run in T02/T13."
     }
   ],
+  "owner_approvals_2026_09_09": {
+    "record": "implementation/records/APPROVALS-2026-09-09.md",
+    "approval_source": "owner message in DSH host session, 2026-09-09",
+    "items": [
+      {"id": "C4-a", "approved": "switch toolchain version to VS Build Tools 2026 18.9.12120.119 / MSVC 14.51.36231 / CMake 4.3.1-msvc1"},
+      {"id": "C4-b", "approved": "Qt 6.11.2 installed at C:\\Qt; installation verified by read-only probe"},
+      {"id": "C4-c", "approved": "project will be open source; exact licence text still to be chosen by owner"},
+      {"id": "C1", "approved": "keep local repo at D:\\axiom-colab; remote repository consistency is the authority"},
+      {"id": "bootstrap", "approved": "dependency pre-fetch allowed on D: drive, official locked bytes only"}
+    ],
+    "conflicts_closed": ["C1", "C4-a", "C4-b", "C4-c"],
+    "conflicts_open": ["C2 (D:\\Dev\\tools reference projects unreachable)", "C3 (for-agent/HANDOFF.md vs pack rule 16)"]
+  },
   "capability_limits_observed": [
     "DSH sandbox denies writes outside the session workspace D:\\Axiom-V1-Prompt-Pack; every write into D:\\axiom-colab required a user-approved one-shot escalation.",
     "Get-CimInstance Win32_OperatingSystem: Access denied.",
@@ -175,7 +200,7 @@
     "D:\\modern-math-learning": {"note": "unrelated"}
   },
   "gates_not_run": {
-    "G00": "blocked pending the T00 acceptance review of this inventory/migration record; cmake/ctest presets do not exist yet (T01 creates CMakePresets.json).",
+    "G00": "not_run: the T00 inspection/migration evidence exists, but the preset commands cannot run until T01 delivers CMakePresets.json (F008). Owner approvals of 2026-09-09 closed C1 and C4; no build/test evidence is claimed.",
     "commands_attempted": [
       {
         "command": "cmake --preset win-debug",

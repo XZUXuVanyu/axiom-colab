@@ -9,7 +9,8 @@
       "status": "in_progress",
       "completed_file_ids": [],
       "evidence": [
-        "implementation/records/T00.md"
+        "implementation/records/T00.md",
+        "implementation/records/APPROVALS-2026-09-09.md"
       ]
     },
     {
