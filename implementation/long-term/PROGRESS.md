@@ -52,11 +52,11 @@ Per-task evidence: `implementation/records/<TASK>.md`.
 
 | Item | State | Needed |
 | --- | --- | --- |
-| VS IDE F5 path | **available now** (VS Insiders 2026, `E:\Microsoft Visual Studio\Common7\IDE\devenv.exe`, 18.10.12120.281) but **not yet exercised** | user performs F5 per `docs/BUILD.md` §3 and records the observation |
-| JUCE 8.0.14 | not fetched; DNS blocks juce.com / raw.githubusercontent.com | fetch from GitHub archive, hash, verify `LICENSE.md` |
+| JUCE 8.0.14 | **fetched and locked** 2026-09-09: `deps/sources/JUCE` (4,425 files), archive sha256 `ceb18e4ac9ab5ea71f3f20240d5852707767a1789ab43d06656a296da9e62f3e`, tree `2ceee3c3…5f331`; licence verified as AGPLv3-or-commercial | consumed by T02/T15–T17 |
 | `D:\Dev\tools\*` reference projects | unreachable (`D:\Dev` absent) | owner waiver or real paths |
 | DAW verification (Live/FL) | not attempted | T17/T18 |
 | DCR landing path | resolved by DCR-0003 (this folder) | — |
+| VS IDE **breakpoint** evidence | test binary was run by the owner (`All tests passed (50 assertions in 10 test cases)`, seed 4148975135) and independently reproduced (seed 453237351, exe sha256 `ac4af324…d519`, MSVC 14.44 Debug) | still needed for A03/A04: which UI was used and a real breakpoint hit with variable observation |
 
 ## Next action
 
