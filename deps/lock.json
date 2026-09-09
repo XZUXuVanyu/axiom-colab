@@ -1,0 +1,47 @@
+﻿{
+    "schema_version":  1,
+    "generated_by":  "Axiom V1 T01 bootstrap",
+    "generated_utc":  "2026-09-09T13:30:00Z",
+    "rule":  "Normal build is offline; a null or mismatched hash fails configure. No alternate version is substituted.",
+    "dependencies":  {
+                         "nlohmann_json":  {
+                                               "version":  "v3.12.0",
+                                               "source":  "https://github.com/nlohmann/json/releases/download/v3.12.0/json.tar.xz",
+                                               "source_dir":  "sources/nlohmann_json",
+                                               "archive_name":  "json-3.12.0.tar.xz",
+                                               "archive_kind":  "tar.xz",
+                                               "sha256":  "42f6e95cad6ec532fd372391373363b62a14af6d771056dbfc86160e6dfff7aa",
+                                               "tree_sha256":  "8f5e9a0414dd3060cabfb0d81664f170c2329360e1ba5bbbe5660b64bd8e002e",
+                                               "file_count":  55,
+                                               "license":  "MIT",
+                                               "fetched_utc":  "2026-09-09T13:30:00Z",
+                                               "fetched_by":  "T01 bootstrap (tools/bootstrap-deps.ps1), user-authorised, offline build reads this cache"
+                                           },
+                         "catch2":  {
+                                        "version":  "v3.8.1",
+                                        "source":  "https://github.com/catchorg/Catch2/archive/refs/tags/v3.8.1.tar.gz",
+                                        "source_dir":  "sources/catch2",
+                                        "archive_name":  "catch2-3.8.1.tar.gz",
+                                        "archive_kind":  "tar.gz",
+                                        "sha256":  "18b3f70ac80fccc340d8c6ff0f339b2ae64944782f8d2fca2bd705cf47cadb79",
+                                        "tree_sha256":  "c1f95462a36846d4a87c95c85d0d1779b16e88bbc291b6f361488657f628b574",
+                                        "file_count":  559,
+                                        "license":  "BSL-1.0",
+                                        "fetched_utc":  "2026-09-09T13:30:00Z",
+                                        "fetched_by":  "T01 bootstrap (tools/bootstrap-deps.ps1), user-authorised, offline build reads this cache"
+                                    },
+                         "sqlite":  {
+                                        "version":  "3.53.4",
+                                        "source":  "https://www.sqlite.org/2026/sqlite-amalgamation-3530400.zip",
+                                        "source_dir":  "sources/sqlite",
+                                        "archive_name":  "sqlite-amalgamation-3530400.zip",
+                                        "archive_kind":  "zip",
+                                        "sha256":  "1e71ddf93849c6a6ecf58b827c0692073d2dd7ee40196158068f7b29f422e87d",
+                                        "tree_sha256":  "d7c6b8935ca493fff703ac98986932ff1b54028f6e300e3a2e5d299532fdbf0a",
+                                        "file_count":  5,
+                                        "license":  "public-domain",
+                                        "fetched_utc":  "2026-09-09T13:30:00Z",
+                                        "fetched_by":  "T01 bootstrap (tools/bootstrap-deps.ps1), user-authorised, offline build reads this cache"
+                                    }
+                     }
+}

@@ -1,0 +1,85 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 25,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "win-base",
+      "hidden": true,
+      "description": "Windows x64 Ninja baseline; run from an x64 Native Tools environment.",
+      "generator": "Ninja",
+      "architecture": {
+        "value": "x64",
+        "strategy": "external"
+      },
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "cacheVariables": {
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "BUILD_TESTING": "ON",
+        "AXIOM_WARNINGS_AS_ERRORS": "OFF",
+        "AXIOM_BUILD_PHASE": "m0",
+        "AXIOM_BUILD_AUDIO": "OFF",
+        "AXIOM_ENABLE_BOOTSTRAP": "OFF"
+      }
+    },
+    {
+      "name": "win-debug",
+      "inherits": "win-base",
+      "displayName": "Windows x64 Debug",
+      "description": "Debug build (/MDd) used by the T01-T18 gates.",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "win-release",
+      "inherits": "win-base",
+      "displayName": "Windows x64 Release",
+      "description": "Release build (/MD) with warnings as errors.",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "AXIOM_WARNINGS_AS_ERRORS": "ON",
+        "AXIOM_REQUIRE_QT": "ON"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "win-debug",
+      "configurePreset": "win-debug",
+      "description": "Build the Debug tree."
+    },
+    {
+      "name": "win-release",
+      "configurePreset": "win-release",
+      "description": "Build the Release tree."
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "win-debug",
+      "configurePreset": "win-debug",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error",
+        "stopOnFailure": false
+      }
+    },
+    {
+      "name": "win-release",
+      "configurePreset": "win-release",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error",
+        "stopOnFailure": false
+      }
+    }
+  ]
+}

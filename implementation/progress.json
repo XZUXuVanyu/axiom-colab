@@ -6,8 +6,8 @@
   "tasks": [
     {
       "task": "T00",
-      "status": "in_progress",
-      "completed_file_ids": [],
+      "status": "completed",
+      "completed_file_ids": ["F001", "F002", "F003", "F004", "F005", "F006"],
       "evidence": [
         "implementation/records/T00.md",
         "implementation/records/APPROVALS-2026-09-09.md"
@@ -15,9 +15,11 @@
     },
     {
       "task": "T01",
-      "status": "not_started",
-      "completed_file_ids": [],
-      "evidence": []
+      "status": "in_progress",
+      "completed_file_ids": ["F007", "F008", "F009", "F010", "F011", "F012", "F013", "F014", "F015", "F016"],
+      "evidence": [
+        "implementation/records/T01.md"
+      ]
     },
     {
       "task": "T02",
@@ -130,8 +132,12 @@
     },
     {
       "id": "G01",
-      "status": "not_run",
-      "evidence": []
+      "status": "passed",
+      "evidence": [
+        "implementation/records/T01.md#v1-v5",
+        "build/win-debug",
+        "build/win-release"
+      ]
     },
     {
       "id": "G02",

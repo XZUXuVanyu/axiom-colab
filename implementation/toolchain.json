@@ -1,0 +1,87 @@
+{
+  "schema_version": 1,
+  "task": "T01",
+  "generated_utc": "2026-09-09T13:45:00Z",
+  "generated_by": "T01 toolchain probe (real commands; no value is copied from a specification)",
+  "target": "windows-x64-msvc143",
+  "target_note": "specs/03 names the ABI windows-x64-msvc143; the owner approved using the installed VS 2026 toolset (see implementation/records/APPROVALS-2026-09-09.md, C4-a). The ABI string is kept as the frozen target name until a DCR changes it.",
+  "compiler": {
+    "id": "MSVC",
+    "cl_exe": "C:\\Program Files (x86)\\Microsoft Visual Studio\\18\\BuildTools\\VC\\Tools\\MSVC\\14.51.36231\\bin\\Hostx64\\x64\\cl.exe",
+    "cl_version": "19.51.36256.0",
+    "cl_version_line": "Microsoft (R) C/C++ Optimizing Compiler Version 19.51.36256 for x64",
+    "link_version": "14.51.36256.0",
+    "toolset_dir": "14.51.36231",
+    "v143_toolset_present": false,
+    "v143_note": "Only MSVC 14.51.36231 is installed; no 14.4x (v143) side-by-side toolset exists on this machine. Recorded, not silently substituted."
+  },
+  "visual_studio": {
+    "display_name": "Visual Studio Build Tools 2026",
+    "installation_version": "18.9.12120.119",
+    "installation_path": "C:\\Program Files (x86)\\Microsoft Visual Studio\\18\\BuildTools",
+    "product_id": "Microsoft.VisualStudio.Product.BuildTools",
+    "full_ide_present": false,
+    "f5_debug_available": false,
+    "note": "No VS 2022 17.x and no IDE; the F5 entry documented in docs/BUILD.md is therefore awaiting_user."
+  },
+  "windows_sdk": {
+    "include_versions": ["10.0.26100.0"],
+    "bin_versions": ["10.0.14393.0", "10.0.15063.0", "10.0.16299.0", "10.0.17134.0", "10.0.26100.0"],
+    "selected": "10.0.26100.0"
+  },
+  "cmake": {
+    "path": "C:\\Program Files (x86)\\Microsoft Visual Studio\\18\\BuildTools\\Common7\\IDE\\CommonExtensions\\Microsoft\\CMake\\CMake\\bin\\cmake.exe",
+    "version": "4.3.1-msvc1",
+    "sha256": "8e30b660920a328bcc62c4b6de1b86f0de7a178aca8ec5dbb6924fd05b4eb683",
+    "on_path": false,
+    "spec_baseline": "4.1.3",
+    "status": "owner-approved deviation (C4-a)"
+  },
+  "ctest": {
+    "path": "C:\\Program Files (x86)\\Microsoft Visual Studio\\18\\BuildTools\\Common7\\IDE\\CommonExtensions\\Microsoft\\CMake\\CMake\\bin\\ctest.exe"
+  },
+  "ninja": {
+    "path": "C:\\Program Files (x86)\\Microsoft Visual Studio\\18\\BuildTools\\Common7\\IDE\\CommonExtensions\\Microsoft\\CMake\\Ninja\\ninja.exe",
+    "version": "1.13.2",
+    "sha256": "4a641b1a404e390cf869b79782fecea9bc6cd9e5d2e0f97163cf4582c93bc843",
+    "on_path": false,
+    "note": "VS-bundled version detected by T00 and pinned here (specs/03: record the exact version and exe hash before building)."
+  },
+  "qt": {
+    "prefix": "C:\\Qt\\6.11.2\\msvc2022_64",
+    "version": "6.11.2",
+    "kit": "msvc2022_64",
+    "qmake": "C:\\Qt\\6.11.2\\msvc2022_64\\bin\\qmake.exe",
+    "required_components": ["Core", "Network", "Gui", "Widgets"],
+    "build_compiler_msvc": "19.44.35227",
+    "linkage": "shared",
+    "licence_route": "LGPLv3 (dynamic linking mandatory)",
+    "abi_note": "Qt binaries were built with MSVC 19.44 while this machine compiles with 19.51; same 19.x family, shared linkage. specs/01 forbids silently switching ABI, so this is recorded and must be proven by a real link+run in T02/T13."
+  },
+  "runtime": {
+    "crt": "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL (/MDd Debug, /MD Release)",
+    "cxx_standard": "C++20",
+    "floating_point": "/fp:precise",
+    "charset": "/utf-8",
+    "warnings": ["/W4", "/permissive-", "/diagnostics:caret", "/Zc:__cplusplus", "/Zc:preprocessor"],
+    "warnings_as_errors": "ON in win-release, OFF in win-debug (AXIOM_WARNINGS_AS_ERRORS)"
+  },
+  "generator": {
+    "cmake_generator": "Ninja",
+    "environment": "x64 Native Tools (vcvars64.bat) - cl/link are only on PATH inside that environment",
+    "presets": ["win-debug", "win-release"]
+  },
+  "fingerprint": {
+    "algorithm": "SHA-256 over the canonical JSON of {compiler, windows_sdk.selected, cmake, ninja, qt} identity fields, in that order",
+    "inputs": [
+      "cl 19.51.36256.0 @ C:\\Program Files (x86)\\Microsoft Visual Studio\\18\\BuildTools\\VC\\Tools\\MSVC\\14.51.36231\\bin\\Hostx64\\x64\\cl.exe",
+      "link 14.51.36256.0",
+      "SDK 10.0.26100.0",
+      "cmake 4.3.1-msvc1 sha256 8e30b660920a328bcc62c4b6de1b86f0de7a178aca8ec5dbb6924fd05b4eb683",
+      "ninja 1.13.2 sha256 4a641b1a404e390cf869b79782fecea9bc6cd9e5d2e0f97163cf4582c93bc843",
+      "Qt 6.11.2 msvc2022_64 (built with MSVC 19.44.35227, shared)"
+    ],
+    "sha256": "5c57fb574985d6e575037d4146390b958e92460577cd173a1e411d65a487e211",
+    "note": "Computed by the T01 gate run over the 556-byte canonical JSON of the identity fields listed in 'inputs'. Reproduce with implementation/records/T01.md section V6."
+  }
+}
