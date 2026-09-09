@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "spec_version": "1.0.0",
-  "active_task": "T00",
+  "active_task": "T02",
   "overall_status": "not_started",
   "tasks": [
     {
@@ -15,7 +15,7 @@
     },
     {
       "task": "T01",
-      "status": "in_progress",
+      "status": "completed",
       "completed_file_ids": ["F007", "F008", "F009", "F010", "F011", "F012", "F013", "F014", "F015", "F016"],
       "evidence": [
         "implementation/records/T01.md"
