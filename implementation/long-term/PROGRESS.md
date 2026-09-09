@@ -56,7 +56,8 @@ Per-task evidence: `implementation/records/<TASK>.md`.
 | `D:\Dev\tools\*` reference projects | unreachable (`D:\Dev` absent) | owner waiver or real paths |
 | DAW verification (Live/FL) | not attempted | T17/T18 |
 | DCR landing path | resolved by DCR-0003 (this folder) | — |
-| VS IDE **breakpoint** evidence | test binary was run by the owner (`All tests passed (50 assertions in 10 test cases)`, seed 4148975135) and independently reproduced (seed 453237351, exe sha256 `ac4af324…d519`, MSVC 14.44 Debug) | still needed for A03/A04: which UI was used and a real breakpoint hit with variable observation |
+| VS IDE F5 path | **passed 2026-09-09**: owner ran `win-debug` via F5 in VS Insiders 2026 (18.10.12120.281); target ran to completion, `All tests passed (50 assertions in 10 test cases)`, independently reproduced | — |
+| VS IDE **breakpoint** evidence | **awaiting_user**: owner reported "no breakpoint hit" — no breakpoint, no variable observation | set a breakpoint (e.g. `tests/contract/hash_golden_test.cpp` on the `REQUIRE(to_hex(...))` line), run F5, record the variable values; needed for A03/A04 |
 
 ## Next action
 
