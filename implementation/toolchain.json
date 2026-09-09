@@ -4,25 +4,42 @@
   "generated_utc": "2026-09-09T13:45:00Z",
   "generated_by": "T01 toolchain probe (real commands; no value is copied from a specification)",
   "target": "windows-x64-msvc143",
-  "target_note": "specs/03 names the ABI windows-x64-msvc143; the owner approved using the installed VS 2026 toolset (see implementation/records/APPROVALS-2026-09-09.md, C4-a). The ABI string is kept as the frozen target name until a DCR changes it.",
+  "target_note": "specs/03 names the ABI windows-x64-msvc143. DCR-0001 (owner-approved 2026-09-09) adopts the installed VS Insiders 2026 toolset with MSVC 14.44 (v143 series), which is ABI-identical to the Qt 6.11.2 binaries. The frozen ABI string is unchanged.",
   "compiler": {
     "id": "MSVC",
-    "cl_exe": "C:\\Program Files (x86)\\Microsoft Visual Studio\\18\\BuildTools\\VC\\Tools\\MSVC\\14.51.36231\\bin\\Hostx64\\x64\\cl.exe",
-    "cl_version": "19.51.36256.0",
-    "cl_version_line": "Microsoft (R) C/C++ Optimizing Compiler Version 19.51.36256 for x64",
-    "link_version": "14.51.36256.0",
-    "toolset_dir": "14.51.36231",
-    "v143_toolset_present": false,
-    "v143_note": "Only MSVC 14.51.36231 is installed; no 14.4x (v143) side-by-side toolset exists on this machine. Recorded, not silently substituted."
+    "selected_toolset": "14.44",
+    "cl_exe": "E:\\Microsoft Visual Studio\\VC\\Tools\\MSVC\\14.44.35207\\bin\\Hostx64\\x64\\cl.exe",
+    "cl_version": "19.44.35228.0",
+    "cl_version_line": "Microsoft (R) C/C++ Optimizing Compiler Version 19.44.35228 for x64",
+    "vcvars": "E:\\Microsoft Visual Studio\\VC\\Auxiliary\\Build\\vcvars64.bat -vcvars_ver=14.44",
+    "alt_toolset": {
+      "version": "14.51.36231",
+      "cl_exe": "C:\\Program Files (x86)\\Microsoft Visual Studio\\18\\BuildTools\\VC\\Tools\\MSVC\\14.51.36231\\bin\\Hostx64\\x64\\cl.exe",
+      "cl_version": "19.51.36256.0",
+      "status": "installed but NOT the V1 toolchain: it does not match the Qt 6.11.2 ABI (QT_MSVC 19.44)"
+    },
+    "v143_toolset_present": true,
+    "v143_note": "MSVC 14.44.35207 is present in the E: VS Insiders install and was proven by a real configure+build+ctest (115/115 built, 1/1 test passed, exit 0)."
   },
   "visual_studio": {
-    "display_name": "Visual Studio Build Tools 2026",
-    "installation_version": "18.9.12120.119",
-    "installation_path": "C:\\Program Files (x86)\\Microsoft Visual Studio\\18\\BuildTools",
-    "product_id": "Microsoft.VisualStudio.Product.BuildTools",
-    "full_ide_present": false,
-    "f5_debug_available": false,
-    "note": "No VS 2022 17.x and no IDE; the F5 entry documented in docs/BUILD.md is therefore awaiting_user."
+    "ide": {
+      "display_name": "Visual Studio Insiders 2026",
+      "installation_path": "E:\\Microsoft Visual Studio",
+      "devenv": "E:\\Microsoft Visual Studio\\Common7\\IDE\\devenv.exe",
+      "devenv_version": "18.10.12120.281 built by: insiders",
+      "devenv_sha256": "92be37fa5d0f38233d2b847da33955a75f05247ee4f88e9cb35cb46050d69ec5",
+      "full_ide_present": true,
+      "f5_debug_available": true,
+      "f5_exercised": false,
+      "note": "The IDE is installed and reachable; the F5 observation is still awaiting_user until the owner performs it."
+    },
+    "build_tools": {
+      "display_name": "Visual Studio Build Tools 2026",
+      "installation_version": "18.9.12120.119",
+      "installation_path": "C:\\Program Files (x86)\\Microsoft Visual Studio\\18\\BuildTools",
+      "product_id": "Microsoft.VisualStudio.Product.BuildTools",
+      "full_ide_present": false
+    }
   },
   "windows_sdk": {
     "include_versions": ["10.0.26100.0"],
@@ -72,16 +89,17 @@
     "presets": ["win-debug", "win-release"]
   },
   "fingerprint": {
-    "algorithm": "SHA-256 over the canonical JSON of {compiler, windows_sdk.selected, cmake, ninja, qt} identity fields, in that order",
+    "algorithm": "SHA-256 over the canonical JSON of {compiler, sdk, cmake, ninja, qt, ide} identity fields, in that order",
     "inputs": [
-      "cl 19.51.36256.0 @ C:\\Program Files (x86)\\Microsoft Visual Studio\\18\\BuildTools\\VC\\Tools\\MSVC\\14.51.36231\\bin\\Hostx64\\x64\\cl.exe",
-      "link 14.51.36256.0",
+      "cl 19.44.35228.0 @ E:\\Microsoft Visual Studio\\VC\\Tools\\MSVC\\14.44.35207\\bin\\Hostx64\\x64\\cl.exe (vcvars64.bat -vcvars_ver=14.44)",
       "SDK 10.0.26100.0",
       "cmake 4.3.1-msvc1 sha256 8e30b660920a328bcc62c4b6de1b86f0de7a178aca8ec5dbb6924fd05b4eb683",
       "ninja 1.13.2 sha256 4a641b1a404e390cf869b79782fecea9bc6cd9e5d2e0f97163cf4582c93bc843",
-      "Qt 6.11.2 msvc2022_64 (built with MSVC 19.44.35227, shared)"
+      "Qt 6.11.2 msvc2022_64 (built with MSVC 19.44.35227, shared)",
+      "devenv 18.10.12120.281 (VS Insiders 2026, E:)"
     ],
-    "sha256": "5c57fb574985d6e575037d4146390b958e92460577cd173a1e411d65a487e211",
-    "note": "Computed by the T01 gate run over the 556-byte canonical JSON of the identity fields listed in 'inputs'. Reproduce with implementation/records/T01.md section V6."
+    "sha256": "126195dc3e0f26f3c1b69847fc7afb9cc54bade72f69e5b25d091bc19907de0f",
+    "superseded_sha256": "5c57fb574985d6e575037d4146390b958e92460577cd173a1e411d65a487e211",
+    "note": "Recomputed after DCR-0001 switched the frozen toolset to MSVC 14.44 (573-byte canonical JSON). The earlier value described the 14.51 toolchain and is kept for traceability only."
   }
 }

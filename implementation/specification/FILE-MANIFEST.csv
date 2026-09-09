@@ -183,3 +183,18 @@ F181,T18,C12,docs/USER-GUIDE.md,doc,双向协作、画布、库、证据与音�
 F182,T18,C12,docs/RELEASE-CHECKLIST.md,doc,每项实际证据、许可、host/DAW未测状态,G18
 F183,T18,C12,docs/TROUBLESHOOTING.md,doc,具体失败原因/复现步骤，不指示关闭安全机制,G18
 F184,T18,C12,implementation/release-evidence.json,config,实际release文件hash/环境/验收矩阵汇总，不能提前伪造,G18
+F185,T00,C12,implementation/long-term/README.md,config,长期上下文入口与开工顺序,G00
+F186,T00,C12,implementation/long-term/RULES.md,config,治理规则/优先级/已批准偏离,G00
+F187,T00,C12,implementation/long-term/PROGRESS.md,config,叙事进度与阻塞与下一步,G00
+F188,T00,C12,implementation/long-term/ERRORS.md,config,错误登记：症状/根因/解决,G00
+F189,T00,C12,implementation/long-term/DECISIONS.md,config,所有者决定与已批准DCR索引,G00
+F190,T00,C12,implementation/long-term/DCR-0001-toolchain-baseline.md,config,工具链/路径/IDE基线DCR（approved）,G00
+F191,T00,C12,implementation/long-term/DCR-0002-licence-agpl.md,config,许可证AGPL-3.0-or-later DCR（approved）,G00
+F192,T00,C12,implementation/long-term/DCR-0003-long-term-context.md,config,长期上下文与DCR位置DCR（approved）,G00
+F193,T01,C12,LICENSE,config,项目许可证全文AGPL-3.0,G01
+F194,T01,C12,deps/THIRD-PARTY-NOTICES.md,config,第三方许可证与真实字节摘要,G01
+F195,T01,C12,tools/bootstrap-deps.ps1,config,按锁定版本预取并核对字节,G01
+F196,T01,C12,tests/support/axh1.hpp,test,AXH1/SHA-256测试支持（T03替换为生产实现）,G03
+F197,T01,C12,tests/support/axh1.cpp,test,AXH1/SHA-256测试支持（T03替换为生产实现）,G03
+F198,T01,C12,tests/contract/build_contract_test.cpp,test,构建契约门禁（工具链/选项/依赖版本）,G01
+F199,T01,C12,tests/contract/hash_golden_test.cpp,test,AXH1 golden向量门禁,G03

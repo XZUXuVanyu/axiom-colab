@@ -37,16 +37,28 @@
 - **工程纪律**：公开契约不依赖 LLM 供应商与 UI；优先不可变派生而非共享可变状态；诊断与机器可读协议输出分离；授权与校验在服务边界执行而非只在 UI；每个行为变更附带测试；为能力伪造、过期批准、跨工作区访问、伪造验证、候选被改、部分写入、损坏、配额耗尽和误导性输入添加对抗测试；未真实运行不得声称验证通过。
 - **提交纪律**：`type(scope): imperative summary`，允许 `feat`、`fix`、`refactor`、`test`、`docs`、`build`、`chore`；每个逻辑提交只描述一个连贯变更，并记录实际运行过的验证与失败信息，保留无关用户工作。
 
-## 已记录的规则冲突（T00，未擅自解决）
+## 长期上下文（先读这里）
 
-冲突细节与证据见 `implementation/records/T00.md` 与 `implementation/inventory.json`。
+继续本项目前，按顺序读取：`implementation/long-term/README.md` → `RULES.md` → `PROGRESS.md` →
+`ERRORS.md` → `DECISIONS.md`，再读 `implementation/progress.json`、最近一份
+`implementation/records/<TASK>.md` 与当前任务卡。
 
-| ID | 本地规则要求 | 实际状态 | T00 处理 |
+- 规则、进度与错误登记的唯一长期位置是 `implementation/long-term/`（DCR-0003，已批准）。
+- DCR 位置：`implementation/long-term/DCR-<nnnn>-<slug>.md`；状态只能 `proposed`，
+  用户批准后才可记 `approved` 并附批准原文来源。
+- `for-agent/` 为 legacy（V0）内容，V1 期间不修改、不作为进度记录位置。
+
+## 已记录的规则冲突（T00 记录，2026-09-09 由所有者裁定）
+
+冲突细节与证据见 `implementation/records/T00.md`、`implementation/inventory.json`
+与 `implementation/long-term/DECISIONS.md`。
+
+| ID | 本地规则要求 | 实际状态 | 裁定 |
 | --- | --- | --- | --- |
-| C1 | 仓库路径 `D:\Dev\axiom-colab`（specs/15「目录落地」、00-START-HERE） | 实际仓库为 `D:\axiom-colab`；`D:\Dev` 不存在 | 按用户 2026-09-09 明确指令在 `D:\axiom-colab` 实施；规范文本路径未改 |
-| C2 | 本地规则要求先读 `D:\Dev\tools\general-ts-cpp-adapter`、`D:\Dev\tools\general-agent-memory`，并禁止改动它们 | 两个参考工程所在 `D:\Dev` 不存在，本机不可访问 | 规则保留，但前置读取无法执行，记为 blocked；未创建替代目录 |
-| C3 | 本地规则要求每个逻辑提交同时更新 `for-agent/HANDOFF.md` | 包规则 16 只允许在 `implementation/records`、`implementation/progress.json`、已批准 `implementation/change-requests` 记录进度 | V1 重建期间进度记录以包规则 16 为准；`for-agent/` 属 legacy 内容，T00 未修改，待用户裁定 |
-| C4 | specs/03 基线：VS 2022 17.14 / MSVC v143 14.44 / CMake 4.1.3 / Qt 6.11.2 | 本机只有 VS Build Tools 2026 18.9.12120.119 / MSVC 14.51.36231 / 捆绑 CMake 4.3.1-msvc1 / 无 Qt | 记入 inventory 与工具链锁，T01 前需用户决定：安装基线工具链或提交 DCR |
+| C1 | 仓库路径 `D:\Dev\axiom-colab`（specs/15「目录落地」、00-START-HERE） | 实际仓库为 `D:\axiom-colab`；`D:\Dev` 不存在 | **已批准（D-002 / DCR-0001）**：保留 `D:\axiom-colab`，规范文本不改 |
+| C2 | 本地规则要求先读 `D:\Dev\tools\general-ts-cpp-adapter`、`D:\Dev\tools\general-agent-memory` | 两个参考工程所在 `D:\Dev` 不存在，本机不可访问 | **已豁免（D-011）**：忽略这些 legacy 路径，不创建替代目录 |
+| C3 | 本地规则要求每个逻辑提交同时更新 `for-agent/HANDOFF.md` | 与包规则 16 冲突；`for-agent/` 为 V0 legacy 内容 | **已裁定（D-007 / DCR-0003）**：V1 使用 `implementation/long-term/`；`for-agent/` 冻结不改 |
+| C4 | specs/03 基线：VS 2022 17.14 / MSVC v143 14.44 / CMake 4.1.3 / Qt 6.11.2 | VS Insiders 2026 `E:\Microsoft Visual Studio`（MSVC **14.44** 与 14.51）、CMake 4.3.1-msvc1、Qt 6.11.2 已装 | **已批准（D-003/D-006 / DCR-0001）**：采用 14.44（与 Qt ABI 一致）+ CMake 4.3.1；F5 用 VS Insiders |
 
 ## 设计变更机制
 

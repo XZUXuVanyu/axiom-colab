@@ -33,6 +33,28 @@ if(_axiom_cxx_flags_str MATCHES "/fp:fast")
         "CMAKE_CXX_FLAGS contains /fp:fast; specs/03 requires /fp:precise.")
 endif()
 
+# DCR-0001 (owner-approved 2026-09-09): the V1 toolchain is MSVC 14.44 (v143
+# series), which is ABI-identical to the Qt 6.11.2 binaries (QT_MSVC 19.44).
+# MSVC 14.51 is also installed, but must not be used for V1 builds: mixing it
+# with the Qt binaries would silently switch the ABI, which specs/01 forbids.
+if(MSVC)
+    set(AXIOM_REQUIRE_MSVC_1444 ON CACHE BOOL
+        "Fail configure unless the MSVC toolset is the frozen 14.44 (DCR-0001)")
+    if(AXIOM_REQUIRE_MSVC_1444 AND NOT MSVC_VERSION EQUAL 1944)
+        message(FATAL_ERROR
+            "MSVC ${MSVC_VERSION} selected, but DCR-0001 freezes the 14.44 "
+            "toolset (MSVC_VERSION 1944). Start the shell with "
+            "'vcvars64.bat -vcvars_ver=14.44' from "
+            "'E:/Microsoft Visual Studio/VC/Auxiliary/Build', or set "
+            "AXIOM_REQUIRE_MSVC_1444=OFF for a deliberate experiment and record it.")
+    endif()
+    if(NOT MSVC_VERSION EQUAL 1944)
+        message(WARNING
+            "axiom: building with MSVC ${MSVC_VERSION}; the frozen V1 toolset is "
+            "14.44. This build is an experiment, not a gate result.")
+    endif()
+endif()
+
 set(AXIOM_MSVC_WARNING_OPTIONS
     /W4
     /permissive-
