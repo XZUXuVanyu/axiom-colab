@@ -112,3 +112,19 @@ resolution → evidence. A recurring error means a rule in `RULES.md` is missing
 - **Resolution:** use reachable endpoints (`api.github.com`, `github.com` releases) or the
   bytes already in `deps/sources/`. JUCE's `LICENSE.md` must be read from its fetched
   bytes in T15 — never asserted from memory.
+
+## E-015 — `LNK1168: cannot open axiom_build_contract_tests.exe for writing`
+
+- **Symptom:** `cmake --build --preset win-debug` failed with
+  `LINK : fatal error LNK1168`; the build stopped.
+- **Root cause:** a Visual Studio debug session was still paused on a breakpoint, so the
+  test process was alive and the debugger held the executable. Observed processes:
+  `axiom_build_contract_tests` (PID 13656), `devenv` (18088), `VsDebugConsole` (15976),
+  `ServiceHub.IntellicodeModelService`, `vctip`.
+- **Resolution:** stop debugging in Visual Studio (or let the run finish) before rebuilding.
+  Do **not** kill the debugger or the paused process from an agent: it is the owner's session
+  and may be holding unsaved observations. Re-run the gate afterwards.
+- **Note:** the exe could still be *renamed* while locked; a rename probe is therefore not a
+  reliable lock test. Check for a live process instead.
+- **Related rule:** the same lock appears whenever the IDE is running the target; if a gate
+  run must be trustworthy, confirm no debug session is active first.

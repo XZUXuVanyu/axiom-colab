@@ -40,18 +40,34 @@ endif()
 if(MSVC)
     set(AXIOM_REQUIRE_MSVC_1444 ON CACHE BOOL
         "Fail configure unless the MSVC toolset is the frozen 14.44 (DCR-0001)")
+    set(AXIOM_MSVC_GUARD_DCR "" CACHE STRING
+        "Approved DCR id that authorises building with a non-frozen MSVC toolset")
     if(AXIOM_REQUIRE_MSVC_1444 AND NOT MSVC_VERSION EQUAL 1944)
         message(FATAL_ERROR
             "MSVC ${MSVC_VERSION} selected, but DCR-0001 freezes the 14.44 "
             "toolset (MSVC_VERSION 1944). Start the shell with "
             "'vcvars64.bat -vcvars_ver=14.44' from "
-            "'E:/Microsoft Visual Studio/VC/Auxiliary/Build', or set "
-            "AXIOM_REQUIRE_MSVC_1444=OFF for a deliberate experiment and record it.")
+            "'E:/Microsoft Visual Studio/VC/Auxiliary/Build'. A non-frozen "
+            "toolset may only be used with an owner-approved DCR: set both "
+            "AXIOM_REQUIRE_MSVC_1444=OFF and AXIOM_MSVC_GUARD_DCR=DCR-00xx.")
     endif()
     if(NOT MSVC_VERSION EQUAL 1944)
+        # The guard may only be switched off by naming the approving DCR, so a
+        # bypass can never be silent: the id stays in the build cache and in
+        # every log that prints the cache.
+        if(AXIOM_MSVC_GUARD_DCR STREQUAL "")
+            message(FATAL_ERROR
+                "Refusing to build with MSVC ${MSVC_VERSION} without an approved "
+                "DCR. The frozen V1 toolset is 14.44 (DCR-0001). If an owner has "
+                "approved a different toolset, set "
+                "AXIOM_MSVC_GUARD_DCR=DCR-00xx together with "
+                "AXIOM_REQUIRE_MSVC_1444=OFF; otherwise use "
+                "'vcvars64.bat -vcvars_ver=14.44'.")
+        endif()
         message(WARNING
-            "axiom: building with MSVC ${MSVC_VERSION}; the frozen V1 toolset is "
-            "14.44. This build is an experiment, not a gate result.")
+            "axiom: building with MSVC ${MSVC_VERSION} under approved "
+            "${AXIOM_MSVC_GUARD_DCR}; the frozen V1 toolset is 14.44. This build "
+            "is an experiment, not a gate result, and must not be cited as one.")
     endif()
 endif()
 
